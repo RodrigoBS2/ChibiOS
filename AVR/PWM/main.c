@@ -1,17 +1,15 @@
 #include "ch.h"
 #include "hal.h"
 
+#define PWM_frequencia F_CPU/1024
+#define PWM_periodo    10000
+#define pwm_periodo_cb NULL
 
-PWMConfig driver_config = {
-      .frequency = 1000000,  // 1 MHz clock for the PWM
-      .period = 1000,        // PWM period of 1000 ticks (1 kHz PWM frequency)
-      .callback = NULL,
-      .channels = {
-        {PWM_OUTPUT_ACTIVE_HIGH, NULL},   // Channel 0 
-        {PWM_OUTPUT_DISABLED, NULL},      // Channel 1 
-      },
-      
-};
+PWMConfig   driver_config = {PWM_frequencia, 
+                             PWM_periodo, 
+                             pwm_periodo_cb, {{PWM_OUTPUT_HIGH,0},  
+                                              {PWM_OUTPUT_DISABLE,0}}
+}; 
 
 
 int main(void) {
