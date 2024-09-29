@@ -1,0 +1,107 @@
+Task and Threads
+
+
+1 - Default Threads
+
+After initializing ChibiOS/RT using "chSysInit()" two threads are spawned by default:
+
+    * Idle thread: This thread has the lowest priority in the system so it runs only when 
+                  the other threads in the system are sleeping. This threads usually switches the system 
+                  in a low power mode and does nothing else.
+    
+    * Main thread: This thread executes your "main()" function at startup. The main thread is 
+                  created at the NORMALPRIO level but it can change its own priority if required. It is 
+                  from the main thread that the other threads are usually created.
+
+
+
+2 - Thread Classes
+
+There are two classes of threads in ChibiOS/RT: 
+
+    * Static Threads: This class of threads are statically allocated in memory at compile time.
+    
+    * Dynamic Threads: Threads created by allocating memory at run time from a memory heap or a memory pool.
+
+2.1 - Creating a Static Thread:
+
+In order to create a static thread a working area must be declared using the macro THD_WORKING_AREA as shown: 
+    
+    * static THD_WORKING_AREA(myThreadWorkingArea, 128);
+
+    This macro reserves 128 bytes of stack for the thread and space for all the required thread related structures. 
+    The total size and the alignment problems are handled inside the macro, you only need to specify the pure and 
+    simple desired stack size. 
+
+A static thread can be started by invoking chThdCreateStatic() as shown in this example: 
+    
+    * thread_t *tp = chThdCreateStatic(myThreadWorkingArea,
+                                   sizeof(myThreadWorkingArea),
+                                   NORMALPRIO,  /* Initial priority.    */
+                                   myThread,    /* Thread function.     */
+                                   NULL);       /* Thread parameter.    */
+
+      The variable tp receives a pointer to the thread object, this pointer is often taken as parameter by other APIs.
+
+
+Complete example:
+
+        /*
+         * My simple application.
+         */
+         
+        #include <ch.h>     // Inicializa o núcleo do RTOS e transforma a função main() em uma thread, ativando o sistema operacional em tempo real.
+
+        /*
+         * Working area for the LED flashing thread.
+         */
+        static THD_WORKING_AREA(myThreadWorkingArea, 128);
+         
+        /*
+         * LED flashing thread.
+         */
+        static THD_FUNCTION(myThread, arg) {     //  This is a macro used by ChibiOS to define a thread function. It expands to a 
+                                                 // function that is compatible with the ChibiOS threading model.
+         
+          while (true) {
+            LED_ON();
+            chThdSleepMilliseconds(500);
+            LED_OFF();
+            chThdSleepMilliseconds(500);
+          }
+        }
+         
+        int main(int argc, char *argv[]) {
+         
+          /* Starting the OS.*/
+          chSysInit();
+          .
+          .
+          .
+          /* Starting the flashing LEDs thread.*/
+          (void) chThdCreateStatic(myThreadWorkingArea, sizeof(myThreadWorkingArea),
+                                   NORMALPRIO, myThread, NULL);
+          .
+          .
+          .
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+

@@ -1,0 +1,397 @@
+   1               		.file	"main.c"
+   2               	__SP_H__ = 0x3e
+   3               	__SP_L__ = 0x3d
+   4               	__SREG__ = 0x3f
+   5               	__tmp_reg__ = 0
+   6               	__zero_reg__ = 1
+   7               		.text
+   8               	.Ltext0:
+   9               		.cfi_sections	.debug_frame
+  10               		.section	.rodata.str1.1,"aMS",@progbits,1
+  11               	.LC0:
+  12 0000 426C 696E 		.string	"Blinker"
+  12      6B65 7200 
+  13               		.section	.text.Thread1,"ax",@progbits
+  15               	Thread1:
+  16               	.LFB246:
+  17               		.file 1 "main.c"
+   1:main.c        **** /*
+   2:main.c        ****     ChibiOS - Copyright (C) 2006..2018 Giovanni Di Sirio
+   3:main.c        **** 
+   4:main.c        ****     Licensed under the Apache License, Version 2.0 (the "License");
+   5:main.c        ****     you may not use this file except in compliance with the License.
+   6:main.c        ****     You may obtain a copy of the License at
+   7:main.c        **** 
+   8:main.c        ****         http://www.apache.org/licenses/LICENSE-2.0
+   9:main.c        **** 
+  10:main.c        ****     Unless required by applicable law or agreed to in writing, software
+  11:main.c        ****     distributed under the License is distributed on an "AS IS" BASIS,
+  12:main.c        ****     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  13:main.c        ****     See the License for the specific language governing permissions and
+  14:main.c        ****     limitations under the License.
+  15:main.c        **** */
+  16:main.c        **** 
+  17:main.c        **** #include "ch.h"     // Inclui as funções relacionadas ao núcleo do sistema operacional em tempo 
+  18:main.c        **** #include "hal.h"    // Inclui as funções relacionadas ao Hardware Abstraction Layer (HAL), que fa
+  19:main.c        **** 
+  20:main.c        **** /*
+  21:main.c        ****  * LED blinker thread, times are in milliseconds.
+  22:main.c        ****  */
+  23:main.c        **** static THD_WORKING_AREA(waThread1, 32);     // Define o espaço de trabalho (stack) para a thread T
+  24:main.c        **** 
+  25:main.c        **** static THD_FUNCTION(Thread1, arg) {         /* É a função que define a thread Thread1. Ela receb
+  18               		.loc 1 25 0
+  19               		.cfi_startproc
+  20               	.LVL0:
+  21               	/* prologue: function */
+  22               	/* frame size = 0 */
+  23               	/* stack size = 0 */
+  24               	.L__stack_usage = 0
+  25               	.LBB4:
+  26               	.LBB5:
+  27               		.file 2 "../../../os/rt/include/chregistry.h"
+   1:../../../os/rt/include/chregistry.h **** /*
+   2:../../../os/rt/include/chregistry.h ****     ChibiOS - Copyright (C) 2006,2007,2008,2009,2010,2011,2012,2013,2014,
+   3:../../../os/rt/include/chregistry.h ****               2015,2016,2017,2018,2019,2020,2021 Giovanni Di Sirio.
+   4:../../../os/rt/include/chregistry.h **** 
+   5:../../../os/rt/include/chregistry.h ****     This file is part of ChibiOS.
+   6:../../../os/rt/include/chregistry.h **** 
+   7:../../../os/rt/include/chregistry.h ****     ChibiOS is free software; you can redistribute it and/or modify
+   8:../../../os/rt/include/chregistry.h ****     it under the terms of the GNU General Public License as published by
+   9:../../../os/rt/include/chregistry.h ****     the Free Software Foundation version 3 of the License.
+  10:../../../os/rt/include/chregistry.h **** 
+  11:../../../os/rt/include/chregistry.h ****     ChibiOS is distributed in the hope that it will be useful,
+  12:../../../os/rt/include/chregistry.h ****     but WITHOUT ANY WARRANTY; without even the implied warranty of
+  13:../../../os/rt/include/chregistry.h ****     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  14:../../../os/rt/include/chregistry.h ****     GNU General Public License for more details.
+  15:../../../os/rt/include/chregistry.h **** 
+  16:../../../os/rt/include/chregistry.h ****     You should have received a copy of the GNU General Public License
+  17:../../../os/rt/include/chregistry.h ****     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  18:../../../os/rt/include/chregistry.h **** */
+  19:../../../os/rt/include/chregistry.h **** 
+  20:../../../os/rt/include/chregistry.h **** /**
+  21:../../../os/rt/include/chregistry.h ****  * @file    rt/include/chregistry.h
+  22:../../../os/rt/include/chregistry.h ****  * @brief   Threads registry macros and structures.
+  23:../../../os/rt/include/chregistry.h ****  *
+  24:../../../os/rt/include/chregistry.h ****  * @addtogroup registry
+  25:../../../os/rt/include/chregistry.h ****  * @{
+  26:../../../os/rt/include/chregistry.h ****  */
+  27:../../../os/rt/include/chregistry.h **** 
+  28:../../../os/rt/include/chregistry.h **** #ifndef CHREGISTRY_H
+  29:../../../os/rt/include/chregistry.h **** #define CHREGISTRY_H
+  30:../../../os/rt/include/chregistry.h **** 
+  31:../../../os/rt/include/chregistry.h **** #if (CH_CFG_USE_REGISTRY == TRUE) || defined(__DOXYGEN__)
+  32:../../../os/rt/include/chregistry.h **** 
+  33:../../../os/rt/include/chregistry.h **** /*===========================================================================*/
+  34:../../../os/rt/include/chregistry.h **** /* Module constants.                                                         */
+  35:../../../os/rt/include/chregistry.h **** /*===========================================================================*/
+  36:../../../os/rt/include/chregistry.h **** 
+  37:../../../os/rt/include/chregistry.h **** /*===========================================================================*/
+  38:../../../os/rt/include/chregistry.h **** /* Module pre-compile time settings.                                         */
+  39:../../../os/rt/include/chregistry.h **** /*===========================================================================*/
+  40:../../../os/rt/include/chregistry.h **** 
+  41:../../../os/rt/include/chregistry.h **** /*===========================================================================*/
+  42:../../../os/rt/include/chregistry.h **** /* Derived constants and error checks.                                       */
+  43:../../../os/rt/include/chregistry.h **** /*===========================================================================*/
+  44:../../../os/rt/include/chregistry.h **** 
+  45:../../../os/rt/include/chregistry.h **** /*===========================================================================*/
+  46:../../../os/rt/include/chregistry.h **** /* Module data structures and types.                                         */
+  47:../../../os/rt/include/chregistry.h **** /*===========================================================================*/
+  48:../../../os/rt/include/chregistry.h **** 
+  49:../../../os/rt/include/chregistry.h **** /**
+  50:../../../os/rt/include/chregistry.h ****  * @brief   ChibiOS/RT memory signature record.
+  51:../../../os/rt/include/chregistry.h ****  */
+  52:../../../os/rt/include/chregistry.h **** typedef struct {
+  53:../../../os/rt/include/chregistry.h ****   char      identifier[4];          /**< @brief Always set to "main".       */
+  54:../../../os/rt/include/chregistry.h ****   uint8_t   zero;                   /**< @brief Must be zero.               */
+  55:../../../os/rt/include/chregistry.h ****   uint8_t   size;                   /**< @brief Size of this structure.     */
+  56:../../../os/rt/include/chregistry.h ****   uint16_t  version;                /**< @brief Encoded ChibiOS/RT version. */
+  57:../../../os/rt/include/chregistry.h ****   uint8_t   ptrsize;                /**< @brief Size of a pointer.          */
+  58:../../../os/rt/include/chregistry.h ****   uint8_t   timesize;               /**< @brief Size of a @p systime_t.     */
+  59:../../../os/rt/include/chregistry.h ****   uint8_t   threadsize;             /**< @brief Size of a @p thread_t.      */
+  60:../../../os/rt/include/chregistry.h ****   uint8_t   off_prio;               /**< @brief Offset of @p prio field.    */
+  61:../../../os/rt/include/chregistry.h ****   uint8_t   off_ctx;                /**< @brief Offset of @p ctx field.     */
+  62:../../../os/rt/include/chregistry.h ****   uint8_t   off_newer;              /**< @brief Offset of @p newer field.   */
+  63:../../../os/rt/include/chregistry.h ****   uint8_t   off_older;              /**< @brief Offset of @p older field.   */
+  64:../../../os/rt/include/chregistry.h ****   uint8_t   off_name;               /**< @brief Offset of @p name field.    */
+  65:../../../os/rt/include/chregistry.h ****   uint8_t   off_stklimit;           /**< @brief Offset of @p stklimit field.*/
+  66:../../../os/rt/include/chregistry.h ****   uint8_t   off_state;              /**< @brief Offset of @p state field.   */
+  67:../../../os/rt/include/chregistry.h ****   uint8_t   off_flags;              /**< @brief Offset of @p flags field.   */
+  68:../../../os/rt/include/chregistry.h ****   uint8_t   off_refs;               /**< @brief Offset of @p refs field.    */
+  69:../../../os/rt/include/chregistry.h ****   uint8_t   off_preempt;            /**< @brief Offset of @p ticks field.   */
+  70:../../../os/rt/include/chregistry.h ****   uint8_t   off_time;               /**< @brief Offset of @p time field.    */
+  71:../../../os/rt/include/chregistry.h ****   uint8_t   off_reserved[4];
+  72:../../../os/rt/include/chregistry.h ****   uint8_t   intctxsize;             /**< @brief Size of a @p port_intctx.   */
+  73:../../../os/rt/include/chregistry.h ****   uint8_t   intervalsize;           /**< @brief Size of a @p sysinterval_t. */
+  74:../../../os/rt/include/chregistry.h ****   uint8_t   instancesnum;           /**< @brief Number of instances.        */
+  75:../../../os/rt/include/chregistry.h ****   uint8_t   off_sys_state;          /**< @brief Offset of @p state field.   */
+  76:../../../os/rt/include/chregistry.h ****   uint8_t   off_sys_instances;      /**< @brief Offset of @p instances array
+  77:../../../os/rt/include/chregistry.h ****                                                 field.                      */
+  78:../../../os/rt/include/chregistry.h ****   uint8_t   off_sys_reglist;        /**< @brief Offset of @p reglist field. */
+  79:../../../os/rt/include/chregistry.h ****   uint8_t   off_sys_rfcu;           /**< @brief Offset of @p rfcu field.    */
+  80:../../../os/rt/include/chregistry.h ****   uint8_t   off_sys_reserved[4];
+  81:../../../os/rt/include/chregistry.h ****   uint8_t   off_inst_rlist_current; /**< @brief Offset of @p rlist.current
+  82:../../../os/rt/include/chregistry.h ****                                                 field.                      */
+  83:../../../os/rt/include/chregistry.h ****   uint8_t   off_inst_rlist;         /**< @brief Offset of @p rlist field.   */
+  84:../../../os/rt/include/chregistry.h ****   uint8_t   off_inst_vtlist;        /**< @brief Offset of @p vtlist field.  */
+  85:../../../os/rt/include/chregistry.h ****   uint8_t   off_inst_reglist;       /**< @brief Offset of @p reglist field. */
+  86:../../../os/rt/include/chregistry.h ****   uint8_t   off_inst_core_id;       /**< @brief Offset of @p core_id field. */
+  87:../../../os/rt/include/chregistry.h ****   uint8_t   off_inst_rfcu;          /**< @brief Offset of @p rfcu field.    */
+  88:../../../os/rt/include/chregistry.h **** } chdebug_t;
+  89:../../../os/rt/include/chregistry.h **** 
+  90:../../../os/rt/include/chregistry.h **** /*===========================================================================*/
+  91:../../../os/rt/include/chregistry.h **** /* Module macros.                                                            */
+  92:../../../os/rt/include/chregistry.h **** /*===========================================================================*/
+  93:../../../os/rt/include/chregistry.h **** 
+  94:../../../os/rt/include/chregistry.h **** /**
+  95:../../../os/rt/include/chregistry.h ****  * @brief   Access to the registry list header.
+  96:../../../os/rt/include/chregistry.h ****  */
+  97:../../../os/rt/include/chregistry.h **** #if (CH_CFG_SMP_MODE == TRUE) || defined(__DOXYGEN__)
+  98:../../../os/rt/include/chregistry.h **** #define REG_HEADER(oip) (&ch_system.reglist.queue)
+  99:../../../os/rt/include/chregistry.h **** #else
+ 100:../../../os/rt/include/chregistry.h **** #define REG_HEADER(oip) (&(oip)->reglist.queue)
+ 101:../../../os/rt/include/chregistry.h **** #endif
+ 102:../../../os/rt/include/chregistry.h **** 
+ 103:../../../os/rt/include/chregistry.h **** /**
+ 104:../../../os/rt/include/chregistry.h ****  * @brief   Removes a thread from the registry list.
+ 105:../../../os/rt/include/chregistry.h ****  * @note    This macro is not meant for use in application code.
+ 106:../../../os/rt/include/chregistry.h ****  *
+ 107:../../../os/rt/include/chregistry.h ****  * @param[in] tp        thread to remove from the registry
+ 108:../../../os/rt/include/chregistry.h ****  */
+ 109:../../../os/rt/include/chregistry.h **** #define REG_REMOVE(tp) (void) ch_queue_dequeue(&(tp)->rqueue)
+ 110:../../../os/rt/include/chregistry.h **** 
+ 111:../../../os/rt/include/chregistry.h **** /**
+ 112:../../../os/rt/include/chregistry.h ****  * @brief   Adds a thread to the registry list.
+ 113:../../../os/rt/include/chregistry.h ****  * @note    This macro is not meant for use in application code.
+ 114:../../../os/rt/include/chregistry.h ****  *
+ 115:../../../os/rt/include/chregistry.h ****  * @param[in] oip       pointer to the OS instance
+ 116:../../../os/rt/include/chregistry.h ****  * @param[in] tp        thread to add to the registry
+ 117:../../../os/rt/include/chregistry.h ****  */
+ 118:../../../os/rt/include/chregistry.h **** #define REG_INSERT(oip, tp) ch_queue_insert(REG_HEADER(oip), &(tp)->rqueue)
+ 119:../../../os/rt/include/chregistry.h **** 
+ 120:../../../os/rt/include/chregistry.h **** /*===========================================================================*/
+ 121:../../../os/rt/include/chregistry.h **** /* External declarations.                                                    */
+ 122:../../../os/rt/include/chregistry.h **** /*===========================================================================*/
+ 123:../../../os/rt/include/chregistry.h **** 
+ 124:../../../os/rt/include/chregistry.h **** #ifdef __cplusplus
+ 125:../../../os/rt/include/chregistry.h **** extern "C" {
+ 126:../../../os/rt/include/chregistry.h **** #endif
+ 127:../../../os/rt/include/chregistry.h ****   extern ROMCONST chdebug_t ch_debug;
+ 128:../../../os/rt/include/chregistry.h ****   thread_t *chRegFirstThread(void);
+ 129:../../../os/rt/include/chregistry.h ****   thread_t *chRegNextThread(thread_t *tp);
+ 130:../../../os/rt/include/chregistry.h ****   thread_t *chRegFindThreadByName(const char *name);
+ 131:../../../os/rt/include/chregistry.h ****   thread_t *chRegFindThreadByPointer(thread_t *tp);
+ 132:../../../os/rt/include/chregistry.h ****   thread_t *chRegFindThreadByWorkingArea(stkalign_t *wa);
+ 133:../../../os/rt/include/chregistry.h **** #ifdef __cplusplus
+ 134:../../../os/rt/include/chregistry.h **** }
+ 135:../../../os/rt/include/chregistry.h **** #endif
+ 136:../../../os/rt/include/chregistry.h **** 
+ 137:../../../os/rt/include/chregistry.h **** #endif /* CH_CFG_USE_REGISTRY == TRUE */
+ 138:../../../os/rt/include/chregistry.h **** 
+ 139:../../../os/rt/include/chregistry.h **** /*===========================================================================*/
+ 140:../../../os/rt/include/chregistry.h **** /* Module inline functions.                                                  */
+ 141:../../../os/rt/include/chregistry.h **** /*===========================================================================*/
+ 142:../../../os/rt/include/chregistry.h **** 
+ 143:../../../os/rt/include/chregistry.h **** /**
+ 144:../../../os/rt/include/chregistry.h ****  * @brief   Initializes a registry.
+ 145:../../../os/rt/include/chregistry.h ****  * @note    Internal use only.
+ 146:../../../os/rt/include/chregistry.h ****  *
+ 147:../../../os/rt/include/chregistry.h ****  * @param[out] rp       pointer to a @p registry_t structure
+ 148:../../../os/rt/include/chregistry.h ****  *
+ 149:../../../os/rt/include/chregistry.h ****  * @init
+ 150:../../../os/rt/include/chregistry.h ****  */
+ 151:../../../os/rt/include/chregistry.h **** static inline void __reg_object_init(registry_t *rp) {
+ 152:../../../os/rt/include/chregistry.h **** 
+ 153:../../../os/rt/include/chregistry.h ****   ch_queue_init(&rp->queue);
+ 154:../../../os/rt/include/chregistry.h **** }
+ 155:../../../os/rt/include/chregistry.h **** 
+ 156:../../../os/rt/include/chregistry.h **** /**
+ 157:../../../os/rt/include/chregistry.h ****  * @brief   Sets the current thread name.
+ 158:../../../os/rt/include/chregistry.h ****  * @pre     This function only stores the pointer to the name if the option
+ 159:../../../os/rt/include/chregistry.h ****  *          @p CH_CFG_USE_REGISTRY is enabled else no action is performed.
+ 160:../../../os/rt/include/chregistry.h ****  *
+ 161:../../../os/rt/include/chregistry.h ****  * @param[in] name      thread name as a zero terminated string
+ 162:../../../os/rt/include/chregistry.h ****  *
+ 163:../../../os/rt/include/chregistry.h ****  * @api
+ 164:../../../os/rt/include/chregistry.h ****  */
+ 165:../../../os/rt/include/chregistry.h **** static inline void chRegSetThreadName(const char *name) {
+ 166:../../../os/rt/include/chregistry.h **** 
+ 167:../../../os/rt/include/chregistry.h **** #if CH_CFG_USE_REGISTRY == TRUE
+ 168:../../../os/rt/include/chregistry.h ****   __sch_get_currthread()->name = name;
+  28               		.loc 2 168 0
+  29 0000 E091 0000 		lds r30,ch0+5
+  30 0004 F091 0000 		lds r31,ch0+5+1
+  31 0008 80E0      		ldi r24,lo8(.LC0)
+  32 000a 90E0      		ldi r25,hi8(.LC0)
+  33               	.LVL1:
+  34 000c 9687      		std Z+14,r25
+  35 000e 8587      		std Z+13,r24
+  36               	.L2:
+  37               	.LBE5:
+  38               	.LBE4:
+  26:main.c        ****                                                não é utilizado (por isso o (void)arg). */
+  27:main.c        ****   (void)arg;
+  28:main.c        ****   chRegSetThreadName("Blinker");    //  Dá um nome à thread, útil para fins de depuração.
+  29:main.c        ****   while (true) {                
+  30:main.c        ****     palTogglePad(IOPORT4, 7);       // Alterna o estado do pino 7 (LED ligado/desligado).
+  39               		.loc 1 30 0 discriminator 1
+  40 0010 8BB1      		in r24,0xb
+  41 0012 8058      		subi r24,lo8(-(-128))
+  42 0014 8BB9      		out 0xb,r24
+  31:main.c        ****     chThdSleepMilliseconds(1000);   // faz a thread dormir por 1000 ms (1 segundo) antes de alterna
+  43               		.loc 1 31 0 discriminator 1
+  44 0016 88E0      		ldi r24,lo8(8)
+  45 0018 9DE3      		ldi r25,lo8(61)
+  46 001a 0E94 0000 		call chThdSleep
+  47               	.LVL2:
+  48 001e 00C0      		rjmp .L2
+  49               		.cfi_endproc
+  50               	.LFE246:
+  52               		.section	.rodata.str1.1
+  53               	.LC1:
+  54 0008 4865 6C6C 		.string	"Hello World!\r\n"
+  54      6F20 576F 
+  54      726C 6421 
+  54      0D0A 00
+  55               		.section	.text.startup.main,"ax",@progbits
+  56               	.global	main
+  58               	main:
+  59               	.LFB247:
+  32:main.c        ****   }
+  33:main.c        **** }
+  34:main.c        **** 
+  35:main.c        **** /*
+  36:main.c        ****  * Application entry point.
+  37:main.c        ****  */
+  38:main.c        **** int main(void) {
+  60               		.loc 1 38 0
+  61               		.cfi_startproc
+  62               	/* prologue: function */
+  63               	/* frame size = 0 */
+  64               	/* stack size = 0 */
+  65               	.L__stack_usage = 0
+  39:main.c        **** 
+  40:main.c        ****   /*
+  41:main.c        ****    * System initializations.
+  42:main.c        ****    * - HAL initialization, this also initializes the configured device drivers
+  43:main.c        ****    *   and performs the board-specific initializations.
+  44:main.c        ****    * - Kernel initialization, the main() function becomes a thread and the
+  45:main.c        ****    *   RTOS is active.
+  46:main.c        ****    */
+  47:main.c        **** 
+  48:main.c        ****   halInit();    // Inicializa a HAL, configurando os drivers de dispositivos e realizando inicializ
+  66               		.loc 1 48 0
+  67 0000 0E94 0000 		call halInit
+  68               	.LVL3:
+  49:main.c        ****   chSysInit();  // Inicializa o núcleo do RTOS e transforma a função main() em uma thread, ativa
+  69               		.loc 1 49 0
+  70 0004 0E94 0000 		call chSysInit
+  71               	.LVL4:
+  50:main.c        **** 
+  51:main.c        ****   /*
+  52:main.c        ****    * Activates the serial driver 1 using the driver default configuration.
+  53:main.c        ****    */
+  54:main.c        ****   sdStart(&SD1, NULL);
+  72               		.loc 1 54 0
+  73 0008 60E0      		ldi r22,0
+  74 000a 70E0      		ldi r23,0
+  75 000c 80E0      		ldi r24,lo8(SD1)
+  76 000e 90E0      		ldi r25,hi8(SD1)
+  77 0010 0E94 0000 		call sdStart
+  78               	.LVL5:
+  55:main.c        **** 
+  56:main.c        ****   /*
+  57:main.c        ****    * Starts the LED blinker thread.
+  58:main.c        ****    */
+  59:main.c        ****   chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO, Thread1, NULL); // Cria e inicia a th
+  79               		.loc 1 59 0
+  80 0014 00E0      		ldi r16,0
+  81 0016 10E0      		ldi r17,0
+  82 0018 20E0      		ldi r18,lo8(gs(Thread1))
+  83 001a 30E0      		ldi r19,hi8(gs(Thread1))
+  84 001c 40E8      		ldi r20,lo8(-128)
+  85 001e 63E8      		ldi r22,lo8(-125)
+  86 0020 70E0      		ldi r23,0
+  87 0022 80E0      		ldi r24,lo8(waThread1)
+  88 0024 90E0      		ldi r25,hi8(waThread1)
+  89 0026 0E94 0000 		call chThdCreateStatic
+  90               	.LVL6:
+  60:main.c        **** 
+  61:main.c        ****   chnWrite(&SD1, (const uint8_t *)"Hello World!\r\n", 14); /* Envia a string "Hello World!\r\n" pel
+  91               		.loc 1 61 0
+  92 002a E091 0000 		lds r30,SD1
+  93 002e F091 0000 		lds r31,SD1+1
+  94 0032 0280      		ldd __tmp_reg__,Z+2
+  95 0034 F381      		ldd r31,Z+3
+  96 0036 E02D      		mov r30,__tmp_reg__
+  97 0038 4EE0      		ldi r20,lo8(14)
+  98 003a 50E0      		ldi r21,0
+  99 003c 60E0      		ldi r22,lo8(.LC1)
+ 100 003e 70E0      		ldi r23,hi8(.LC1)
+ 101 0040 80E0      		ldi r24,lo8(SD1)
+ 102 0042 90E0      		ldi r25,hi8(SD1)
+ 103 0044 0995      		icall
+ 104               	.LVL7:
+ 105               	.L5:
+  62:main.c        ****                                                               é o número de bytes a serem enviado
+  63:main.c        **** 
+  64:main.c        ****   while (true) {
+  65:main.c        ****     chThdSleepMilliseconds(1000);
+ 106               		.loc 1 65 0 discriminator 1
+ 107 0046 88E0      		ldi r24,lo8(8)
+ 108 0048 9DE3      		ldi r25,lo8(61)
+ 109 004a 0E94 0000 		call chThdSleep
+ 110               	.LVL8:
+ 111 004e 00C0      		rjmp .L5
+ 112               		.cfi_endproc
+ 113               	.LFE247:
+ 115               		.section	.bss.waThread1,"aw",@nobits
+ 118               	waThread1:
+ 119 0000 0000 0000 		.zero	131
+ 119      0000 0000 
+ 119      0000 0000 
+ 119      0000 0000 
+ 119      0000 0000 
+ 120               		.text
+ 121               	.Letext0:
+ 122               		.file 3 "/usr/lib/gcc/avr/5.4.0/include/stddef.h"
+ 123               		.file 4 "/usr/lib/avr/include/stdint.h"
+ 124               		.file 5 "../../../os/common/ports/AVR/compilers/GCC/chtypes.h"
+ 125               		.file 6 "../../../os/rt/include/chearly.h"
+ 126               		.file 7 "../../../os/rt/include/chobjects.h"
+ 127               		.file 8 "../../../os/rt/include/chrfcu.h"
+ 128               		.file 9 "../../../os/rt/include/chdebug.h"
+ 129               		.file 10 "../../../os/rt/include/chtime.h"
+ 130               		.file 11 "../../../os/rt/include/chlists.h"
+ 131               		.file 12 "../../../os/common/ports/AVR/chcore.h"
+ 132               		.file 13 "../../../os/rt/include/chsem.h"
+ 133               		.file 14 "../../../os/rt/include/chmtx.h"
+ 134               		.file 15 "../../../os/rt/include/chevents.h"
+ 135               		.file 16 "../../../os/hal/include/hal_queues.h"
+ 136               		.file 17 "../../../os/hal/ports/AVR/MEGA/LLD/GPIOv1/hal_pal_lld.h"
+ 137               		.file 18 "../../../os/hal/include/hal_serial.h"
+ 138               		.file 19 "../../../os/rt/include/chsys.h"
+ 139               		.file 20 "../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.h"
+ 140               		.file 21 "../../../os/rt/include/chthreads.h"
+ 141               		.file 22 "../../../os/hal/include/hal.h"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 main.c
+     /tmp/ccnLzb4P.s:2      *ABS*:000000000000003e __SP_H__
+     /tmp/ccnLzb4P.s:3      *ABS*:000000000000003d __SP_L__
+     /tmp/ccnLzb4P.s:4      *ABS*:000000000000003f __SREG__
+     /tmp/ccnLzb4P.s:5      *ABS*:0000000000000000 __tmp_reg__
+     /tmp/ccnLzb4P.s:6      *ABS*:0000000000000001 __zero_reg__
+     /tmp/ccnLzb4P.s:15     .text.Thread1:0000000000000000 Thread1
+     /tmp/ccnLzb4P.s:58     .text.startup.main:0000000000000000 main
+     /tmp/ccnLzb4P.s:118    .bss.waThread1:0000000000000000 waThread1
+
+UNDEFINED SYMBOLS
+ch0
+chThdSleep
+halInit
+chSysInit
+SD1
+sdStart
+chThdCreateStatic
+__do_copy_data
+__do_clear_bss

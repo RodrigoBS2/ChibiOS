@@ -1,0 +1,50 @@
+HAL GPIO
+
+1 - Introdução:
+
+    - Módulo que lida com os pinos GPIO: PAL (Port Abstraction Layer);
+    - pino --> pad;
+    - Para uso do PAL, deve configurar o modo de operação dos pinos antes de usá-lo;
+
+2 - Uso
+    - Operações nos pinos:
+        * Escrever valores binários;
+        * Setar pinos;
+        * Resetar pinos;
+        * Inverter os valores de pinos.
+
+3 - Camada API:
+    - Algumas das funções definidas pela API:
+        * palReadPad(port, pad)
+        * palWritePad(port, pad, bit)
+        * palSetPad(port, pad)
+        * palClearPad(port, pad)
+        * palTogglePad(port, pad)
+        * palSetPadMode(port, pad, mode).
+
+    - O modo do pino pode ser um dos seguintes valores:
+        * PAL_MODE_INPUT
+        * PAL_MODE_INPUT_PULLUP
+        * PAL_MODE_INPUT_PULLDOWN
+        * PAL_MODE_INPUT_ANALOG
+        * PAL_MODE_OUTPUT_PUSHPULL
+        * PAL_MODE_OUTPUT_OPENDRAIN.
+
+4 - Identificação das portas port e pad:
+    
+    - Path: /os/hal/ports/AVR/XMEGA/LLD/GPIOv1/hal_pal_lld.h
+    
+    - I/O Ports Identifiers:  
+      IOPORT1 ----> PORTA
+      IOPORT2 ----> PORTB
+      IOPORT3 ----> PORTC
+      IOPORT4 ----> PORTD
+
+
+5 - Exemplo:
+
+     - palTogglePad(IOPORT4, 7);
+
+
+
+

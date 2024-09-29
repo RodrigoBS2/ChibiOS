@@ -1,0 +1,83 @@
+Site do ChibiOS: http://www.chibios.org.
+
+ChibiOS
+
+1 - Principais subpastas:
+
+    - os/hal: contém o código para a HAL;
+    - os/rt: contém o código para o kernel;
+    - demos: contém programas de demonstração.
+
+
+2 - HAL (Camada de Abstração de Hardware):
+
+    - Permite que uma aplicação programe de uma forma quase    independente do hardware;
+    - Lida com o hardware através de uma subcamada de
+baixo nível, que é a única que precisa ser modificada ao se trocar
+o hardware;
+    - Abrange os periféricos de todos os microcontroladores
+que ela dá suporte.
+
+
+3 - Arquivos de configuração:
+
+    - mcuconf.h; ------> Depende do micro;
+    - halconf.h; ------> Pouca ou nenhuma influência do micro;
+    - chconf.h; ------> Pouca ou nenhuma influência do micro;
+    - Makefile: compila o programa ------> Depende do micro.
+
+3.1 - mcuconf.h:
+
+    - Define que periféricos do MCU queremos usar
+      Exemplo de configuração:
+            #define AVR_EXT_USE_INT0 FALSE
+            #define AVR_PWM_USE_TIM1 FALSE
+            #define AVR_SERIAL_USE_USART0 TRUE
+            #define AVR_I2C_USE_I2C1 FALSE
+            Obs: se quiser usar apenas mude de FALSE para TRUE.  
+
+3.2 - halconf.h:
+    
+    - Define os módulos do HAL e suas características 
+      Exemplo de configuração:
+            <3->#define HAL_USE_PAL TRUE
+            <3->#define HAL_USE_PWM FALSE
+            <3->#define HAL_USE_SERIAL TRUE
+            <3->#define HAL_USE_I2C FALSE
+            Obs: Para usar um módulo da HAL, ative o periférico antes.
+
+3.3 - chconf.h
+
+    - Define as funcionalidades do sistema operacional;
+    - Exemplos de configuração:
+            <3->#define CH_CFG_ST_FREQUENCY 1000
+            <3->#define CH_CFG_ST_TIMEDELTA 0
+            <3->#define CH_CFG_TIME_QUANTUM 0
+            <3->#define CH_CFG_USE_MUTEXES TRUE
+
+
+3.4 - Marquivo Makefile
+
+    - Define os arquivos que serão compilados e as características de compilação;
+    - Depende do MCU e da placa utilizada;
+    - Configurações necessária dessa pasta:
+        <3->PROJECT = ch
+        <3->CSRC = $(ALLCSRC) main.c
+
+    - <3->PROJECT = ch : define o nome do arquivo do programa binário final. Não é essencial mas ajuda na organização;
+    -  <3->CSRC = $(ALLCSRC) main.c : Lisat todos os arquivos C a serem compilados. Não apague qualquer trecho que tenha $(ALLCSRC);
+
+    - Modifique a pasta se necessário, exemplo: porta serial, taxa de transmissão etc. 
+ 
+
+
+
+
+
+
+
+
+
+
+
+

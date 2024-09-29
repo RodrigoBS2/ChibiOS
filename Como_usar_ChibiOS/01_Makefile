@@ -1,0 +1,6 @@
+Makefile:
+
+- Compilar o código: make
+- Enviar o código para o microcontroaldor: make program
+
+

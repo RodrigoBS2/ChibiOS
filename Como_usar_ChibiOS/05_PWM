@@ -1,0 +1,196 @@
+---
+PWM
+---
+
+
+1 - Características gerais
+
+    - O módulo de PWM implementa um driver PWM que
+      representa um temporizador composto de:
+
+        * Um seletor de clock (clock prescaler);
+        * Um contador crescente;
+        * Um vetor de canais PWM, cada qual com uma saída associada.
+
+    - Quando dos eventos de comparação (reset do contador ou
+      canal PWM), um callback opcional pode ser chamado. O número 
+      de canais por driver PWM depende do hardware e é especificados 
+      pela constante PWM_CHANNELS;  
+    
+    - Para o ATmega328P existe apenas dois canais e dois drivers, 
+      PWMD1 e PWMD2;
+
+
+2 - Arquivos de implementação:
+
+    - Este módulo é implementado através dos seguintes arquivos
+      dentro do diretório os/hal:
+        * include/hal_pwm.h e src/hal_pwm.c, arquivos para a
+          interface de alto nível do HAL;
+
+          hal_pwm.h declaration functions:
+
+              void pwmInit(void);
+              void pwmObjectInit(PWMDriver *pwmp);
+              msg_t pwmStart(PWMDriver *pwmp, const PWMConfig *config);
+              void pwmStop(PWMDriver *pwmp);
+              void pwmChangePeriod(PWMDriver *pwmp, pwmcnt_t period);
+              void pwmEnableChannel(PWMDriver *pwmp,
+                                    pwmchannel_t channel,
+                                    pwmcnt_t width);
+              void pwmDisableChannel(PWMDriver *pwmp, 
+                                     pwmchannel_tchannel);
+              void pwmEnablePeriodicNotification(PWMDriver *pwmp);
+              void pwmDisablePeriodicNotification(PWMDriver *pwmp);
+              void pwmEnableChannelNotification(PWMDriver*pwmp,
+                                                pwmchannel_t channel);
+              void pwmDisableChannelNotification(PWMDriver *pwmp,
+                                                 pwmchannel_t channel);
+
+            
+        * templates/hal_pwm_lld.c e templates/hal_pwm_lld.c,
+          arquivos para a implementação de hardware de baixo nível;
+          
+          hal_pwm_lld.c external declarations:
+            
+            oid pwm_lld_init(void);
+            void pwm_lld_start(PWMDriver *pwmp);
+            void pwm_lld_stop(PWMDriver *pwmp);
+            void pwm_lld_enable_channel(PWMDriver *pwmp,
+                                        pwmchannel_t channel,
+                                        pwmcnt_t width);
+            void pwm_lld_disable_channel(PWMDriver *pwmp, pwmchannel_t channel);
+            void pwm_lld_enable_periodic_notification(PWMDriver *pwmp);
+            void pwm_lld_disable_periodic_notification(PWMDriver *pwmp);
+            void pwm_lld_enable_channel_notification(PWMDriver *pwmp,       
+                                                     pwmchannel_t channel);
+            void pwm_lld_disable_channel_notification(PWMDriver *pwmp,
+                                                      pwmchannel_t channel);
+              
+
+3 - Arquivos de configuração:
+
+    - Para se usar o driver PWM é preciso configurar os arquivos
+      mcuconf.h e halconf.h.
+
+    - No arquivo mcuconf.h, devemos mudar as linhas referentes ao
+      temporizador que queremos usar:
+        #define AVR_PWM_USE_TIM1 TRUE, etc
+    
+    - No arquivo halconf.h devemos selecionar a funcionalidade de
+      PWM:
+        #define HAL_USE_PWM TRUE
+
+
+4 - Configuração do código:
+
+    - Para configurarmos a geração dos sinais temos que configurar
+      duas coisas:
+        * O driver, que controla o temporizador;
+        * O canal, que controla a geração do sinal.
+    
+    - A configuração do driver PWM é feita através da estrutura
+      PWMConfig em hal_pwm_lld.h.
+
+
+        typedef uint32_t pwmcnt_t;      // Type of a PWM counter.
+        
+        
+        typedef struct { 
+          uint32_t                  frequency;          // Timer clock in Hz. The low level can use assertions in order to catch invalid frequency 
+                                                           specifications.
+
+          pwmcnt_t                  period;             // PWM period in ticks. The low level can use assertions in order to catch invalid period 
+                                                           specifications.
+
+          pwmcallback_t             callback;           // Periodic callback pointer. This callback is invoked on PWM counter reset. If set to @p NULL then 
+                                                           the callback is disabled.
+          
+          PWMChannelConfig          channels[PWM_CHANNELS];     // Channels configurations.
+          
+        } PWMConfig;
+
+
+    - É importante notar que, devido à limitação da quantidade de valores para o divisor 
+      de frequência dos temporizadores no ATMega328p, a frequência acima no caso deste MCU 
+      deve ser exatamente F_CPU dividida por um dos valores do divisor (F_CPU/8, F_CPU/64, F_CPU/256, F_CPU/1024).
+      
+    - Cada canal de um driver PWM pode ser configurado através da estrutura PWMChannelConfig em hal_pwm_lld.h:
+
+        typedef uint32_t pwmmode_t;     // Type of a PWM mode.
+        
+        typedef struct {
+
+          pwmmode_t              mode;           // Channel active logic level.
+
+          pwmcallback_t          callback;       // Channel callback pointer. This callback is 
+                                                    invoked on the channel compare event. If set 
+                                                    to @p NULL then callback is disabled.
+          
+        } PWMChannelConfig;
+
+        * mode - modo do canal: PWM_OUTPUT_DISABLED, PWM_OUTPUT_ACTIVE_HIGH ou PWM_OUTPUT_ACTIVE_LOW;
+        * callback - função a ser chamada quando o contador é igual ao registrador do canal;
+
+    
+    - Os possíveis valores do modo de operação de cada canal estão
+      mostrados abaixo. No arquivo hal_pwm.h
+
+            #define PWM_OUTPUT_MASK                         0x0FU           // Standard output modes mask.
+
+            #define PWM_OUTPUT_DISABLED                     0x00U           // Output not driven, callback only.
+
+            #define PWM_OUTPUT_ACTIVE_HIGH                  0x01U           // Positive PWM logic, active is logic level one.
+
+            #define PWM_OUTPUT_ACTIVE_LOW                   0x02U           // Inverse PWM logic, active is logic level zero.
+
+   
+     - O callback é chamado quando o sinal passa da parte ativa para
+       a inativa.
+
+
+        
+5 - Máquina de Estados:
+
+    - Um driver do módulo PWM tem 2 estados principais: PWM_STOP e PWM_READY.
+    - Apenas em PWM_READY o driver pode produzir os sinais PWM.
+
+
+6 - Operação:
+
+    - Para utilizarmos o módulo PWM devemos fazer o seguinte procedimento:
+        * Criar uma variável para configuração do driver e inicializá-la;
+        * Inicializar o driver com a configuração escolhida;
+        * Habilitar os canais desejados;
+    
+        Example:
+        
+        PWMConfig   driver_config = {PWM_frequencia, PWM_periodo, 
+                                     pwm_periodo_cb, {{PWM_OUTPUT_HIGH,0},  
+                                     {PWM_OUTPUT_DISABLE,0}}
+        };     
+        
+        PWMStart(&PWMD1, &driver_config);
+        pwmEnableChannel(&PWMD1, 0, 0);
+
+7 - Principais funções:
+    
+    - As assinaturas das funções estão mostradas no topíco 2 (hal_pwm.h);
+    - Os drivers são declarados como PWMD1, PWMD2, PWMD3, etc;
+    - É importante lembrar que os callbacks são executados no
+      contexto de interrupções e por isso devem-se tomar alguns
+      cuidados:
+
+        * Ser o mais breve possível;
+
+        * Usar apenas funções terminadas em I ou X;
+
+        * Caso precisemos fazer tarefas longas, devemos usar threads;
+
+        * Para sistemas de tempo real, é recomendável evitar callbacks,
+          exceto se forem realmente breves;
+
+
+
+
+
