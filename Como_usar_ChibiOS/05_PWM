@@ -166,8 +166,8 @@ PWM
         Example:
         
         PWMConfig   driver_config = {PWM_frequencia, PWM_periodo, 
-                                     pwm_periodo_cb, {{PWM_OUTPUT_HIGH,0},  
-                                     {PWM_OUTPUT_DISABLE,0}}
+                                     pwm_periodo_cb, {{PWM_OUTPUT_ACTIVE_HIGH,0},  
+                                     {PWM_OUTPUT_ACTIVE_LOW,0}}
         };     
         
         PWMStart(&PWMD1, &driver_config);

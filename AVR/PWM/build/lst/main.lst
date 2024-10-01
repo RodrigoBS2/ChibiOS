@@ -1,0 +1,148 @@
+   1               		.file	"main.c"
+   2               	__SP_H__ = 0x3e
+   3               	__SP_L__ = 0x3d
+   4               	__SREG__ = 0x3f
+   5               	__tmp_reg__ = 0
+   6               	__zero_reg__ = 1
+   7               		.text
+   8               	.Ltext0:
+   9               		.cfi_sections	.debug_frame
+  10               		.section	.text.startup.main,"ax",@progbits
+  11               	.global	main
+  13               	main:
+  14               	.LFB241:
+  15               		.file 1 "main.c"
+   1:main.c        **** #include "ch.h"
+   2:main.c        **** #include "hal.h"
+   3:main.c        **** 
+   4:main.c        **** #define Frequencia F_CPU/1024
+   5:main.c        **** #define PWM_periodo    15625            
+   6:main.c        **** #define pwm_periodo_cb NULL
+   7:main.c        **** 
+   8:main.c        **** PWMConfig   driver_config = {Frequencia,        
+   9:main.c        ****                              PWM_periodo,           // PWM_frequencia = Frequencia/PWM_periodo. Nes
+  10:main.c        ****                              pwm_periodo_cb, {{PWM_OUTPUT_ACTIVE_HIGH,0},  
+  11:main.c        ****                                               {PWM_OUTPUT_ACTIVE_LOW,0}}
+  12:main.c        **** }; 
+  13:main.c        **** 
+  14:main.c        **** 
+  15:main.c        **** int main(void) {
+  16               		.loc 1 15 0
+  17               		.cfi_startproc
+  18               	/* prologue: function */
+  19               	/* frame size = 0 */
+  20               	/* stack size = 0 */
+  21               	.L__stack_usage = 0
+  16:main.c        ****   halInit();
+  22               		.loc 1 16 0
+  23 0000 0E94 0000 		call halInit
+  24               	.LVL0:
+  17:main.c        ****   chSysInit();
+  25               		.loc 1 17 0
+  26 0004 0E94 0000 		call chSysInit
+  27               	.LVL1:
+  18:main.c        ****   
+  19:main.c        ****   pwmStart(&PWMD1,&driver_config);
+  28               		.loc 1 19 0
+  29 0008 60E0      		ldi r22,lo8(driver_config)
+  30 000a 70E0      		ldi r23,hi8(driver_config)
+  31 000c 80E0      		ldi r24,lo8(PWMD1)
+  32 000e 90E0      		ldi r25,hi8(PWMD1)
+  33 0010 0E94 0000 		call pwmStart
+  34               	.LVL2:
+  20:main.c        ****   pwmEnableChannel(&PWMD1, 0, PWM_PERCENTAGE_TO_WIDTH(&PWMD1, 5000));
+  35               		.loc 1 20 0
+  36 0014 4091 0000 		lds r20,PWMD1+3
+  37 0018 5091 0000 		lds r21,PWMD1+3+1
+  38 001c 88E8      		ldi r24,lo8(-120)
+  39 001e 93E1      		ldi r25,lo8(19)
+  40 0020 489F      		mul r20,r24
+  41 0022 9001      		movw r18,r0
+  42 0024 499F      		mul r20,r25
+  43 0026 300D      		add r19,r0
+  44 0028 589F      		mul r21,r24
+  45 002a 300D      		add r19,r0
+  46 002c 1124      		clr r1
+  47 002e 3295      		swap r19
+  48 0030 2295      		swap r18
+  49 0032 2F70      		andi r18,0x0f
+  50 0034 2327      		eor r18,r19
+  51 0036 3F70      		andi r19,0x0f
+  52 0038 2327      		eor r18,r19
+  53 003a A7E4      		ldi r26,lo8(71)
+  54 003c B3E0      		ldi r27,lo8(3)
+  55 003e 0E94 0000 		call __umulhisi3
+  56 0042 AC01      		movw r20,r24
+  57 0044 5695      		lsr r21
+  58 0046 4795      		ror r20
+  59 0048 5695      		lsr r21
+  60 004a 4795      		ror r20
+  61 004c 5695      		lsr r21
+  62 004e 4795      		ror r20
+  63 0050 60E0      		ldi r22,0
+  64 0052 80E0      		ldi r24,lo8(PWMD1)
+  65 0054 90E0      		ldi r25,hi8(PWMD1)
+  66 0056 0E94 0000 		call pwmEnableChannel
+  67               	.LVL3:
+  68               	.L2:
+  21:main.c        **** 
+  22:main.c        ****   while (true) {
+  23:main.c        ****     chThdSleepMilliseconds(1000);
+  69               		.loc 1 23 0 discriminator 1
+  70 005a 88E0      		ldi r24,lo8(8)
+  71 005c 9DE3      		ldi r25,lo8(61)
+  72 005e 0E94 0000 		call chThdSleep
+  73               	.LVL4:
+  74 0062 00C0      		rjmp .L2
+  75               		.cfi_endproc
+  76               	.LFE241:
+  78               	.global	driver_config
+  79               		.section	.data.driver_config,"aw",@progbits
+  82               	driver_config:
+  83 0000 09        		.byte	9
+  84 0001 3D        		.byte	61
+  85 0002 00        		.byte	0
+  86 0003 00        		.byte	0
+  87 0004 093D      		.word	15625
+  88 0006 0000      		.word	0
+  89 0008 01        		.byte	1
+  90 0009 0000      		.word	0
+  91 000b 02        		.byte	2
+  92 000c 0000      		.word	0
+  93               		.text
+  94               	.Letext0:
+  95               		.file 2 "/usr/lib/avr/include/stdint.h"
+  96               		.file 3 "../../../os/common/ports/AVR/compilers/GCC/chtypes.h"
+  97               		.file 4 "../../../os/rt/include/chearly.h"
+  98               		.file 5 "../../../os/rt/include/chobjects.h"
+  99               		.file 6 "../../../os/rt/include/chrfcu.h"
+ 100               		.file 7 "../../../os/rt/include/chdebug.h"
+ 101               		.file 8 "../../../os/rt/include/chtime.h"
+ 102               		.file 9 "../../../os/rt/include/chlists.h"
+ 103               		.file 10 "../../../os/common/ports/AVR/chcore.h"
+ 104               		.file 11 "../../../os/rt/include/chsem.h"
+ 105               		.file 12 "../../../os/rt/include/chmtx.h"
+ 106               		.file 13 "../../../os/hal/include/hal_pwm.h"
+ 107               		.file 14 "../../../os/hal/ports/AVR/MEGA/LLD/TIMv1/hal_pwm_lld.h"
+ 108               		.file 15 "../../../os/hal/include/hal.h"
+ 109               		.file 16 "../../../os/rt/include/chsys.h"
+ 110               		.file 17 "../../../os/rt/include/chthreads.h"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 main.c
+     /tmp/ccbdkGBF.s:2      *ABS*:000000000000003e __SP_H__
+     /tmp/ccbdkGBF.s:3      *ABS*:000000000000003d __SP_L__
+     /tmp/ccbdkGBF.s:4      *ABS*:000000000000003f __SREG__
+     /tmp/ccbdkGBF.s:5      *ABS*:0000000000000000 __tmp_reg__
+     /tmp/ccbdkGBF.s:6      *ABS*:0000000000000001 __zero_reg__
+     /tmp/ccbdkGBF.s:13     .text.startup.main:0000000000000000 main
+     /tmp/ccbdkGBF.s:82     .data.driver_config:0000000000000000 driver_config
+
+UNDEFINED SYMBOLS
+halInit
+chSysInit
+PWMD1
+pwmStart
+__umulhisi3
+pwmEnableChannel
+chThdSleep
+__do_copy_data

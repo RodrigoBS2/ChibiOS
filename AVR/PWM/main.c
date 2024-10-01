@@ -1,19 +1,18 @@
 #include "ch.h"
 #include "hal.h"
 
-#define PWM_frequencia F_CPU/1024
-#define PWM_periodo    10000
+#define Frequencia F_CPU/1024
+#define PWM_periodo    15625            
 #define pwm_periodo_cb NULL
 
-PWMConfig   driver_config = {PWM_frequencia, 
-                             PWM_periodo, 
-                             pwm_periodo_cb, {{PWM_OUTPUT_HIGH,0},  
-                                              {PWM_OUTPUT_DISABLE,0}}
+PWMConfig   driver_config = {Frequencia,        
+                             PWM_periodo,           // PWM_frequencia = Frequencia/PWM_periodo. Nesse caso está configurando para uma frequência de 1HZ do PWM
+                             pwm_periodo_cb, {{PWM_OUTPUT_ACTIVE_HIGH,0},  
+                                              {PWM_OUTPUT_ACTIVE_LOW,0}}
 }; 
 
 
 int main(void) {
-
   halInit();
   chSysInit();
   
