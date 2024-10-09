@@ -233,7 +233,7 @@
   27:main.c        ****   (void)arg;
   28:main.c        ****   chRegSetThreadName("Blinker");    //  Dá um nome à thread, útil para fins de depuração.
   29:main.c        ****   while (true) {                
-  30:main.c        ****     palTogglePad(IOPORT4, 7);       // Alterna o estado do pino 7 (LED ligado/desligado).
+  30:main.c        ****     palTogglePad(IOPORT4, 7);       /* Alterna o estado do pino 7 (LED ligado/desligado). Para sabe
   39               		.loc 1 30 0 discriminator 1
   40 0010 8BB1      		in r24,0xb
   41 0012 8058      		subi r24,lo8(-(-128))
@@ -283,28 +283,27 @@
   66               		.loc 1 48 0
   67 0000 0E94 0000 		call halInit
   68               	.LVL3:
-  49:main.c        ****   chSysInit();  // Inicializa o núcleo do RTOS e transforma a função main() em uma thread, ativa
+  49:main.c        ****   chSysInit();  
   69               		.loc 1 49 0
   70 0004 0E94 0000 		call chSysInit
   71               	.LVL4:
-  50:main.c        **** 
-  51:main.c        ****   /*
-  52:main.c        ****    * Activates the serial driver 1 using the driver default configuration.
-  53:main.c        ****    */
-  54:main.c        ****   sdStart(&SD1, NULL);
-  72               		.loc 1 54 0
+  50:main.c        ****   /*
+  51:main.c        ****    * Activates the serial driver 1 using the driver default configuration.
+  52:main.c        ****    */
+  53:main.c        ****   sdStart(&SD1, NULL);
+  72               		.loc 1 53 0
   73 0008 60E0      		ldi r22,0
   74 000a 70E0      		ldi r23,0
   75 000c 80E0      		ldi r24,lo8(SD1)
   76 000e 90E0      		ldi r25,hi8(SD1)
   77 0010 0E94 0000 		call sdStart
   78               	.LVL5:
-  55:main.c        **** 
-  56:main.c        ****   /*
-  57:main.c        ****    * Starts the LED blinker thread.
-  58:main.c        ****    */
-  59:main.c        ****   chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO, Thread1, NULL); // Cria e inicia a th
-  79               		.loc 1 59 0
+  54:main.c        **** 
+  55:main.c        ****   /*
+  56:main.c        ****    * Starts the LED blinker thread.
+  57:main.c        ****    */
+  58:main.c        ****   chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO, Thread1, NULL); // Cria e inicia a th
+  79               		.loc 1 58 0
   80 0014 00E0      		ldi r16,0
   81 0016 10E0      		ldi r17,0
   82 0018 20E0      		ldi r18,lo8(gs(Thread1))
@@ -316,9 +315,9 @@
   88 0024 90E0      		ldi r25,hi8(waThread1)
   89 0026 0E94 0000 		call chThdCreateStatic
   90               	.LVL6:
-  60:main.c        **** 
-  61:main.c        ****   chnWrite(&SD1, (const uint8_t *)"Hello World!\r\n", 14); /* Envia a string "Hello World!\r\n" pel
-  91               		.loc 1 61 0
+  59:main.c        **** 
+  60:main.c        ****   chnWrite(&SD1, (const uint8_t *)"Hello World!\r\n", 14); /* Envia a string "Hello World!\r\n" pel
+  91               		.loc 1 60 0
   92 002a E091 0000 		lds r30,SD1
   93 002e F091 0000 		lds r31,SD1+1
   94 0032 0280      		ldd __tmp_reg__,Z+2
@@ -333,11 +332,11 @@
  103 0044 0995      		icall
  104               	.LVL7:
  105               	.L5:
-  62:main.c        ****                                                               é o número de bytes a serem enviado
-  63:main.c        **** 
-  64:main.c        ****   while (true) {
-  65:main.c        ****     chThdSleepMilliseconds(1000);
- 106               		.loc 1 65 0 discriminator 1
+  61:main.c        ****                                                               é o número de bytes a serem enviado
+  62:main.c        **** 
+  63:main.c        ****   while (true) {
+  64:main.c        ****     chThdSleepMilliseconds(1000);
+ 106               		.loc 1 64 0 discriminator 1
  107 0046 88E0      		ldi r24,lo8(8)
  108 0048 9DE3      		ldi r25,lo8(61)
  109 004a 0E94 0000 		call chThdSleep
@@ -376,14 +375,14 @@
  141               		.file 22 "../../../os/hal/include/hal.h"
 DEFINED SYMBOLS
                             *ABS*:0000000000000000 main.c
-     /tmp/ccnLzb4P.s:2      *ABS*:000000000000003e __SP_H__
-     /tmp/ccnLzb4P.s:3      *ABS*:000000000000003d __SP_L__
-     /tmp/ccnLzb4P.s:4      *ABS*:000000000000003f __SREG__
-     /tmp/ccnLzb4P.s:5      *ABS*:0000000000000000 __tmp_reg__
-     /tmp/ccnLzb4P.s:6      *ABS*:0000000000000001 __zero_reg__
-     /tmp/ccnLzb4P.s:15     .text.Thread1:0000000000000000 Thread1
-     /tmp/ccnLzb4P.s:58     .text.startup.main:0000000000000000 main
-     /tmp/ccnLzb4P.s:118    .bss.waThread1:0000000000000000 waThread1
+     /tmp/cc2MGH88.s:2      *ABS*:000000000000003e __SP_H__
+     /tmp/cc2MGH88.s:3      *ABS*:000000000000003d __SP_L__
+     /tmp/cc2MGH88.s:4      *ABS*:000000000000003f __SREG__
+     /tmp/cc2MGH88.s:5      *ABS*:0000000000000000 __tmp_reg__
+     /tmp/cc2MGH88.s:6      *ABS*:0000000000000001 __zero_reg__
+     /tmp/cc2MGH88.s:15     .text.Thread1:0000000000000000 Thread1
+     /tmp/cc2MGH88.s:58     .text.startup.main:0000000000000000 main
+     /tmp/cc2MGH88.s:118    .bss.waThread1:0000000000000000 waThread1
 
 UNDEFINED SYMBOLS
 ch0

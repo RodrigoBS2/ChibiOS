@@ -14,13 +14,14 @@ HAL GPIO
         * Inverter os valores de pinos.
 
 3 - Camada API:
+    - Path: os/hal/include/hal_pal.h
     - Algumas das funções definidas pela API:
         * palReadPad(port, pad)
         * palWritePad(port, pad, bit)
         * palSetPad(port, pad)
         * palClearPad(port, pad)
         * palTogglePad(port, pad)
-        * palSetPadMode(port, pad, mode).
+        * palSetPadMode(port, pad, mode)
 
     - O modo do pino pode ser um dos seguintes valores:
         * PAL_MODE_INPUT
