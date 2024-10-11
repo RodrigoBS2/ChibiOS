@@ -14,26 +14,6 @@
 #include "ch.h"
 #include "hal.h"
 
-typdef struct{
 
-    bool walker = false;
-    bool secundary = false;
-    bool ambulance_main = false;
-    bool ambulance_secundary = false;
-
-}BUFFER;
-
-typdef enum{
-
-    /* Principal */
-    MAIN_STATE_MAIN_G_T = 0, MAIN_STATE_MAIN_G, 
-
-    /* Secundário */    
-    SEC_STATE_MAIN_Y_T, SEC_STATE_SEC_G_T, SEC_STATE_Y_T,
-
-    /* Pedestres */
-    
-
-}STATE;
 
 #endif
