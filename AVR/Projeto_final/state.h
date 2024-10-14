@@ -27,7 +27,8 @@ typedef enum {
 }state_t;
 
 typedef enum{
-    Timeout, Amb_Main, Amb_Sec, Walk, Sec;
+    Timeout, Amb_Main, Amb_Sec, Walk, Sec,
+    Push_Button_Amb_Main, Push_Button_Amb_Sec;
 
 
 }event_t;

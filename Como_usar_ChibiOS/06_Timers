@@ -1,0 +1,99 @@
+------
+Timers
+------
+
+O temporizador pode ser programado para disparar callbacks após um período especificado ou de forma periódica.
+
+Este módulo é implementado através dos seguintes arquivos dentro do diretório os/hal:
+
+    - include/hal_gpt.h e src/hal_gpt.c, para a interface de alto nível do HAL
+
+    - ports/AVR/MEGA/LLD/TIMv1/hal_gpt_lld.c e ports/AVR/MEGA/LLD/TIMv1/hal_gpt_lld.c, para a implementação de baixo nível em hardware
+
+Usando o módulo GPT:
+ 
+  1º) Arquivos de configuração:
+    A) mcuconf.h:
+        - mudar as linhas referentes ao temporizador que queremos usar:
+            #define AVR_GPT_USE_TIM1 TRUE
+            #etc
+    B) halconf.h:
+        - selecionar a funcionalidade de GPT:
+            #define HAL_USE_GPT TRUE
+
+  2º) Configuração:
+     A configuração deste módulo é feita através da estrutura GPTConfig (hal_gpt_lld.h) e consiste em 2 coisas:
+            - frequency – especificar a frequência do clock do temporizador;
+            - callback – especificar a função de callback a ser chamada quando o timer expirar.
+     Estrutura:
+
+         typedef uint32_t gptfreq_t;     // GPT frequency type.
+
+         typedef void (*gptcallback_t)(GPTDriver *gptp);     // @brief GPT notification callback type. @param[in] gptp  pointer to a @p GPTDriver object
+
+         typedef struct {
+
+           gptfreq_t    frequency;  // @brief Timer clock in Hz. The low level can use assertions in order to catch invalid frequency specifications.
+          
+           gptcallback_t    callback;   // @brief   Timer callback pointer. @note    This callback is invoked on GPT counter events. 
+           /* End of the mandatory fields. */
+
+         } GPTConfig;
+
+     Para a plataforma AVR, a frequência só é exata para alguns valores devido ao pequeno número de possibilidades para o divisor de frequência;
+     Para uma frequência do clock principal de 16 MHz, os valores exatos são 16 MHz, 2 MHz, 250 kHz, 62.5 kHz e 15625 Hz;
+     Valores diferentes destes serão implementados de forma não-exata, embora com boa aproximação;
+     A aproximação piora à medida que a frequência cresce;
+     Para todas as plataformas, a frequência mínima é limitada.
+
+  3º) Máquinas de estado:
+     Os principais estados da máquina de estados deste módulo são:
+        GPT_STOP – o clock do temporizador está parado;
+        GPT_READY - o clock está habilitado mas não existe GPT configurado;
+        GPT_CONT_S e GPT_ONESHOT – GPT configurado e contando;
+
+  4º) Operação:
+    Para usarmos o temporizador seguimos o seguinte procedimento:
+        A) Criar uma variável para configuração do driver e inicializá-la
+        B) Inicializar o driver com a configuração escolhida
+        C) Habilitar o GPT chamando gptStartContinuous(), gptStartOneShot() ou gptPolledDelay()
+
+    A habilitação do GPT pode-se dar por 3 meios:
+        A) Inicia o GPT de forma periódica
+        B) Inicia o GPT de forma disparo único
+        C) Inicia o GPT de forma disparo único e espera o fim da contagem
+
+  5º) Principais funções(hal_gpt.h):
+    As principais funções são:
+        A) gptStart() – configura o temporizador e prepara o GPT para poder ser usado
+        B) gptStop() – para o temporizador
+        C) gptStartContinuous() e gptStartOneShot() – inicia a contagem do GPT de acordo com o período passado como parâmetro e configura o callback para ser 
+                                                      chamado ao final da contagem
+        D) gptStopTimer() – para o GPT
+        E) gptPolledDelay() – inicia a contagem do GPT de acordo com o período passado como parâmetro e espera o fim da contagem
+
+    Declaração das funções:
+      - hal_gpt_lld.h:
+            typedef uint16_t gptcnt_t;
+
+      - hal_gpt.h:
+          void gptInit(void);
+          void gptObjectInit(GPTDriver *gptp);
+          msg_t gptStart(GPTDriver *gptp, const GPTConfig *config);
+          void gptStop(GPTDriver *gptp);
+          void gptStartContinuous(GPTDriver *gptp, gptcnt_t interval);
+          void gptStartContinuousI(GPTDriver *gptp, gptcnt_t interval);
+          void gptChangeInterval(GPTDriver *gptp, gptcnt_t interval);
+          void gptStartOneShot(GPTDriver *gptp, gptcnt_t interval);
+          void gptStartOneShotI(GPTDriver *gptp, gptcnt_t interval);
+          void gptStopTimer(GPTDriver *gptp);
+          void gptStopTimerI(GPTDriver *gptp);
+          void gptPolledDelay(GPTDriver *gptp, gptcnt_t interval);
+    
+    Os drivers são declarados, em hal_gpt_lld.h, como GPTD1, GPTD2, GPTD3, etc.
+    Os valores para os intervalos de tempo são medidos em pulsos de clock.
+
+
+  6º) Exemplo:
+
+ 

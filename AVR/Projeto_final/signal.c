@@ -70,7 +70,7 @@ void config_signals(){
         }
 
     /* Semáforo Secundário */
-        void Led_Green_Secundary(bool state){
+        void Led_Green_Secondary(bool state){
             if(state == true){
                 palWritePad(PORTB, SEM_SEC_GREEN, 1);                
             }
@@ -79,7 +79,7 @@ void config_signals(){
             }
         }
 
-        void Led_Yellow_Secundary(bool state){
+        void Led_Yellow_Secondary(bool state){
             if(state == true){
                 palWritePad(PORTB, SEM_SEC_YELLOW, 1);                
             }
@@ -88,7 +88,7 @@ void config_signals(){
             }
         }
 
-        void Led_Red_Secundary(bool state){
+        void Led_Red_Secondary(bool state){
             if(state == true){
                 palWritePad(PORTD, SEM_SEC_RED, 1);                
             }
@@ -106,6 +106,10 @@ void config_signals(){
                 palWritePad(PORTD, SEM_WALK_GREEN, 0);
             }
         } 
+
+        void Led_Blink_Walker(bool state){
+            
+        }
 
         void Led_Red_Walker(bool state){
             if(state == true){

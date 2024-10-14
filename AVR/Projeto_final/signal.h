@@ -23,12 +23,13 @@
         void Led_Red_Main(bool state);
 
     /* Semáforo Secundário */
-        void Led_Green_Secundary(bool state);
-        void Led_Yellow_Secundary(bool state);
-        void Led_Red_Secundary(bool state);        
+        void Led_Green_Secondary(bool state);
+        void Led_Yellow_Secondary(bool state);
+        void Led_Red_Secondary(bool state);        
 
     /* Semáforo de pedestre */
         void Led_Green_Walker(bool state);
+        void Led_Blink_Walker(bool state);
         void Led_Red_Walker(bool state);
 
 
