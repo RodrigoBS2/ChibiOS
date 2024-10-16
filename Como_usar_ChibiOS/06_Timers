@@ -95,5 +95,23 @@ Usando o módulo GPT:
 
 
   6º) Exemplo:
+        
+        void gpt_cb(GPTDriver* gptd){
+            (void) gptd;
+            palTogglePad(LED_PORT, LED_PIN);
+        }
+        
+        int main(void){
+            GPTConfig driver_config = {.frequency = GPT_FREQUENCIA, .callback = gpt_cb};
+            
+            halInit();
+            chSysInit();
+            
+            palSetPadMode(LED_PORT, LED_IN, PAL_MODE_OUTPUT_PUSHPULL);
+            palClearPad(LED_PORT, LED_PIN);
 
- 
+            gptStart(&gptd1,&driver_config);
+            gptStartContinuous(&GPDT1, LED_PERIODO);
+
+            while(1){}
+        }
