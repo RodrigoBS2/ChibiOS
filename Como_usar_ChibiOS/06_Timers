@@ -110,8 +110,74 @@ Usando o módulo GPT:
             palSetPadMode(LED_PORT, LED_IN, PAL_MODE_OUTPUT_PUSHPULL);
             palClearPad(LED_PORT, LED_PIN);
 
-            gptStart(&gptd1,&driver_config);
+            gptStart(&GPTD1,&driver_config);
             gptStartContinuous(&GPDT1, LED_PERIODO);
 
             while(1){}
         }
+
+
+--------------------------------------------------------------------------//--------------------------------------------------------------------------//
+
+-------------
+TIMER VIRTUAL
+-------------
+
+1º) Virtual Timers API
+
+        virtual_timer_t 	Type of a virtual timer object.
+        chVTObjectInit() 	Initializes a virtual timer object virtual_timer_t.
+        chVTSet() 	        Starts or restarts a virtual timer.
+        chVTSetI() 	        Starts or restarts a virtual timer (I-Class variant).
+        chVTReset() 	    Stops, if active, a virtual timer.
+        chVTResetI() 	    Stops, if active, a virtual timer (I-Class variant).
+        chVTIsArmedI() 	    Returns true if the timer is armed.
+        chVTDoSetI() 	    Starts a virtual timer, the timer must not be already armed. Slightly faster than chVTSetI().
+        chVTDoResetI() 	    Stops a virtual timer, the timer must be already armed. Slightly faster than chVTResetI(). 
+
+2º)Example
+
+    Continuous LED Blinker:
+
+        A virtual timer is used a dedicated LED blinker. The blinker can be started and stopped with a single command.
+
+                static virtual_timer_t led_vt;
+                 
+                /*
+                 * LED timer callback.
+                 */
+                static void led_cb(void *arg) {
+                 
+                  LED_toggle();
+                  chSysLockFromISR();
+                  chVTSetI(&led_vt, TIME_MS2I(500), led_cb, NULL);
+                  chSysUnlockFromISR();
+                }
+                 
+                /*
+                 * Application main function.
+                 */
+                void main(void) {
+                 
+                  /*
+                   * System initializations.
+                   * - Kernel initialization, the main() function becomes a thread and the
+                   *   RTOS is active. Interrupts are enabled on chSysInit() exit.
+                   */
+                  chSysInit();
+                 
+                  /* LED timer initialization.*/
+                  chVTObjectInit(&led_vt);
+                 
+                  /* Starting blinker.*/
+                  chVTSet(&led_vt, TIME_MS2I(500), led_cb, NULL);
+                 
+                  ...;
+                 
+                  /* Stopping blinker.*/
+                  chVTReset(&led_vt);
+                  LED_off();
+                }
+
+
+
