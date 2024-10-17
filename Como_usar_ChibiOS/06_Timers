@@ -107,7 +107,7 @@ Usando o módulo GPT:
             halInit();
             chSysInit();
             
-            palSetPadMode(LED_PORT, LED_IN, PAL_MODE_OUTPUT_PUSHPULL);
+            palSetPadMode(LED_PORT, LED_PIN, PAL_MODE_OUTPUT_PUSHPULL);
             palClearPad(LED_PORT, LED_PIN);
 
             gptStart(&GPTD1,&driver_config);
@@ -122,8 +122,12 @@ Usando o módulo GPT:
 -------------
 TIMER VIRTUAL
 -------------
+1º)Coneito
 
-1º) Virtual Timers API
+    Os temporizadores virtuais são temporizadores de um tiro (disparam apenas uma vez no tempo programado) que podem ser iniciados, parados prematuramente ou acionar um retorno de chamada após o expirar o tempo programado.
+
+
+2º) Virtual Timers API
 
         virtual_timer_t 	Type of a virtual timer object.
         chVTObjectInit() 	Initializes a virtual timer object virtual_timer_t.
@@ -135,7 +139,8 @@ TIMER VIRTUAL
         chVTDoSetI() 	    Starts a virtual timer, the timer must not be already armed. Slightly faster than chVTSetI().
         chVTDoResetI() 	    Stops a virtual timer, the timer must be already armed. Slightly faster than chVTResetI(). 
 
-2º)Example
+
+3º)Example
 
     Continuous LED Blinker:
 

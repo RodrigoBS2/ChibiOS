@@ -1,0 +1,1120 @@
+   1               		.file	"main.c"
+   2               	__SP_H__ = 0x3e
+   3               	__SP_L__ = 0x3d
+   4               	__SREG__ = 0x3f
+   5               	__tmp_reg__ = 0
+   6               	__zero_reg__ = 1
+   7               		.text
+   8               	.Ltext0:
+   9               		.cfi_sections	.debug_frame
+  10               		.section	.text.led_cb,"ax",@progbits
+  12               	led_cb:
+  13               	.LFB241:
+  14               		.file 1 "main.c"
+   1:main.c        **** #include <avr/io.h>
+   2:main.c        **** #include "ch.h"
+   3:main.c        **** #include "hal.h"
+   4:main.c        **** 
+   5:main.c        **** #define LED_PORT IOPORT4
+   6:main.c        **** #define LED_PIN 7
+   7:main.c        **** 
+   8:main.c        **** /*  O código a baixo mostra cum exemplo de usar o timer virtual para fazer o led piscar durante al
+   9:main.c        **** 
+  10:main.c        **** char n = 0;
+  11:main.c        **** 
+  12:main.c        **** static virtual_timer_t led_vt;
+  13:main.c        ****                  
+  14:main.c        **** /*
+  15:main.c        ****  * LED timer callback.
+  16:main.c        ****  */
+  17:main.c        **** static void led_cb(void *arg) {
+  15               		.loc 1 17 0
+  16               		.cfi_startproc
+  17               	.LVL0:
+  18               	/* prologue: function */
+  19               	/* frame size = 0 */
+  20               	/* stack size = 0 */
+  21               	.L__stack_usage = 0
+  18:main.c        ****  
+  19:main.c        ****     palTogglePad(LED_PORT, LED_PIN);    //  Muda o estado lógico do LED 
+  22               		.loc 1 19 0
+  23 0000 8BB1      		in r24,0xb
+  24               	.LVL1:
+  25 0002 8058      		subi r24,lo8(-(-128))
+  26 0004 8BB9      		out 0xb,r24
+  20:main.c        ****     n++;                                //  Soma mais um na variável n
+  27               		.loc 1 20 0
+  28 0006 8091 0000 		lds r24,n
+  29 000a 8F5F      		subi r24,lo8(-(1))
+  30 000c 8093 0000 		sts n,r24
+  31               	.LVL2:
+  32               	.LBB62:
+  33               	.LBB63:
+  34               	.LBB64:
+  35               	.LBB65:
+  36               		.file 2 "../../../os/rt/include/chvt.h"
+   1:../../../os/rt/include/chvt.h **** /*
+   2:../../../os/rt/include/chvt.h ****     ChibiOS - Copyright (C) 2006,2007,2008,2009,2010,2011,2012,2013,2014,
+   3:../../../os/rt/include/chvt.h ****               2015,2016,2017,2018,2019,2020,2021 Giovanni Di Sirio.
+   4:../../../os/rt/include/chvt.h **** 
+   5:../../../os/rt/include/chvt.h ****     This file is part of ChibiOS.
+   6:../../../os/rt/include/chvt.h **** 
+   7:../../../os/rt/include/chvt.h ****     ChibiOS is free software; you can redistribute it and/or modify
+   8:../../../os/rt/include/chvt.h ****     it under the terms of the GNU General Public License as published by
+   9:../../../os/rt/include/chvt.h ****     the Free Software Foundation version 3 of the License.
+  10:../../../os/rt/include/chvt.h **** 
+  11:../../../os/rt/include/chvt.h ****     ChibiOS is distributed in the hope that it will be useful,
+  12:../../../os/rt/include/chvt.h ****     but WITHOUT ANY WARRANTY; without even the implied warranty of
+  13:../../../os/rt/include/chvt.h ****     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  14:../../../os/rt/include/chvt.h ****     GNU General Public License for more details.
+  15:../../../os/rt/include/chvt.h **** 
+  16:../../../os/rt/include/chvt.h ****     You should have received a copy of the GNU General Public License
+  17:../../../os/rt/include/chvt.h ****     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  18:../../../os/rt/include/chvt.h **** */
+  19:../../../os/rt/include/chvt.h **** 
+  20:../../../os/rt/include/chvt.h **** /**
+  21:../../../os/rt/include/chvt.h ****  * @file    rt/include/chvt.h
+  22:../../../os/rt/include/chvt.h ****  * @brief   Time and Virtual Timers module macros and structures.
+  23:../../../os/rt/include/chvt.h ****  *
+  24:../../../os/rt/include/chvt.h ****  * @addtogroup time
+  25:../../../os/rt/include/chvt.h ****  * @{
+  26:../../../os/rt/include/chvt.h ****  */
+  27:../../../os/rt/include/chvt.h **** 
+  28:../../../os/rt/include/chvt.h **** #ifndef CHVT_H
+  29:../../../os/rt/include/chvt.h **** #define CHVT_H
+  30:../../../os/rt/include/chvt.h **** 
+  31:../../../os/rt/include/chvt.h **** /*===========================================================================*/
+  32:../../../os/rt/include/chvt.h **** /* Module constants.                                                         */
+  33:../../../os/rt/include/chvt.h **** /*===========================================================================*/
+  34:../../../os/rt/include/chvt.h **** 
+  35:../../../os/rt/include/chvt.h **** /*===========================================================================*/
+  36:../../../os/rt/include/chvt.h **** /* Module pre-compile time settings.                                         */
+  37:../../../os/rt/include/chvt.h **** /*===========================================================================*/
+  38:../../../os/rt/include/chvt.h **** 
+  39:../../../os/rt/include/chvt.h **** /*===========================================================================*/
+  40:../../../os/rt/include/chvt.h **** /* Derived constants and error checks.                                       */
+  41:../../../os/rt/include/chvt.h **** /*===========================================================================*/
+  42:../../../os/rt/include/chvt.h **** 
+  43:../../../os/rt/include/chvt.h **** #if (CH_CFG_ST_TIMEDELTA < 0) || (CH_CFG_ST_TIMEDELTA == 1)
+  44:../../../os/rt/include/chvt.h **** #error "invalid CH_CFG_ST_TIMEDELTA specified, must "                       \
+  45:../../../os/rt/include/chvt.h ****        "be zero or greater than one"
+  46:../../../os/rt/include/chvt.h **** #endif
+  47:../../../os/rt/include/chvt.h **** 
+  48:../../../os/rt/include/chvt.h **** #if (CH_CFG_ST_TIMEDELTA > 0) && (CH_CFG_TIME_QUANTUM > 0)
+  49:../../../os/rt/include/chvt.h **** #error "CH_CFG_TIME_QUANTUM not supported in tickless mode"
+  50:../../../os/rt/include/chvt.h **** #endif
+  51:../../../os/rt/include/chvt.h **** 
+  52:../../../os/rt/include/chvt.h **** #if (CH_CFG_ST_TIMEDELTA > 0) && (CH_DBG_THREADS_PROFILING == TRUE)
+  53:../../../os/rt/include/chvt.h **** #error "CH_DBG_THREADS_PROFILING not supported in tickless mode"
+  54:../../../os/rt/include/chvt.h **** #endif
+  55:../../../os/rt/include/chvt.h **** 
+  56:../../../os/rt/include/chvt.h **** /*===========================================================================*/
+  57:../../../os/rt/include/chvt.h **** /* Module data structures and types.                                         */
+  58:../../../os/rt/include/chvt.h **** /*===========================================================================*/
+  59:../../../os/rt/include/chvt.h **** 
+  60:../../../os/rt/include/chvt.h **** /*===========================================================================*/
+  61:../../../os/rt/include/chvt.h **** /* Module macros.                                                            */
+  62:../../../os/rt/include/chvt.h **** /*===========================================================================*/
+  63:../../../os/rt/include/chvt.h **** 
+  64:../../../os/rt/include/chvt.h **** /**
+  65:../../../os/rt/include/chvt.h ****  * @brief   Data part of a static virtual timer initializer.
+  66:../../../os/rt/include/chvt.h ****  * @details This macro should be used when statically initializing a virtual
+  67:../../../os/rt/include/chvt.h ****  *          timer that is part of a bigger structure.
+  68:../../../os/rt/include/chvt.h ****  *
+  69:../../../os/rt/include/chvt.h ****  */
+  70:../../../os/rt/include/chvt.h **** #define __VIRTUAL_TIMER_DATA() {                                            \
+  71:../../../os/rt/include/chvt.h ****   .dlist = {                                                                \
+  72:../../../os/rt/include/chvt.h ****     .next   = NULL,                                                         \
+  73:../../../os/rt/include/chvt.h ****     .prev   = NULL,                                                         \
+  74:../../../os/rt/include/chvt.h ****     .delta  = (sysinterval_t)0                                              \
+  75:../../../os/rt/include/chvt.h ****   },                                                                        \
+  76:../../../os/rt/include/chvt.h ****   .func     = NULL,                                                         \
+  77:../../../os/rt/include/chvt.h ****   .par      = NULL,                                                         \
+  78:../../../os/rt/include/chvt.h ****   .reload   = (sysinterval_t)0                                              \
+  79:../../../os/rt/include/chvt.h **** }
+  80:../../../os/rt/include/chvt.h **** 
+  81:../../../os/rt/include/chvt.h **** /**
+  82:../../../os/rt/include/chvt.h ****  * @brief   Static virtual timer initializer.
+  83:../../../os/rt/include/chvt.h ****  * @details Statically initialized virtual timers require no explicit
+  84:../../../os/rt/include/chvt.h ****  *          initialization using @p chVTObjectInit().
+  85:../../../os/rt/include/chvt.h ****  *
+  86:../../../os/rt/include/chvt.h ****  * @param[in] name      the name of the virtual timer variable
+  87:../../../os/rt/include/chvt.h ****  */
+  88:../../../os/rt/include/chvt.h **** #define VIRTUAL_TIMER_DECL(name)                                            \
+  89:../../../os/rt/include/chvt.h ****   virtual_timer_t name = __VIRTUAL_TIMER_DATA()
+  90:../../../os/rt/include/chvt.h **** 
+  91:../../../os/rt/include/chvt.h **** /*===========================================================================*/
+  92:../../../os/rt/include/chvt.h **** /* External declarations.                                                    */
+  93:../../../os/rt/include/chvt.h **** /*===========================================================================*/
+  94:../../../os/rt/include/chvt.h **** 
+  95:../../../os/rt/include/chvt.h **** /*
+  96:../../../os/rt/include/chvt.h ****  * Virtual Timers APIs.
+  97:../../../os/rt/include/chvt.h ****  */
+  98:../../../os/rt/include/chvt.h **** #ifdef __cplusplus
+  99:../../../os/rt/include/chvt.h **** extern "C" {
+ 100:../../../os/rt/include/chvt.h **** #endif
+ 101:../../../os/rt/include/chvt.h ****   void chVTObjectInit(virtual_timer_t *vtp);
+ 102:../../../os/rt/include/chvt.h ****   void chVTObjectDispose(virtual_timer_t *vtp);
+ 103:../../../os/rt/include/chvt.h ****   void chVTDoSetI(virtual_timer_t *vtp, sysinterval_t delay,
+ 104:../../../os/rt/include/chvt.h ****                   vtfunc_t vtfunc, void *par);
+ 105:../../../os/rt/include/chvt.h ****   void chVTDoSetContinuousI(virtual_timer_t *vtp, sysinterval_t delay,
+ 106:../../../os/rt/include/chvt.h ****                             vtfunc_t vtfunc, void *par);
+ 107:../../../os/rt/include/chvt.h ****   void chVTDoResetI(virtual_timer_t *vtp);
+ 108:../../../os/rt/include/chvt.h ****   sysinterval_t chVTGetRemainingIntervalI(virtual_timer_t *vtp);
+ 109:../../../os/rt/include/chvt.h ****   void chVTDoTickI(void);
+ 110:../../../os/rt/include/chvt.h **** #if CH_CFG_USE_TIMESTAMP == TRUE
+ 111:../../../os/rt/include/chvt.h ****   systimestamp_t chVTGetTimeStampI(void);
+ 112:../../../os/rt/include/chvt.h ****   void chVTResetTimeStampI(void);
+ 113:../../../os/rt/include/chvt.h **** #endif
+ 114:../../../os/rt/include/chvt.h **** #ifdef __cplusplus
+ 115:../../../os/rt/include/chvt.h **** }
+ 116:../../../os/rt/include/chvt.h **** #endif
+ 117:../../../os/rt/include/chvt.h **** 
+ 118:../../../os/rt/include/chvt.h **** /*===========================================================================*/
+ 119:../../../os/rt/include/chvt.h **** /* Module inline functions.                                                  */
+ 120:../../../os/rt/include/chvt.h **** /*===========================================================================*/
+ 121:../../../os/rt/include/chvt.h **** 
+ 122:../../../os/rt/include/chvt.h **** /**
+ 123:../../../os/rt/include/chvt.h ****  * @brief   Current system time.
+ 124:../../../os/rt/include/chvt.h ****  * @details Returns the number of system ticks since the @p chSysInit()
+ 125:../../../os/rt/include/chvt.h ****  *          invocation.
+ 126:../../../os/rt/include/chvt.h ****  * @note    The counter can reach its maximum and then restart from zero.
+ 127:../../../os/rt/include/chvt.h ****  * @note    This function can be called from any context but its atomicity
+ 128:../../../os/rt/include/chvt.h ****  *          is not guaranteed on architectures whose word size is less than
+ 129:../../../os/rt/include/chvt.h ****  *          @p systime_t size.
+ 130:../../../os/rt/include/chvt.h ****  *
+ 131:../../../os/rt/include/chvt.h ****  * @return              The system time in ticks.
+ 132:../../../os/rt/include/chvt.h ****  *
+ 133:../../../os/rt/include/chvt.h ****  * @xclass
+ 134:../../../os/rt/include/chvt.h ****  */
+ 135:../../../os/rt/include/chvt.h **** static inline systime_t chVTGetSystemTimeX(void) {
+ 136:../../../os/rt/include/chvt.h **** 
+ 137:../../../os/rt/include/chvt.h **** #if CH_CFG_ST_TIMEDELTA == 0
+ 138:../../../os/rt/include/chvt.h ****   return currcore->vtlist.systime;
+ 139:../../../os/rt/include/chvt.h **** #else /* CH_CFG_ST_TIMEDELTA > 0 */
+ 140:../../../os/rt/include/chvt.h ****   return port_timer_get_time();
+ 141:../../../os/rt/include/chvt.h **** #endif /* CH_CFG_ST_TIMEDELTA > 0 */
+ 142:../../../os/rt/include/chvt.h **** }
+ 143:../../../os/rt/include/chvt.h **** 
+ 144:../../../os/rt/include/chvt.h **** /**
+ 145:../../../os/rt/include/chvt.h ****  * @brief   Current system time.
+ 146:../../../os/rt/include/chvt.h ****  * @details Returns the number of system ticks since the @p chSysInit()
+ 147:../../../os/rt/include/chvt.h ****  *          invocation.
+ 148:../../../os/rt/include/chvt.h ****  * @note    The counter can reach its maximum and then restart from zero.
+ 149:../../../os/rt/include/chvt.h ****  *
+ 150:../../../os/rt/include/chvt.h ****  * @return              The system time in ticks.
+ 151:../../../os/rt/include/chvt.h ****  *
+ 152:../../../os/rt/include/chvt.h ****  * @api
+ 153:../../../os/rt/include/chvt.h ****  */
+ 154:../../../os/rt/include/chvt.h **** static inline systime_t chVTGetSystemTime(void) {
+ 155:../../../os/rt/include/chvt.h ****   systime_t systime;
+ 156:../../../os/rt/include/chvt.h **** 
+ 157:../../../os/rt/include/chvt.h ****   chSysLock();
+ 158:../../../os/rt/include/chvt.h ****   systime = chVTGetSystemTimeX();
+ 159:../../../os/rt/include/chvt.h ****   chSysUnlock();
+ 160:../../../os/rt/include/chvt.h **** 
+ 161:../../../os/rt/include/chvt.h ****   return systime;
+ 162:../../../os/rt/include/chvt.h **** }
+ 163:../../../os/rt/include/chvt.h **** 
+ 164:../../../os/rt/include/chvt.h **** /**
+ 165:../../../os/rt/include/chvt.h ****  * @brief   Returns the elapsed time since the specified start time.
+ 166:../../../os/rt/include/chvt.h ****  *
+ 167:../../../os/rt/include/chvt.h ****  * @param[in] start     start time
+ 168:../../../os/rt/include/chvt.h ****  * @return              The elapsed time.
+ 169:../../../os/rt/include/chvt.h ****  *
+ 170:../../../os/rt/include/chvt.h ****  * @xclass
+ 171:../../../os/rt/include/chvt.h ****  */
+ 172:../../../os/rt/include/chvt.h **** static inline sysinterval_t chVTTimeElapsedSinceX(systime_t start) {
+ 173:../../../os/rt/include/chvt.h **** 
+ 174:../../../os/rt/include/chvt.h ****   return chTimeDiffX(start, chVTGetSystemTimeX());
+ 175:../../../os/rt/include/chvt.h **** }
+ 176:../../../os/rt/include/chvt.h **** 
+ 177:../../../os/rt/include/chvt.h **** /**
+ 178:../../../os/rt/include/chvt.h ****  * @brief   Checks if the current system time is within the specified time
+ 179:../../../os/rt/include/chvt.h ****  *          window.
+ 180:../../../os/rt/include/chvt.h ****  * @note    When start==end then the function returns always false because the
+ 181:../../../os/rt/include/chvt.h ****  *          time window has zero size.
+ 182:../../../os/rt/include/chvt.h ****  *
+ 183:../../../os/rt/include/chvt.h ****  * @param[in] start     the start of the time window (inclusive)
+ 184:../../../os/rt/include/chvt.h ****  * @param[in] end       the end of the time window (non inclusive)
+ 185:../../../os/rt/include/chvt.h ****  * @retval true         current time within the specified time window.
+ 186:../../../os/rt/include/chvt.h ****  * @retval false        current time not within the specified time window.
+ 187:../../../os/rt/include/chvt.h ****  *
+ 188:../../../os/rt/include/chvt.h ****  * @xclass
+ 189:../../../os/rt/include/chvt.h ****  */
+ 190:../../../os/rt/include/chvt.h **** static inline bool chVTIsSystemTimeWithinX(systime_t start, systime_t end) {
+ 191:../../../os/rt/include/chvt.h **** 
+ 192:../../../os/rt/include/chvt.h ****   return chTimeIsInRangeX(chVTGetSystemTimeX(), start, end);
+ 193:../../../os/rt/include/chvt.h **** }
+ 194:../../../os/rt/include/chvt.h **** 
+ 195:../../../os/rt/include/chvt.h **** /**
+ 196:../../../os/rt/include/chvt.h ****  * @brief   Checks if the current system time is within the specified time
+ 197:../../../os/rt/include/chvt.h ****  *          window.
+ 198:../../../os/rt/include/chvt.h ****  * @note    When start==end then the function returns always false because the
+ 199:../../../os/rt/include/chvt.h ****  *          time window has zero size.
+ 200:../../../os/rt/include/chvt.h ****  *
+ 201:../../../os/rt/include/chvt.h ****  * @param[in] start     the start of the time window (inclusive)
+ 202:../../../os/rt/include/chvt.h ****  * @param[in] end       the end of the time window (non inclusive)
+ 203:../../../os/rt/include/chvt.h ****  * @retval true         current time within the specified time window.
+ 204:../../../os/rt/include/chvt.h ****  * @retval false        current time not within the specified time window.
+ 205:../../../os/rt/include/chvt.h ****  *
+ 206:../../../os/rt/include/chvt.h ****  * @api
+ 207:../../../os/rt/include/chvt.h ****  */
+ 208:../../../os/rt/include/chvt.h **** static inline bool chVTIsSystemTimeWithin(systime_t start, systime_t end) {
+ 209:../../../os/rt/include/chvt.h **** 
+ 210:../../../os/rt/include/chvt.h ****   return chTimeIsInRangeX(chVTGetSystemTime(), start, end);
+ 211:../../../os/rt/include/chvt.h **** }
+ 212:../../../os/rt/include/chvt.h **** 
+ 213:../../../os/rt/include/chvt.h **** /**
+ 214:../../../os/rt/include/chvt.h ****  * @brief   Returns the time interval until the next timer event.
+ 215:../../../os/rt/include/chvt.h ****  * @note    The return value is not perfectly accurate and can report values
+ 216:../../../os/rt/include/chvt.h ****  *          in excess of @p CH_CFG_ST_TIMEDELTA ticks.
+ 217:../../../os/rt/include/chvt.h ****  * @note    The interval returned by this function is only meaningful if
+ 218:../../../os/rt/include/chvt.h ****  *          more timers are not added to the list until the returned time.
+ 219:../../../os/rt/include/chvt.h ****  *
+ 220:../../../os/rt/include/chvt.h ****  * @param[out] timep    pointer to a variable that will contain the time
+ 221:../../../os/rt/include/chvt.h ****  *                      interval until the next timer elapses. This pointer
+ 222:../../../os/rt/include/chvt.h ****  *                      can be @p NULL if the information is not required.
+ 223:../../../os/rt/include/chvt.h ****  * @return              The time, in ticks, until next time event.
+ 224:../../../os/rt/include/chvt.h ****  * @retval false        if the timers list is empty.
+ 225:../../../os/rt/include/chvt.h ****  * @retval true         if the timers list contains at least one timer.
+ 226:../../../os/rt/include/chvt.h ****  *
+ 227:../../../os/rt/include/chvt.h ****  * @iclass
+ 228:../../../os/rt/include/chvt.h ****  */
+ 229:../../../os/rt/include/chvt.h **** static inline bool chVTGetTimersStateI(sysinterval_t *timep) {
+ 230:../../../os/rt/include/chvt.h ****   virtual_timers_list_t *vtlp = &currcore->vtlist;
+ 231:../../../os/rt/include/chvt.h ****   ch_delta_list_t *dlp = &vtlp->dlist;
+ 232:../../../os/rt/include/chvt.h **** 
+ 233:../../../os/rt/include/chvt.h ****   chDbgCheckClassI();
+ 234:../../../os/rt/include/chvt.h **** 
+ 235:../../../os/rt/include/chvt.h ****   if (dlp == dlp->next) {
+ 236:../../../os/rt/include/chvt.h ****     return false;
+ 237:../../../os/rt/include/chvt.h ****   }
+ 238:../../../os/rt/include/chvt.h **** 
+ 239:../../../os/rt/include/chvt.h ****   if (timep != NULL) {
+ 240:../../../os/rt/include/chvt.h **** #if CH_CFG_ST_TIMEDELTA == 0
+ 241:../../../os/rt/include/chvt.h ****     *timep = dlp->next->delta;
+ 242:../../../os/rt/include/chvt.h **** #else
+ 243:../../../os/rt/include/chvt.h ****     *timep = (dlp->next->delta + (sysinterval_t)CH_CFG_ST_TIMEDELTA) -
+ 244:../../../os/rt/include/chvt.h ****              chTimeDiffX(vtlp->lasttime, chVTGetSystemTimeX());
+ 245:../../../os/rt/include/chvt.h **** #endif
+ 246:../../../os/rt/include/chvt.h ****   }
+ 247:../../../os/rt/include/chvt.h **** 
+ 248:../../../os/rt/include/chvt.h ****   return true;
+ 249:../../../os/rt/include/chvt.h **** }
+ 250:../../../os/rt/include/chvt.h **** 
+ 251:../../../os/rt/include/chvt.h **** /**
+ 252:../../../os/rt/include/chvt.h ****  * @brief   Returns @p true if the specified timer is armed.
+ 253:../../../os/rt/include/chvt.h ****  * @pre     The timer must have been initialized using @p chVTObjectInit()
+ 254:../../../os/rt/include/chvt.h ****  *          or @p chVTDoSetI().
+ 255:../../../os/rt/include/chvt.h ****  *
+ 256:../../../os/rt/include/chvt.h ****  * @param[in] vtp       pointer to a @p virtual_timer_t object
+ 257:../../../os/rt/include/chvt.h ****  * @return              true if the timer is armed.
+ 258:../../../os/rt/include/chvt.h ****  *
+ 259:../../../os/rt/include/chvt.h ****  * @iclass
+ 260:../../../os/rt/include/chvt.h ****  */
+ 261:../../../os/rt/include/chvt.h **** static inline bool chVTIsArmedI(const virtual_timer_t *vtp) {
+ 262:../../../os/rt/include/chvt.h **** 
+ 263:../../../os/rt/include/chvt.h ****   chDbgCheckClassI();
+ 264:../../../os/rt/include/chvt.h **** 
+ 265:../../../os/rt/include/chvt.h ****   return (bool)(vtp->dlist.next != NULL);
+ 266:../../../os/rt/include/chvt.h **** }
+ 267:../../../os/rt/include/chvt.h **** 
+ 268:../../../os/rt/include/chvt.h **** /**
+ 269:../../../os/rt/include/chvt.h ****  * @brief   Returns @p true if the specified timer is armed.
+ 270:../../../os/rt/include/chvt.h ****  * @pre     The timer must have been initialized using @p chVTObjectInit()
+ 271:../../../os/rt/include/chvt.h ****  *          or @p chVTDoSetI().
+ 272:../../../os/rt/include/chvt.h ****  *
+ 273:../../../os/rt/include/chvt.h ****  * @param[in] vtp       pointer to a @p virtual_timer_t object
+ 274:../../../os/rt/include/chvt.h ****  * @return              true if the timer is armed.
+ 275:../../../os/rt/include/chvt.h ****  *
+ 276:../../../os/rt/include/chvt.h ****  * @api
+ 277:../../../os/rt/include/chvt.h ****  */
+ 278:../../../os/rt/include/chvt.h **** static inline bool chVTIsArmed(const virtual_timer_t *vtp) {
+ 279:../../../os/rt/include/chvt.h ****   bool b;
+ 280:../../../os/rt/include/chvt.h **** 
+ 281:../../../os/rt/include/chvt.h ****   chSysLock();
+ 282:../../../os/rt/include/chvt.h ****   b = chVTIsArmedI(vtp);
+ 283:../../../os/rt/include/chvt.h ****   chSysUnlock();
+ 284:../../../os/rt/include/chvt.h **** 
+ 285:../../../os/rt/include/chvt.h ****   return b;
+ 286:../../../os/rt/include/chvt.h **** }
+ 287:../../../os/rt/include/chvt.h **** 
+ 288:../../../os/rt/include/chvt.h **** /**
+ 289:../../../os/rt/include/chvt.h ****  * @brief   Disables a Virtual Timer.
+ 290:../../../os/rt/include/chvt.h ****  * @note    The timer is first checked and disabled only if armed.
+ 291:../../../os/rt/include/chvt.h ****  * @pre     The timer must have been initialized using @p chVTObjectInit()
+ 292:../../../os/rt/include/chvt.h ****  *          or @p chVTDoSetI().
+ 293:../../../os/rt/include/chvt.h ****  *
+ 294:../../../os/rt/include/chvt.h ****  * @param[in] vtp       pointer to a @p virtual_timer_t object
+ 295:../../../os/rt/include/chvt.h ****  *
+ 296:../../../os/rt/include/chvt.h ****  * @iclass
+ 297:../../../os/rt/include/chvt.h ****  */
+ 298:../../../os/rt/include/chvt.h **** static inline void chVTResetI(virtual_timer_t *vtp) {
+ 299:../../../os/rt/include/chvt.h **** 
+ 300:../../../os/rt/include/chvt.h ****   if (chVTIsArmedI(vtp)) {
+  37               		.loc 2 300 0
+  38 0010 8091 0000 		lds r24,led_vt
+  39 0014 9091 0000 		lds r25,led_vt+1
+  40 0018 892B      		or r24,r25
+  41 001a 01F0      		breq .L2
+ 301:../../../os/rt/include/chvt.h ****     chVTDoResetI(vtp);
+  42               		.loc 2 301 0
+  43 001c 80E0      		ldi r24,lo8(led_vt)
+  44 001e 90E0      		ldi r25,hi8(led_vt)
+  45 0020 0E94 0000 		call chVTDoResetI
+  46               	.LVL3:
+  47               	.L2:
+  48               	.LBE65:
+  49               	.LBE64:
+ 302:../../../os/rt/include/chvt.h ****   }
+ 303:../../../os/rt/include/chvt.h **** }
+ 304:../../../os/rt/include/chvt.h **** 
+ 305:../../../os/rt/include/chvt.h **** /**
+ 306:../../../os/rt/include/chvt.h ****  * @brief   Disables a Virtual Timer.
+ 307:../../../os/rt/include/chvt.h ****  * @note    The timer is first checked and disabled only if armed.
+ 308:../../../os/rt/include/chvt.h ****  * @pre     The timer must have been initialized using @p chVTObjectInit()
+ 309:../../../os/rt/include/chvt.h ****  *          or @p chVTDoSetI().
+ 310:../../../os/rt/include/chvt.h ****  *
+ 311:../../../os/rt/include/chvt.h ****  * @param[in] vtp       pointer to a @p virtual_timer_t object
+ 312:../../../os/rt/include/chvt.h ****  *
+ 313:../../../os/rt/include/chvt.h ****  * @api
+ 314:../../../os/rt/include/chvt.h ****  */
+ 315:../../../os/rt/include/chvt.h **** static inline void chVTReset(virtual_timer_t *vtp) {
+ 316:../../../os/rt/include/chvt.h **** 
+ 317:../../../os/rt/include/chvt.h ****   chSysLock();
+ 318:../../../os/rt/include/chvt.h ****   chVTResetI(vtp);
+ 319:../../../os/rt/include/chvt.h ****   chSysUnlock();
+ 320:../../../os/rt/include/chvt.h **** }
+ 321:../../../os/rt/include/chvt.h **** 
+ 322:../../../os/rt/include/chvt.h **** /**
+ 323:../../../os/rt/include/chvt.h ****  * @brief   Enables a one-shot virtual timer.
+ 324:../../../os/rt/include/chvt.h ****  * @details If the virtual timer was already enabled then it is re-enabled
+ 325:../../../os/rt/include/chvt.h ****  *          using the new parameters.
+ 326:../../../os/rt/include/chvt.h ****  * @pre     The timer must have been initialized using @p chVTObjectInit()
+ 327:../../../os/rt/include/chvt.h ****  *          or @p chVTDoSetI().
+ 328:../../../os/rt/include/chvt.h ****  *
+ 329:../../../os/rt/include/chvt.h ****  * @param[in] vtp       pointer to a @p virtual_timer_t object
+ 330:../../../os/rt/include/chvt.h ****  * @param[in] delay     the number of ticks before the operation timeouts, the
+ 331:../../../os/rt/include/chvt.h ****  *                      special values are handled as follow:
+ 332:../../../os/rt/include/chvt.h ****  *                      - @a TIME_INFINITE is allowed but interpreted as a
+ 333:../../../os/rt/include/chvt.h ****  *                        normal time specification.
+ 334:../../../os/rt/include/chvt.h ****  *                      - @a TIME_IMMEDIATE this value is not allowed.
+ 335:../../../os/rt/include/chvt.h ****  * @param[in] vtfunc    the timer callback function. After invoking the
+ 336:../../../os/rt/include/chvt.h ****  *                      callback the timer is disabled and the structure can
+ 337:../../../os/rt/include/chvt.h ****  *                      be disposed or reused.
+ 338:../../../os/rt/include/chvt.h ****  * @param[in] par       a parameter that will be passed to the callback
+ 339:../../../os/rt/include/chvt.h ****  *                      function
+ 340:../../../os/rt/include/chvt.h ****  *
+ 341:../../../os/rt/include/chvt.h ****  * @iclass
+ 342:../../../os/rt/include/chvt.h ****  */
+ 343:../../../os/rt/include/chvt.h **** static inline void chVTSetI(virtual_timer_t *vtp, sysinterval_t delay,
+ 344:../../../os/rt/include/chvt.h ****                             vtfunc_t vtfunc, void *par) {
+ 345:../../../os/rt/include/chvt.h **** 
+ 346:../../../os/rt/include/chvt.h ****   chVTResetI(vtp);
+ 347:../../../os/rt/include/chvt.h ****   chVTDoSetI(vtp, delay, vtfunc, par);
+  50               		.loc 2 347 0
+  51 0024 20E0      		ldi r18,0
+  52 0026 30E0      		ldi r19,0
+  53 0028 40E0      		ldi r20,lo8(gs(led_cb))
+  54 002a 50E0      		ldi r21,hi8(gs(led_cb))
+  55 002c 68E0      		ldi r22,lo8(8)
+  56 002e 7DE3      		ldi r23,lo8(61)
+  57 0030 80E0      		ldi r24,lo8(led_vt)
+  58 0032 90E0      		ldi r25,hi8(led_vt)
+  59 0034 0C94 0000 		jmp chVTDoSetI
+  60               	.LVL4:
+  61               	.LBE63:
+  62               	.LBE62:
+  63               		.cfi_endproc
+  64               	.LFE241:
+  66               		.section	.text.startup.main,"ax",@progbits
+  67               	.global	main
+  69               	main:
+  70               	.LFB242:
+  21:main.c        ****     
+  22:main.c        ****     /**/
+  23:main.c        ****     chSysLockFromISR();
+  24:main.c        ****     chVTSetI(&led_vt, TIME_MS2I(1000), led_cb, NULL);
+  25:main.c        ****     chSysUnlockFromISR();
+  26:main.c        **** }
+  27:main.c        ****  
+  28:main.c        **** /*
+  29:main.c        ****  * Application main function.
+  30:main.c        ****  */
+  31:main.c        **** int main(void) {
+  71               		.loc 1 31 0
+  72               		.cfi_startproc
+  73               	/* prologue: function */
+  74               	/* frame size = 0 */
+  75               	/* stack size = 0 */
+  76               	.L__stack_usage = 0
+  32:main.c        **** 
+  33:main.c        ****     halInit();
+  77               		.loc 1 33 0
+  78 0000 0E94 0000 		call halInit
+  79               	.LVL5:
+  34:main.c        ****     chSysInit();
+  80               		.loc 1 34 0
+  81 0004 0E94 0000 		call chSysInit
+  82               	.LVL6:
+  35:main.c        **** 
+  36:main.c        ****     palSetPadMode(LED_PORT, LED_PIN, PAL_MODE_OUTPUT_PUSHPULL);
+  83               		.loc 1 36 0
+  84 0008 46E0      		ldi r20,lo8(6)
+  85 000a 60E8      		ldi r22,lo8(-128)
+  86 000c 89E2      		ldi r24,lo8(41)
+  87 000e 90E0      		ldi r25,0
+  88 0010 0E94 0000 		call _pal_lld_setgroupmode
+  89               	.LVL7:
+  37:main.c        ****     palClearPad(LED_PORT, LED_PIN);
+  90               		.loc 1 37 0
+  91 0014 5F98      		cbi 0xb,7
+  38:main.c        **** 
+  39:main.c        ****      /* LED timer initialization.*/
+  40:main.c        ****     chVTObjectInit(&led_vt);
+  92               		.loc 1 40 0
+  93 0016 80E0      		ldi r24,lo8(led_vt)
+  94 0018 90E0      		ldi r25,hi8(led_vt)
+  95 001a 0E94 0000 		call chVTObjectInit
+  96               	.LVL8:
+  97               	.LBB89:
+  98               	.LBB90:
+  99               	.LBB91:
+ 100               	.LBB92:
+ 101               		.file 3 "../../../os/common/ports/AVR/chcore.h"
+   1:../../../os/common/ports/AVR/chcore.h **** /*
+   2:../../../os/common/ports/AVR/chcore.h ****     ChibiOS - Copyright (C) 2006,2007,2008,2009,2010,2011,2012,2013,2014,
+   3:../../../os/common/ports/AVR/chcore.h ****               2015,2016,2017,2018,2019,2020,2021 Giovanni Di Sirio.
+   4:../../../os/common/ports/AVR/chcore.h **** 
+   5:../../../os/common/ports/AVR/chcore.h ****     This file is part of ChibiOS.
+   6:../../../os/common/ports/AVR/chcore.h **** 
+   7:../../../os/common/ports/AVR/chcore.h ****     ChibiOS is free software; you can redistribute it and/or modify
+   8:../../../os/common/ports/AVR/chcore.h ****     it under the terms of the GNU General Public License as published by
+   9:../../../os/common/ports/AVR/chcore.h ****     the Free Software Foundation version 3 of the License.
+  10:../../../os/common/ports/AVR/chcore.h **** 
+  11:../../../os/common/ports/AVR/chcore.h ****     ChibiOS is distributed in the hope that it will be useful,
+  12:../../../os/common/ports/AVR/chcore.h ****     but WITHOUT ANY WARRANTY; without even the implied warranty of
+  13:../../../os/common/ports/AVR/chcore.h ****     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  14:../../../os/common/ports/AVR/chcore.h ****     GNU General Public License for more details.
+  15:../../../os/common/ports/AVR/chcore.h **** 
+  16:../../../os/common/ports/AVR/chcore.h ****     You should have received a copy of the GNU General Public License
+  17:../../../os/common/ports/AVR/chcore.h ****     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  18:../../../os/common/ports/AVR/chcore.h **** */
+  19:../../../os/common/ports/AVR/chcore.h **** 
+  20:../../../os/common/ports/AVR/chcore.h **** /**
+  21:../../../os/common/ports/AVR/chcore.h ****  * @file    chcore.h
+  22:../../../os/common/ports/AVR/chcore.h ****  * @brief   AVR port macros and structures.
+  23:../../../os/common/ports/AVR/chcore.h ****  *
+  24:../../../os/common/ports/AVR/chcore.h ****  * @addtogroup AVR_CORE
+  25:../../../os/common/ports/AVR/chcore.h ****  * @{
+  26:../../../os/common/ports/AVR/chcore.h ****  */
+  27:../../../os/common/ports/AVR/chcore.h **** 
+  28:../../../os/common/ports/AVR/chcore.h **** #ifndef CHCORE_H
+  29:../../../os/common/ports/AVR/chcore.h **** #define CHCORE_H
+  30:../../../os/common/ports/AVR/chcore.h **** 
+  31:../../../os/common/ports/AVR/chcore.h **** #include <avr/io.h>
+  32:../../../os/common/ports/AVR/chcore.h **** #include <avr/interrupt.h>
+  33:../../../os/common/ports/AVR/chcore.h **** 
+  34:../../../os/common/ports/AVR/chcore.h **** extern bool __avr_in_isr;
+  35:../../../os/common/ports/AVR/chcore.h **** 
+  36:../../../os/common/ports/AVR/chcore.h **** /*===========================================================================*/
+  37:../../../os/common/ports/AVR/chcore.h **** /* Module constants.                                                         */
+  38:../../../os/common/ports/AVR/chcore.h **** /*===========================================================================*/
+  39:../../../os/common/ports/AVR/chcore.h **** 
+  40:../../../os/common/ports/AVR/chcore.h **** /**
+  41:../../../os/common/ports/AVR/chcore.h ****  * @name    Port Capabilities and Constants
+  42:../../../os/common/ports/AVR/chcore.h ****  * @{
+  43:../../../os/common/ports/AVR/chcore.h ****  */
+  44:../../../os/common/ports/AVR/chcore.h **** /**
+  45:../../../os/common/ports/AVR/chcore.h ****  * @brief   This port supports a realtime counter.
+  46:../../../os/common/ports/AVR/chcore.h ****  */
+  47:../../../os/common/ports/AVR/chcore.h **** #define PORT_SUPPORTS_RT                FALSE
+  48:../../../os/common/ports/AVR/chcore.h **** 
+  49:../../../os/common/ports/AVR/chcore.h **** /**
+  50:../../../os/common/ports/AVR/chcore.h ****  * @brief   Natural alignment constant.
+  51:../../../os/common/ports/AVR/chcore.h ****  * @note    It is the minimum alignment for pointer-size variables.
+  52:../../../os/common/ports/AVR/chcore.h ****  */
+  53:../../../os/common/ports/AVR/chcore.h **** #define PORT_NATURAL_ALIGN              1U
+  54:../../../os/common/ports/AVR/chcore.h **** 
+  55:../../../os/common/ports/AVR/chcore.h **** /**
+  56:../../../os/common/ports/AVR/chcore.h ****  * @brief   Stack alignment constant.
+  57:../../../os/common/ports/AVR/chcore.h ****  * @note    It is the alignment required for the stack pointer.
+  58:../../../os/common/ports/AVR/chcore.h ****  */
+  59:../../../os/common/ports/AVR/chcore.h **** #define PORT_STACK_ALIGN                1U
+  60:../../../os/common/ports/AVR/chcore.h **** 
+  61:../../../os/common/ports/AVR/chcore.h **** /**
+  62:../../../os/common/ports/AVR/chcore.h ****  * @brief   Working Areas alignment constant.
+  63:../../../os/common/ports/AVR/chcore.h ****  * @note    It is the alignment to be enforced for thread working areas.
+  64:../../../os/common/ports/AVR/chcore.h ****  */
+  65:../../../os/common/ports/AVR/chcore.h **** #define PORT_WORKING_AREA_ALIGN         1U
+  66:../../../os/common/ports/AVR/chcore.h **** /** @} */
+  67:../../../os/common/ports/AVR/chcore.h **** 
+  68:../../../os/common/ports/AVR/chcore.h **** /**
+  69:../../../os/common/ports/AVR/chcore.h ****  * @name    Architecture and Compiler
+  70:../../../os/common/ports/AVR/chcore.h ****  * @{
+  71:../../../os/common/ports/AVR/chcore.h ****  */
+  72:../../../os/common/ports/AVR/chcore.h **** /**
+  73:../../../os/common/ports/AVR/chcore.h ****  * @brief   Macro defining an AVR architecture.
+  74:../../../os/common/ports/AVR/chcore.h ****  */
+  75:../../../os/common/ports/AVR/chcore.h **** #define PORT_ARCHITECTURE_AVR
+  76:../../../os/common/ports/AVR/chcore.h **** 
+  77:../../../os/common/ports/AVR/chcore.h **** /**
+  78:../../../os/common/ports/AVR/chcore.h ****  * @brief   Macro defining the specific AVR architecture.
+  79:../../../os/common/ports/AVR/chcore.h ****  */
+  80:../../../os/common/ports/AVR/chcore.h **** #define PORT_ARCHITECTURE_AVR_MEGAAVR
+  81:../../../os/common/ports/AVR/chcore.h **** 
+  82:../../../os/common/ports/AVR/chcore.h **** /**
+  83:../../../os/common/ports/AVR/chcore.h ****  * @brief   Name of the implemented architecture.
+  84:../../../os/common/ports/AVR/chcore.h ****  */
+  85:../../../os/common/ports/AVR/chcore.h **** #define PORT_ARCHITECTURE_NAME          "AVR"
+  86:../../../os/common/ports/AVR/chcore.h **** 
+  87:../../../os/common/ports/AVR/chcore.h **** /**
+  88:../../../os/common/ports/AVR/chcore.h ****  * @brief   Name of the architecture variant.
+  89:../../../os/common/ports/AVR/chcore.h ****  */
+  90:../../../os/common/ports/AVR/chcore.h **** #define PORT_CORE_VARIANT_NAME          "MegaAVR"
+  91:../../../os/common/ports/AVR/chcore.h **** 
+  92:../../../os/common/ports/AVR/chcore.h **** /**
+  93:../../../os/common/ports/AVR/chcore.h ****  * @brief   Compiler name and version.
+  94:../../../os/common/ports/AVR/chcore.h ****  */
+  95:../../../os/common/ports/AVR/chcore.h **** #if defined(__GNUC__) || defined(__DOXYGEN__)
+  96:../../../os/common/ports/AVR/chcore.h **** #define PORT_COMPILER_NAME              "GCC " __VERSION__
+  97:../../../os/common/ports/AVR/chcore.h **** 
+  98:../../../os/common/ports/AVR/chcore.h **** #else
+  99:../../../os/common/ports/AVR/chcore.h **** #error "unsupported compiler"
+ 100:../../../os/common/ports/AVR/chcore.h **** #endif
+ 101:../../../os/common/ports/AVR/chcore.h **** 
+ 102:../../../os/common/ports/AVR/chcore.h **** /**
+ 103:../../../os/common/ports/AVR/chcore.h ****  * @brief   Port-specific information string.
+ 104:../../../os/common/ports/AVR/chcore.h ****  */
+ 105:../../../os/common/ports/AVR/chcore.h **** #define PORT_INFO                       "None"
+ 106:../../../os/common/ports/AVR/chcore.h **** /** @} */
+ 107:../../../os/common/ports/AVR/chcore.h **** 
+ 108:../../../os/common/ports/AVR/chcore.h **** /*===========================================================================*/
+ 109:../../../os/common/ports/AVR/chcore.h **** /* Module pre-compile time settings.                                         */
+ 110:../../../os/common/ports/AVR/chcore.h **** /*===========================================================================*/
+ 111:../../../os/common/ports/AVR/chcore.h **** 
+ 112:../../../os/common/ports/AVR/chcore.h **** /**
+ 113:../../../os/common/ports/AVR/chcore.h ****  * @brief   Stack size for the system idle thread.
+ 114:../../../os/common/ports/AVR/chcore.h ****  * @details This size depends on the idle thread implementation, usually
+ 115:../../../os/common/ports/AVR/chcore.h ****  *          the idle thread should take no more space than those reserved
+ 116:../../../os/common/ports/AVR/chcore.h ****  *          by @p PORT_INT_REQUIRED_STACK.
+ 117:../../../os/common/ports/AVR/chcore.h ****  */
+ 118:../../../os/common/ports/AVR/chcore.h **** #if !defined(PORT_IDLE_THREAD_STACK_SIZE) || defined(__DOXYGEN__)
+ 119:../../../os/common/ports/AVR/chcore.h **** #define PORT_IDLE_THREAD_STACK_SIZE     8
+ 120:../../../os/common/ports/AVR/chcore.h **** #endif
+ 121:../../../os/common/ports/AVR/chcore.h **** 
+ 122:../../../os/common/ports/AVR/chcore.h **** /**
+ 123:../../../os/common/ports/AVR/chcore.h ****  * @brief   Per-thread stack overhead for interrupts servicing.
+ 124:../../../os/common/ports/AVR/chcore.h ****  * @details This constant is used in the calculation of the correct working
+ 125:../../../os/common/ports/AVR/chcore.h ****  *          area size.
+ 126:../../../os/common/ports/AVR/chcore.h ****  */
+ 127:../../../os/common/ports/AVR/chcore.h **** #if !defined(PORT_INT_REQUIRED_STACK) || defined(__DOXYGEN__)
+ 128:../../../os/common/ports/AVR/chcore.h **** #define PORT_INT_REQUIRED_STACK         32
+ 129:../../../os/common/ports/AVR/chcore.h **** #endif
+ 130:../../../os/common/ports/AVR/chcore.h **** 
+ 131:../../../os/common/ports/AVR/chcore.h **** /**
+ 132:../../../os/common/ports/AVR/chcore.h ****  * @brief   Enables a "wait for interrupt" instruction in the idle loop.
+ 133:../../../os/common/ports/AVR/chcore.h ****  */
+ 134:../../../os/common/ports/AVR/chcore.h **** #if !defined(PORT_AVR_WFI_SLEEP_IDLE) || defined(__DOXYGEN__)
+ 135:../../../os/common/ports/AVR/chcore.h **** #define PORT_AVR_WFI_SLEEP_IDLE      FALSE
+ 136:../../../os/common/ports/AVR/chcore.h **** #endif
+ 137:../../../os/common/ports/AVR/chcore.h **** 
+ 138:../../../os/common/ports/AVR/chcore.h **** /*===========================================================================*/
+ 139:../../../os/common/ports/AVR/chcore.h **** /* Derived constants and error checks.                                       */
+ 140:../../../os/common/ports/AVR/chcore.h **** /*===========================================================================*/
+ 141:../../../os/common/ports/AVR/chcore.h **** 
+ 142:../../../os/common/ports/AVR/chcore.h **** /*===========================================================================*/
+ 143:../../../os/common/ports/AVR/chcore.h **** /* Module data structures and types.                                         */
+ 144:../../../os/common/ports/AVR/chcore.h **** /*===========================================================================*/
+ 145:../../../os/common/ports/AVR/chcore.h **** 
+ 146:../../../os/common/ports/AVR/chcore.h **** /* The following code is not processed when the file is included from an
+ 147:../../../os/common/ports/AVR/chcore.h ****    asm module.*/
+ 148:../../../os/common/ports/AVR/chcore.h **** #if !defined(_FROM_ASM_)
+ 149:../../../os/common/ports/AVR/chcore.h **** 
+ 150:../../../os/common/ports/AVR/chcore.h **** /**
+ 151:../../../os/common/ports/AVR/chcore.h ****  * @brief   Type of stack and memory alignment enforcement.
+ 152:../../../os/common/ports/AVR/chcore.h ****  * @note    In this architecture the stack alignment is enforced to 8 bits.
+ 153:../../../os/common/ports/AVR/chcore.h ****  */
+ 154:../../../os/common/ports/AVR/chcore.h **** typedef uint8_t stkalign_t;
+ 155:../../../os/common/ports/AVR/chcore.h **** 
+ 156:../../../os/common/ports/AVR/chcore.h **** /**
+ 157:../../../os/common/ports/AVR/chcore.h ****  * @brief   Interrupt saved context.
+ 158:../../../os/common/ports/AVR/chcore.h ****  * @details This structure represents the stack frame saved during a
+ 159:../../../os/common/ports/AVR/chcore.h ****  *          preemption-capable interrupt handler.
+ 160:../../../os/common/ports/AVR/chcore.h ****  * @note    R2 and R13 are not saved because those are assumed to be immutable
+ 161:../../../os/common/ports/AVR/chcore.h ****  *          during the system life cycle.
+ 162:../../../os/common/ports/AVR/chcore.h ****  */
+ 163:../../../os/common/ports/AVR/chcore.h **** struct port_extctx {
+ 164:../../../os/common/ports/AVR/chcore.h ****   uint8_t       _next;
+ 165:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r31;
+ 166:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r30;
+ 167:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r27;
+ 168:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r26;
+ 169:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r25;
+ 170:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r24;
+ 171:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r23;
+ 172:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r22;
+ 173:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r21;
+ 174:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r20;
+ 175:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r19;
+ 176:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r18;
+ 177:../../../os/common/ports/AVR/chcore.h ****   uint8_t       sr;
+ 178:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r1;
+ 179:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r0;
+ 180:../../../os/common/ports/AVR/chcore.h **** #if defined(__AVR_3_BYTE_PC__)
+ 181:../../../os/common/ports/AVR/chcore.h ****   uint8_t       pcx;
+ 182:../../../os/common/ports/AVR/chcore.h **** #endif
+ 183:../../../os/common/ports/AVR/chcore.h ****   uint16_t      pc;
+ 184:../../../os/common/ports/AVR/chcore.h **** };
+ 185:../../../os/common/ports/AVR/chcore.h **** 
+ 186:../../../os/common/ports/AVR/chcore.h **** /**
+ 187:../../../os/common/ports/AVR/chcore.h ****  * @brief   System saved context.
+ 188:../../../os/common/ports/AVR/chcore.h ****  * @details This structure represents the inner stack frame during a context
+ 189:../../../os/common/ports/AVR/chcore.h ****  *          switching.
+ 190:../../../os/common/ports/AVR/chcore.h ****  * @note    R2 and R13 are not saved because those are assumed to be immutable
+ 191:../../../os/common/ports/AVR/chcore.h ****  *          during the system life cycle.
+ 192:../../../os/common/ports/AVR/chcore.h ****  * @note    LR is stored in the caller context so it is not present in this
+ 193:../../../os/common/ports/AVR/chcore.h ****  *          structure.
+ 194:../../../os/common/ports/AVR/chcore.h ****  */
+ 195:../../../os/common/ports/AVR/chcore.h **** struct port_intctx {
+ 196:../../../os/common/ports/AVR/chcore.h ****   uint8_t       _next;
+ 197:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r29;
+ 198:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r28;
+ 199:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r17;
+ 200:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r16;
+ 201:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r15;
+ 202:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r14;
+ 203:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r13;
+ 204:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r12;
+ 205:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r11;
+ 206:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r10;
+ 207:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r9;
+ 208:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r8;
+ 209:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r7;
+ 210:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r6;
+ 211:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r5;
+ 212:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r4;
+ 213:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r3;
+ 214:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r2;
+ 215:../../../os/common/ports/AVR/chcore.h **** #if defined(__AVR_3_BYTE_PC__)
+ 216:../../../os/common/ports/AVR/chcore.h ****   uint8_t       pcx;
+ 217:../../../os/common/ports/AVR/chcore.h **** #endif
+ 218:../../../os/common/ports/AVR/chcore.h ****   uint8_t       pcl;
+ 219:../../../os/common/ports/AVR/chcore.h ****   uint8_t       pch;
+ 220:../../../os/common/ports/AVR/chcore.h **** };
+ 221:../../../os/common/ports/AVR/chcore.h **** 
+ 222:../../../os/common/ports/AVR/chcore.h **** /**
+ 223:../../../os/common/ports/AVR/chcore.h ****  * @brief   Platform dependent part of the @p thread_t structure.
+ 224:../../../os/common/ports/AVR/chcore.h ****  * @details This structure usually contains just the saved stack pointer
+ 225:../../../os/common/ports/AVR/chcore.h ****  *          defined as a pointer to a @p port_intctx structure.
+ 226:../../../os/common/ports/AVR/chcore.h ****  */
+ 227:../../../os/common/ports/AVR/chcore.h **** struct port_context {
+ 228:../../../os/common/ports/AVR/chcore.h ****   struct port_intctx *sp;
+ 229:../../../os/common/ports/AVR/chcore.h **** };
+ 230:../../../os/common/ports/AVR/chcore.h **** 
+ 231:../../../os/common/ports/AVR/chcore.h **** #endif /* !defined(_FROM_ASM_) */
+ 232:../../../os/common/ports/AVR/chcore.h **** 
+ 233:../../../os/common/ports/AVR/chcore.h **** /*===========================================================================*/
+ 234:../../../os/common/ports/AVR/chcore.h **** /* Module macros.                                                            */
+ 235:../../../os/common/ports/AVR/chcore.h **** /*===========================================================================*/
+ 236:../../../os/common/ports/AVR/chcore.h **** 
+ 237:../../../os/common/ports/AVR/chcore.h **** /**
+ 238:../../../os/common/ports/AVR/chcore.h ****  * @brief   Platform dependent part of the @p chThdCreateI() API.
+ 239:../../../os/common/ports/AVR/chcore.h ****  * @details This code usually setup the context switching frame represented
+ 240:../../../os/common/ports/AVR/chcore.h ****  *          by an @p port_intctx structure.
+ 241:../../../os/common/ports/AVR/chcore.h ****  */
+ 242:../../../os/common/ports/AVR/chcore.h **** #if defined(__AVR_3_BYTE_PC__) || defined(__DOXYGEN__)
+ 243:../../../os/common/ports/AVR/chcore.h **** #define PORT_SETUP_CONTEXT(tp, wbase, wtop, pf, arg) {                      \
+ 244:../../../os/common/ports/AVR/chcore.h ****   tp->ctx.sp = (struct port_intctx *)((uint8_t *)(wtop) -                   \
+ 245:../../../os/common/ports/AVR/chcore.h ****                                       sizeof(struct port_intctx));          \
+ 246:../../../os/common/ports/AVR/chcore.h ****   tp->ctx.sp->r2  = (uint8_t)(0xff & (uint16_t)pf);                         \
+ 247:../../../os/common/ports/AVR/chcore.h ****   tp->ctx.sp->r3  = (uint8_t)((uint16_t)(pf) >> 8);                         \
+ 248:../../../os/common/ports/AVR/chcore.h ****   tp->ctx.sp->r4  = (uint8_t)(0xff & (uint16_t)arg);                        \
+ 249:../../../os/common/ports/AVR/chcore.h ****   tp->ctx.sp->r5  = (uint8_t)((uint16_t)(arg) >> 8);                        \
+ 250:../../../os/common/ports/AVR/chcore.h ****   tp->ctx.sp->pcx = (uint8_t)0;                                             \
+ 251:../../../os/common/ports/AVR/chcore.h ****   tp->ctx.sp->pcl = (uint16_t)_port_thread_start >> 8;                      \
+ 252:../../../os/common/ports/AVR/chcore.h ****   tp->ctx.sp->pch = (uint8_t)(0xff & (uint16_t)_port_thread_start);         \
+ 253:../../../os/common/ports/AVR/chcore.h **** }
+ 254:../../../os/common/ports/AVR/chcore.h **** #else /* !__AVR_3_BYTE_PC__ */
+ 255:../../../os/common/ports/AVR/chcore.h **** #define PORT_SETUP_CONTEXT(tp, wbase, wtop, pf, arg) {                      \
+ 256:../../../os/common/ports/AVR/chcore.h ****   tp->ctx.sp = (struct port_intctx *)((uint8_t *)(wtop) -                   \
+ 257:../../../os/common/ports/AVR/chcore.h ****                                       sizeof(struct port_intctx));          \
+ 258:../../../os/common/ports/AVR/chcore.h ****   tp->ctx.sp->r2  = (uint8_t)(0xff & (uint16_t)pf);                         \
+ 259:../../../os/common/ports/AVR/chcore.h ****   tp->ctx.sp->r3  = (uint8_t)((uint16_t)(pf) >> 8);                         \
+ 260:../../../os/common/ports/AVR/chcore.h ****   tp->ctx.sp->r4  = (uint8_t)(0xff & (uint16_t)arg);                        \
+ 261:../../../os/common/ports/AVR/chcore.h ****   tp->ctx.sp->r5  = (uint8_t)((uint16_t)(arg) >> 8);                        \
+ 262:../../../os/common/ports/AVR/chcore.h ****   tp->ctx.sp->pcl = (uint16_t)_port_thread_start >> 8;                      \
+ 263:../../../os/common/ports/AVR/chcore.h ****   tp->ctx.sp->pch = (uint8_t)(0xff & (uint16_t)_port_thread_start);         \
+ 264:../../../os/common/ports/AVR/chcore.h **** }
+ 265:../../../os/common/ports/AVR/chcore.h **** #endif /* !__AVR_3_BYTE_PC__ */
+ 266:../../../os/common/ports/AVR/chcore.h **** 
+ 267:../../../os/common/ports/AVR/chcore.h **** /**
+ 268:../../../os/common/ports/AVR/chcore.h ****  * @brief   Computes the thread working area global size.
+ 269:../../../os/common/ports/AVR/chcore.h ****  * @note    There is no need to perform alignments in this macro.
+ 270:../../../os/common/ports/AVR/chcore.h ****  */
+ 271:../../../os/common/ports/AVR/chcore.h **** #define PORT_WA_SIZE(n) ((sizeof(struct port_intctx) - 1) +                \
+ 272:../../../os/common/ports/AVR/chcore.h ****                          (sizeof(struct port_extctx) - 1) +                \
+ 273:../../../os/common/ports/AVR/chcore.h ****                          ((size_t)(n)) + ((size_t)(PORT_INT_REQUIRED_STACK)))
+ 274:../../../os/common/ports/AVR/chcore.h **** 
+ 275:../../../os/common/ports/AVR/chcore.h **** /**
+ 276:../../../os/common/ports/AVR/chcore.h ****  * @brief   Static working area allocation.
+ 277:../../../os/common/ports/AVR/chcore.h ****  * @details This macro is used to allocate a static thread working area
+ 278:../../../os/common/ports/AVR/chcore.h ****  *          aligned as both position and size.
+ 279:../../../os/common/ports/AVR/chcore.h ****  *
+ 280:../../../os/common/ports/AVR/chcore.h ****  * @param[in] s         the name to be assigned to the stack array
+ 281:../../../os/common/ports/AVR/chcore.h ****  * @param[in] n         the stack size to be assigned to the thread
+ 282:../../../os/common/ports/AVR/chcore.h ****  */
+ 283:../../../os/common/ports/AVR/chcore.h **** #define PORT_WORKING_AREA(s, n)                                             \
+ 284:../../../os/common/ports/AVR/chcore.h ****   stkalign_t s[THD_WORKING_AREA_SIZE(n) / sizeof (stkalign_t)]
+ 285:../../../os/common/ports/AVR/chcore.h **** 
+ 286:../../../os/common/ports/AVR/chcore.h **** /**
+ 287:../../../os/common/ports/AVR/chcore.h ****  * @brief   Priority level verification macro.
+ 288:../../../os/common/ports/AVR/chcore.h ****  */
+ 289:../../../os/common/ports/AVR/chcore.h **** #define PORT_IRQ_IS_VALID_PRIORITY(n) false
+ 290:../../../os/common/ports/AVR/chcore.h **** 
+ 291:../../../os/common/ports/AVR/chcore.h **** /**
+ 292:../../../os/common/ports/AVR/chcore.h ****  * @brief   Priority level verification macro.
+ 293:../../../os/common/ports/AVR/chcore.h ****  */
+ 294:../../../os/common/ports/AVR/chcore.h **** #define PORT_IRQ_IS_VALID_KERNEL_PRIORITY(n) false
+ 295:../../../os/common/ports/AVR/chcore.h **** 
+ 296:../../../os/common/ports/AVR/chcore.h **** /**
+ 297:../../../os/common/ports/AVR/chcore.h ****  * @brief   IRQ prologue code.
+ 298:../../../os/common/ports/AVR/chcore.h ****  * @details This macro must be inserted at the start of all IRQ handlers
+ 299:../../../os/common/ports/AVR/chcore.h ****  *          enabled to invoke system APIs.
+ 300:../../../os/common/ports/AVR/chcore.h ****  * @note    This code tricks the compiler to save all the specified registers
+ 301:../../../os/common/ports/AVR/chcore.h ****  *          by "touching" them.
+ 302:../../../os/common/ports/AVR/chcore.h ****  */
+ 303:../../../os/common/ports/AVR/chcore.h **** #define PORT_IRQ_PROLOGUE() {                                               \
+ 304:../../../os/common/ports/AVR/chcore.h ****   asm ("" : : : "r18", "r19", "r20", "r21", "r22", "r23", "r24",            \
+ 305:../../../os/common/ports/AVR/chcore.h ****                 "r25", "r26", "r27", "r30", "r31");                         \
+ 306:../../../os/common/ports/AVR/chcore.h ****   __avr_in_isr = true;                                                      \
+ 307:../../../os/common/ports/AVR/chcore.h **** }
+ 308:../../../os/common/ports/AVR/chcore.h **** 
+ 309:../../../os/common/ports/AVR/chcore.h **** /**
+ 310:../../../os/common/ports/AVR/chcore.h ****  * @brief   IRQ epilogue code.
+ 311:../../../os/common/ports/AVR/chcore.h ****  * @details This macro must be inserted at the end of all IRQ handlers
+ 312:../../../os/common/ports/AVR/chcore.h ****  *          enabled to invoke system APIs.
+ 313:../../../os/common/ports/AVR/chcore.h ****  */
+ 314:../../../os/common/ports/AVR/chcore.h **** #define PORT_IRQ_EPILOGUE() {                                               \
+ 315:../../../os/common/ports/AVR/chcore.h ****   __avr_in_isr = false;                                                     \
+ 316:../../../os/common/ports/AVR/chcore.h ****   __dbg_check_lock();                                                       \
+ 317:../../../os/common/ports/AVR/chcore.h ****   if (chSchIsPreemptionRequired())                                          \
+ 318:../../../os/common/ports/AVR/chcore.h ****     chSchDoPreemption();                                                    \
+ 319:../../../os/common/ports/AVR/chcore.h ****   __dbg_check_unlock();                                                     \
+ 320:../../../os/common/ports/AVR/chcore.h **** }
+ 321:../../../os/common/ports/AVR/chcore.h **** 
+ 322:../../../os/common/ports/AVR/chcore.h **** /**
+ 323:../../../os/common/ports/AVR/chcore.h ****  * @brief   IRQ handler function declaration.
+ 324:../../../os/common/ports/AVR/chcore.h ****  * @note    @p id can be a function name or a vector number depending on the
+ 325:../../../os/common/ports/AVR/chcore.h ****  *          port implementation.
+ 326:../../../os/common/ports/AVR/chcore.h ****  */
+ 327:../../../os/common/ports/AVR/chcore.h **** #define PORT_IRQ_HANDLER(id) ISR(id)
+ 328:../../../os/common/ports/AVR/chcore.h **** 
+ 329:../../../os/common/ports/AVR/chcore.h **** /**
+ 330:../../../os/common/ports/AVR/chcore.h ****  * @brief   Fast IRQ handler function declaration.
+ 331:../../../os/common/ports/AVR/chcore.h ****  * @note    @p id can be a function name or a vector number depending on the
+ 332:../../../os/common/ports/AVR/chcore.h ****  *          port implementation.
+ 333:../../../os/common/ports/AVR/chcore.h ****  */
+ 334:../../../os/common/ports/AVR/chcore.h **** #define PORT_FAST_IRQ_HANDLER(id) ISR(id)
+ 335:../../../os/common/ports/AVR/chcore.h **** 
+ 336:../../../os/common/ports/AVR/chcore.h **** /**
+ 337:../../../os/common/ports/AVR/chcore.h ****  * @brief   Performs a context switch between two threads.
+ 338:../../../os/common/ports/AVR/chcore.h ****  * @details This is the most critical code in any port, this function
+ 339:../../../os/common/ports/AVR/chcore.h ****  *          is responsible for the context switch between 2 threads.
+ 340:../../../os/common/ports/AVR/chcore.h ****  * @note    The implementation of this code affects <b>directly</b> the context
+ 341:../../../os/common/ports/AVR/chcore.h ****  *          switch performance so optimize here as much as you can.
+ 342:../../../os/common/ports/AVR/chcore.h ****  *
+ 343:../../../os/common/ports/AVR/chcore.h ****  * @param[in] ntp       the thread to be switched in
+ 344:../../../os/common/ports/AVR/chcore.h ****  * @param[in] otp       the thread to be switched out
+ 345:../../../os/common/ports/AVR/chcore.h ****  */
+ 346:../../../os/common/ports/AVR/chcore.h **** #define port_switch(ntp, otp) {                                             \
+ 347:../../../os/common/ports/AVR/chcore.h ****   _port_switch(ntp, otp);                                                   \
+ 348:../../../os/common/ports/AVR/chcore.h ****   asm volatile ("" : : : "memory");                                         \
+ 349:../../../os/common/ports/AVR/chcore.h **** }
+ 350:../../../os/common/ports/AVR/chcore.h **** 
+ 351:../../../os/common/ports/AVR/chcore.h **** 
+ 352:../../../os/common/ports/AVR/chcore.h **** /**
+ 353:../../../os/common/ports/AVR/chcore.h ****  * @brief   Port-related initialization code.
+ 354:../../../os/common/ports/AVR/chcore.h ****  * @note    This function is empty in this port.
+ 355:../../../os/common/ports/AVR/chcore.h ****  */
+ 356:../../../os/common/ports/AVR/chcore.h **** #define port_init(oip) {                                                    \
+ 357:../../../os/common/ports/AVR/chcore.h ****   __avr_in_isr = true;                                                      \
+ 358:../../../os/common/ports/AVR/chcore.h **** }
+ 359:../../../os/common/ports/AVR/chcore.h **** 
+ 360:../../../os/common/ports/AVR/chcore.h **** /*===========================================================================*/
+ 361:../../../os/common/ports/AVR/chcore.h **** /* External declarations.                                                    */
+ 362:../../../os/common/ports/AVR/chcore.h **** /*===========================================================================*/
+ 363:../../../os/common/ports/AVR/chcore.h **** 
+ 364:../../../os/common/ports/AVR/chcore.h **** /* The following code is not processed when the file is included from an
+ 365:../../../os/common/ports/AVR/chcore.h ****    asm module.*/
+ 366:../../../os/common/ports/AVR/chcore.h **** #if !defined(_FROM_ASM_)
+ 367:../../../os/common/ports/AVR/chcore.h **** 
+ 368:../../../os/common/ports/AVR/chcore.h **** #ifdef __cplusplus
+ 369:../../../os/common/ports/AVR/chcore.h **** extern "C" {
+ 370:../../../os/common/ports/AVR/chcore.h **** #endif
+ 371:../../../os/common/ports/AVR/chcore.h ****   void _port_switch(thread_t *ntp, thread_t *otp);
+ 372:../../../os/common/ports/AVR/chcore.h ****   void _port_thread_start(void);
+ 373:../../../os/common/ports/AVR/chcore.h **** #ifdef __cplusplus
+ 374:../../../os/common/ports/AVR/chcore.h **** }
+ 375:../../../os/common/ports/AVR/chcore.h **** #endif
+ 376:../../../os/common/ports/AVR/chcore.h **** 
+ 377:../../../os/common/ports/AVR/chcore.h **** #endif /* !defined(_FROM_ASM_) */
+ 378:../../../os/common/ports/AVR/chcore.h **** 
+ 379:../../../os/common/ports/AVR/chcore.h **** /*===========================================================================*/
+ 380:../../../os/common/ports/AVR/chcore.h **** /* Module inline functions.                                                  */
+ 381:../../../os/common/ports/AVR/chcore.h **** /*===========================================================================*/
+ 382:../../../os/common/ports/AVR/chcore.h **** 
+ 383:../../../os/common/ports/AVR/chcore.h **** /* The following code is not processed when the file is included from an
+ 384:../../../os/common/ports/AVR/chcore.h ****    asm module.*/
+ 385:../../../os/common/ports/AVR/chcore.h **** #if !defined(_FROM_ASM_)
+ 386:../../../os/common/ports/AVR/chcore.h **** 
+ 387:../../../os/common/ports/AVR/chcore.h **** /**
+ 388:../../../os/common/ports/AVR/chcore.h ****  * @brief   Returns a word encoding the current interrupts status.
+ 389:../../../os/common/ports/AVR/chcore.h ****  *
+ 390:../../../os/common/ports/AVR/chcore.h ****  * @return              The interrupts status.
+ 391:../../../os/common/ports/AVR/chcore.h ****  */
+ 392:../../../os/common/ports/AVR/chcore.h **** static inline syssts_t port_get_irq_status(void) {
+ 393:../../../os/common/ports/AVR/chcore.h **** 
+ 394:../../../os/common/ports/AVR/chcore.h ****   return SREG;
+ 395:../../../os/common/ports/AVR/chcore.h **** }
+ 396:../../../os/common/ports/AVR/chcore.h **** 
+ 397:../../../os/common/ports/AVR/chcore.h **** /**
+ 398:../../../os/common/ports/AVR/chcore.h ****  * @brief   Checks the interrupt status.
+ 399:../../../os/common/ports/AVR/chcore.h ****  *
+ 400:../../../os/common/ports/AVR/chcore.h ****  * @param[in] sts       the interrupt status word
+ 401:../../../os/common/ports/AVR/chcore.h ****  *
+ 402:../../../os/common/ports/AVR/chcore.h ****  * @return              The interrupt status.
+ 403:../../../os/common/ports/AVR/chcore.h ****  * @retval false        the word specified a disabled interrupts status.
+ 404:../../../os/common/ports/AVR/chcore.h ****  * @retval true         the word specified an enabled interrupts status.
+ 405:../../../os/common/ports/AVR/chcore.h ****  */
+ 406:../../../os/common/ports/AVR/chcore.h **** static inline bool port_irq_enabled(syssts_t sts) {
+ 407:../../../os/common/ports/AVR/chcore.h **** 
+ 408:../../../os/common/ports/AVR/chcore.h ****   return (bool)((sts & 0x80) != 0);
+ 409:../../../os/common/ports/AVR/chcore.h **** }
+ 410:../../../os/common/ports/AVR/chcore.h **** 
+ 411:../../../os/common/ports/AVR/chcore.h **** /**
+ 412:../../../os/common/ports/AVR/chcore.h ****  * @brief   Determines the current execution context.
+ 413:../../../os/common/ports/AVR/chcore.h ****  *
+ 414:../../../os/common/ports/AVR/chcore.h ****  * @return              The execution context.
+ 415:../../../os/common/ports/AVR/chcore.h ****  * @retval false        not running in ISR mode.
+ 416:../../../os/common/ports/AVR/chcore.h ****  * @retval true         running in ISR mode.
+ 417:../../../os/common/ports/AVR/chcore.h ****  */
+ 418:../../../os/common/ports/AVR/chcore.h **** static inline bool port_is_isr_context(void) {
+ 419:../../../os/common/ports/AVR/chcore.h **** 
+ 420:../../../os/common/ports/AVR/chcore.h ****   return __avr_in_isr;
+ 421:../../../os/common/ports/AVR/chcore.h **** }
+ 422:../../../os/common/ports/AVR/chcore.h **** 
+ 423:../../../os/common/ports/AVR/chcore.h **** /**
+ 424:../../../os/common/ports/AVR/chcore.h ****  * @brief   Kernel-lock action.
+ 425:../../../os/common/ports/AVR/chcore.h ****  * @details Usually this function just disables interrupts but may perform more
+ 426:../../../os/common/ports/AVR/chcore.h ****  *          actions.
+ 427:../../../os/common/ports/AVR/chcore.h ****  */
+ 428:../../../os/common/ports/AVR/chcore.h **** static inline void port_lock(void) {
+ 429:../../../os/common/ports/AVR/chcore.h **** 
+ 430:../../../os/common/ports/AVR/chcore.h ****   asm volatile ("cli" : : : "memory");
+ 102               		.loc 3 430 0
+ 103               	/* #APP */
+ 104               	 ;  430 "../../../os/common/ports/AVR/chcore.h" 1
+ 105 001e F894      		cli
+ 106               	 ;  0 "" 2
+ 107               	.LVL9:
+ 108               	/* #NOAPP */
+ 109               	.LBE92:
+ 110               	.LBE91:
+ 111               	.LBE90:
+ 112               	.LBB93:
+ 113               	.LBB94:
+ 114               	.LBB95:
+ 115               	.LBB96:
+ 300:../../../os/rt/include/chvt.h ****     chVTDoResetI(vtp);
+ 116               		.loc 2 300 0
+ 117 0020 8091 0000 		lds r24,led_vt
+ 118 0024 9091 0000 		lds r25,led_vt+1
+ 119 0028 892B      		or r24,r25
+ 120 002a 01F0      		breq .L8
+ 301:../../../os/rt/include/chvt.h ****   }
+ 121               		.loc 2 301 0
+ 122 002c 80E0      		ldi r24,lo8(led_vt)
+ 123 002e 90E0      		ldi r25,hi8(led_vt)
+ 124 0030 0E94 0000 		call chVTDoResetI
+ 125               	.LVL10:
+ 126               	.L8:
+ 127               	.LBE96:
+ 128               	.LBE95:
+ 129               		.loc 2 347 0
+ 130 0034 20E0      		ldi r18,0
+ 131 0036 30E0      		ldi r19,0
+ 132 0038 40E0      		ldi r20,lo8(gs(led_cb))
+ 133 003a 50E0      		ldi r21,hi8(gs(led_cb))
+ 134 003c 68E0      		ldi r22,lo8(8)
+ 135 003e 7DE3      		ldi r23,lo8(61)
+ 136 0040 80E0      		ldi r24,lo8(led_vt)
+ 137 0042 90E0      		ldi r25,hi8(led_vt)
+ 138 0044 0E94 0000 		call chVTDoSetI
+ 139               	.LVL11:
+ 140               	.LBE94:
+ 141               	.LBE93:
+ 142               	.LBB97:
+ 143               	.LBB98:
+ 144               	.LBB99:
+ 145               	.LBB100:
+ 431:../../../os/common/ports/AVR/chcore.h **** }
+ 432:../../../os/common/ports/AVR/chcore.h **** 
+ 433:../../../os/common/ports/AVR/chcore.h **** /**
+ 434:../../../os/common/ports/AVR/chcore.h ****  * @brief   Kernel-unlock action.
+ 435:../../../os/common/ports/AVR/chcore.h ****  * @details Usually this function just enables interrupts but may perform more
+ 436:../../../os/common/ports/AVR/chcore.h ****  *          actions.
+ 437:../../../os/common/ports/AVR/chcore.h ****  */
+ 438:../../../os/common/ports/AVR/chcore.h **** static inline void port_unlock(void) {
+ 439:../../../os/common/ports/AVR/chcore.h **** 
+ 440:../../../os/common/ports/AVR/chcore.h ****   asm volatile ("sei" : : : "memory");
+ 146               		.loc 3 440 0
+ 147               	/* #APP */
+ 148               	 ;  440 "../../../os/common/ports/AVR/chcore.h" 1
+ 149 0048 7894      		sei
+ 150               	 ;  0 "" 2
+ 151               	/* #NOAPP */
+ 152               	.LBE100:
+ 153               	.LBE99:
+ 154               	.LBE98:
+ 155               	.LBE97:
+ 156               	.LBE89:
+  41:main.c        ****  
+  42:main.c        ****     /* Starting blinker.*/
+  43:main.c        ****     chVTSet(&led_vt, TIME_MS2I(1000), led_cb, NULL);
+  44:main.c        ****     
+  45:main.c        ****     while(1){
+  46:main.c        ****         if(n>3){
+ 157               		.loc 1 46 0
+ 158 004a 8091 0000 		lds r24,n
+ 159 004e 8430      		cpi r24,lo8(4)
+ 160 0050 00F4      		brsh .L11
+ 161               	.L16:
+  47:main.c        ****             /* Stopping blinker.*/
+  48:main.c        ****             chVTReset(&led_vt);
+  49:main.c        ****             palClearPad(LED_PORT, LED_PIN);
+  50:main.c        ****             break;
+  51:main.c        ****         }
+  52:main.c        ****     chThdSleepMilliseconds(500);
+ 162               		.loc 1 52 0
+ 163 0052 84E8      		ldi r24,lo8(-124)
+ 164 0054 9EE1      		ldi r25,lo8(30)
+ 165 0056 0E94 0000 		call chThdSleep
+ 166               	.LVL12:
+  46:main.c        ****             /* Stopping blinker.*/
+ 167               		.loc 1 46 0
+ 168 005a 8091 0000 		lds r24,n
+ 169 005e 8430      		cpi r24,lo8(4)
+ 170 0060 00F0      		brlo .L16
+ 171               	.L11:
+ 172               	.LVL13:
+ 173               	.LBB101:
+ 174               	.LBB102:
+ 175               	.LBB103:
+ 176               	.LBB104:
+ 430:../../../os/common/ports/AVR/chcore.h **** }
+ 177               		.loc 3 430 0
+ 178               	/* #APP */
+ 179               	 ;  430 "../../../os/common/ports/AVR/chcore.h" 1
+ 180 0062 F894      		cli
+ 181               	 ;  0 "" 2
+ 182               	.LVL14:
+ 183               	/* #NOAPP */
+ 184               	.LBE104:
+ 185               	.LBE103:
+ 186               	.LBE102:
+ 187               	.LBB105:
+ 188               	.LBB106:
+ 300:../../../os/rt/include/chvt.h ****     chVTDoResetI(vtp);
+ 189               		.loc 2 300 0
+ 190 0064 8091 0000 		lds r24,led_vt
+ 191 0068 9091 0000 		lds r25,led_vt+1
+ 192 006c 892B      		or r24,r25
+ 193 006e 01F0      		breq .L10
+ 301:../../../os/rt/include/chvt.h ****   }
+ 194               		.loc 2 301 0
+ 195 0070 80E0      		ldi r24,lo8(led_vt)
+ 196 0072 90E0      		ldi r25,hi8(led_vt)
+ 197 0074 0E94 0000 		call chVTDoResetI
+ 198               	.LVL15:
+ 199               	.L10:
+ 200               	.LBE106:
+ 201               	.LBE105:
+ 202               	.LBB107:
+ 203               	.LBB108:
+ 204               	.LBB109:
+ 205               	.LBB110:
+ 206               		.loc 3 440 0
+ 207               	/* #APP */
+ 208               	 ;  440 "../../../os/common/ports/AVR/chcore.h" 1
+ 209 0078 7894      		sei
+ 210               	 ;  0 "" 2
+ 211               	.LVL16:
+ 212               	/* #NOAPP */
+ 213               	.LBE110:
+ 214               	.LBE109:
+ 215               	.LBE108:
+ 216               	.LBE107:
+ 217               	.LBE101:
+  49:main.c        ****             break;
+ 218               		.loc 1 49 0
+ 219 007a 5F98      		cbi 0xb,7
+  53:main.c        ****     
+  54:main.c        ****     }
+  55:main.c        **** 
+  56:main.c        ****     
+  57:main.c        ****  
+  58:main.c        **** }
+ 220               		.loc 1 58 0
+ 221 007c 80E0      		ldi r24,0
+ 222 007e 90E0      		ldi r25,0
+ 223 0080 0895      		ret
+ 224               		.cfi_endproc
+ 225               	.LFE242:
+ 227               		.section	.bss.led_vt,"aw",@nobits
+ 230               	led_vt:
+ 231 0000 0000 0000 		.zero	12
+ 231      0000 0000 
+ 231      0000 0000 
+ 232               	.global	n
+ 233               		.section	.bss.n,"aw",@nobits
+ 236               	n:
+ 237 0000 00        		.zero	1
+ 238               		.text
+ 239               	.Letext0:
+ 240               		.file 4 "/usr/lib/avr/include/stdint.h"
+ 241               		.file 5 "../../../os/common/ports/AVR/compilers/GCC/chtypes.h"
+ 242               		.file 6 "../../../os/rt/include/chearly.h"
+ 243               		.file 7 "../../../os/rt/include/chobjects.h"
+ 244               		.file 8 "../../../os/rt/include/chrfcu.h"
+ 245               		.file 9 "../../../os/rt/include/chdebug.h"
+ 246               		.file 10 "../../../os/rt/include/chtime.h"
+ 247               		.file 11 "../../../os/rt/include/chlists.h"
+ 248               		.file 12 "../../../os/rt/include/chsem.h"
+ 249               		.file 13 "../../../os/rt/include/chmtx.h"
+ 250               		.file 14 "../../../os/hal/ports/AVR/MEGA/LLD/GPIOv1/hal_pal_lld.h"
+ 251               		.file 15 "../../../os/rt/include/chsys.h"
+ 252               		.file 16 "../../../os/hal/include/hal.h"
+ 253               		.file 17 "../../../os/rt/include/chthreads.h"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 main.c
+     /tmp/cckxQyCJ.s:2      *ABS*:000000000000003e __SP_H__
+     /tmp/cckxQyCJ.s:3      *ABS*:000000000000003d __SP_L__
+     /tmp/cckxQyCJ.s:4      *ABS*:000000000000003f __SREG__
+     /tmp/cckxQyCJ.s:5      *ABS*:0000000000000000 __tmp_reg__
+     /tmp/cckxQyCJ.s:6      *ABS*:0000000000000001 __zero_reg__
+     /tmp/cckxQyCJ.s:12     .text.led_cb:0000000000000000 led_cb
+     /tmp/cckxQyCJ.s:236    .bss.n:0000000000000000 n
+     /tmp/cckxQyCJ.s:230    .bss.led_vt:0000000000000000 led_vt
+     /tmp/cckxQyCJ.s:69     .text.startup.main:0000000000000000 main
+
+UNDEFINED SYMBOLS
+chVTDoResetI
+chVTDoSetI
+halInit
+chSysInit
+_pal_lld_setgroupmode
+chVTObjectInit
+chThdSleep
+__do_clear_bss

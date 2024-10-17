@@ -1,0 +1,169 @@
+   1               		.file	"main.c"
+   2               	__SP_H__ = 0x3e
+   3               	__SP_L__ = 0x3d
+   4               	__SREG__ = 0x3f
+   5               	__tmp_reg__ = 0
+   6               	__zero_reg__ = 1
+   7               		.text
+   8               	.Ltext0:
+   9               		.cfi_sections	.debug_frame
+  10               		.section	.text.gpt_cb,"ax",@progbits
+  11               	.global	gpt_cb
+  13               	gpt_cb:
+  14               	.LFB241:
+  15               		.file 1 "main.c"
+   1:main.c        **** #include <avr/io.h>
+   2:main.c        **** #include "ch.h"
+   3:main.c        **** #include "hal.h"
+   4:main.c        **** 
+   5:main.c        **** #define LED_PORT IOPORT4
+   6:main.c        **** #define LED_PIN 7
+   7:main.c        **** #define GPT_FREQUENCIA 15625
+   8:main.c        **** #define LED_PERIODO 1
+   9:main.c        **** 
+  10:main.c        **** void gpt_cb(GPTDriver* gptd){
+  16               		.loc 1 10 0
+  17               		.cfi_startproc
+  18               	.LVL0:
+  19               	/* prologue: function */
+  20               	/* frame size = 0 */
+  21               	/* stack size = 0 */
+  22               	.L__stack_usage = 0
+  11:main.c        ****     (void) gptd;
+  12:main.c        ****     palTogglePad(LED_PORT, LED_PIN);
+  23               		.loc 1 12 0
+  24 0000 8BB1      		in r24,0xb
+  25               	.LVL1:
+  26 0002 8058      		subi r24,lo8(-(-128))
+  27 0004 8BB9      		out 0xb,r24
+  28 0006 0895      		ret
+  29               		.cfi_endproc
+  30               	.LFE241:
+  32               		.section	.rodata
+  33               	.LC0:
+  34 0000 09        		.byte	9
+  35 0001 3D        		.byte	61
+  36 0002 00        		.byte	0
+  37 0003 00        		.byte	0
+  38 0004 0000      		.word	gs(gpt_cb)
+  39               		.section	.text.startup.main,"ax",@progbits
+  40               	.global	main
+  42               	main:
+  43               	.LFB242:
+  13:main.c        **** }
+  14:main.c        ****         
+  15:main.c        **** int main(void){
+  44               		.loc 1 15 0
+  45               		.cfi_startproc
+  46 0000 CF93      		push r28
+  47               	.LCFI0:
+  48               		.cfi_def_cfa_offset 3
+  49               		.cfi_offset 28, -2
+  50 0002 DF93      		push r29
+  51               	.LCFI1:
+  52               		.cfi_def_cfa_offset 4
+  53               		.cfi_offset 29, -3
+  54 0004 00D0      		rcall .
+  55 0006 00D0      		rcall .
+  56 0008 00D0      		rcall .
+  57               	.LCFI2:
+  58               		.cfi_def_cfa_offset 10
+  59 000a CDB7      		in r28,__SP_L__
+  60 000c DEB7      		in r29,__SP_H__
+  61               	.LCFI3:
+  62               		.cfi_def_cfa_register 28
+  63               	/* prologue: function */
+  64               	/* frame size = 6 */
+  65               	/* stack size = 8 */
+  66               	.L__stack_usage = 8
+  16:main.c        ****     GPTConfig driver_config = {.frequency = GPT_FREQUENCIA, .callback = gpt_cb};
+  67               		.loc 1 16 0
+  68 000e 86E0      		ldi r24,lo8(6)
+  69 0010 E0E0      		ldi r30,lo8(.LC0)
+  70 0012 F0E0      		ldi r31,hi8(.LC0)
+  71 0014 DE01      		movw r26,r28
+  72 0016 1196      		adiw r26,1
+  73               		0:
+  74 0018 0190      		ld r0,Z+
+  75 001a 0D92      		st X+,r0
+  76 001c 8A95      		dec r24
+  77 001e 01F4      		brne 0b
+  17:main.c        ****     
+  18:main.c        ****     halInit();
+  78               		.loc 1 18 0
+  79 0020 0E94 0000 		call halInit
+  80               	.LVL2:
+  19:main.c        ****     chSysInit();
+  81               		.loc 1 19 0
+  82 0024 0E94 0000 		call chSysInit
+  83               	.LVL3:
+  20:main.c        ****     
+  21:main.c        ****     palSetPadMode(LED_PORT, LED_PIN, PAL_MODE_OUTPUT_PUSHPULL);
+  84               		.loc 1 21 0
+  85 0028 46E0      		ldi r20,lo8(6)
+  86 002a 60E8      		ldi r22,lo8(-128)
+  87 002c 89E2      		ldi r24,lo8(41)
+  88 002e 90E0      		ldi r25,0
+  89 0030 0E94 0000 		call _pal_lld_setgroupmode
+  90               	.LVL4:
+  22:main.c        ****     palClearPad(LED_PORT, LED_PIN);
+  91               		.loc 1 22 0
+  92 0034 5F98      		cbi 0xb,7
+  23:main.c        **** 
+  24:main.c        ****     gptStart(&GPTD1,&driver_config);
+  93               		.loc 1 24 0
+  94 0036 BE01      		movw r22,r28
+  95 0038 6F5F      		subi r22,-1
+  96 003a 7F4F      		sbci r23,-1
+  97 003c 80E0      		ldi r24,lo8(GPTD1)
+  98 003e 90E0      		ldi r25,hi8(GPTD1)
+  99 0040 0E94 0000 		call gptStart
+ 100               	.LVL5:
+  25:main.c        ****     gptStartContinuous(&GPTD1, LED_PERIODO);
+ 101               		.loc 1 25 0
+ 102 0044 61E0      		ldi r22,lo8(1)
+ 103 0046 70E0      		ldi r23,0
+ 104 0048 80E0      		ldi r24,lo8(GPTD1)
+ 105 004a 90E0      		ldi r25,hi8(GPTD1)
+ 106 004c 0E94 0000 		call gptStartContinuous
+ 107               	.LVL6:
+ 108               	.L3:
+ 109 0050 00C0      		rjmp .L3
+ 110               		.cfi_endproc
+ 111               	.LFE242:
+ 113               		.text
+ 114               	.Letext0:
+ 115               		.file 2 "/usr/lib/avr/include/stdint.h"
+ 116               		.file 3 "../../../os/common/ports/AVR/compilers/GCC/chtypes.h"
+ 117               		.file 4 "../../../os/rt/include/chearly.h"
+ 118               		.file 5 "../../../os/rt/include/chobjects.h"
+ 119               		.file 6 "../../../os/rt/include/chrfcu.h"
+ 120               		.file 7 "../../../os/rt/include/chdebug.h"
+ 121               		.file 8 "../../../os/rt/include/chtime.h"
+ 122               		.file 9 "../../../os/rt/include/chlists.h"
+ 123               		.file 10 "../../../os/common/ports/AVR/chcore.h"
+ 124               		.file 11 "../../../os/rt/include/chsem.h"
+ 125               		.file 12 "../../../os/rt/include/chmtx.h"
+ 126               		.file 13 "../../../os/hal/ports/AVR/MEGA/LLD/GPIOv1/hal_pal_lld.h"
+ 127               		.file 14 "../../../os/hal/include/hal_gpt.h"
+ 128               		.file 15 "../../../os/hal/ports/AVR/MEGA/LLD/TIMv1/hal_gpt_lld.h"
+ 129               		.file 16 "../../../os/hal/include/hal.h"
+ 130               		.file 17 "../../../os/rt/include/chsys.h"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 main.c
+     /tmp/ccfkNSTM.s:2      *ABS*:000000000000003e __SP_H__
+     /tmp/ccfkNSTM.s:3      *ABS*:000000000000003d __SP_L__
+     /tmp/ccfkNSTM.s:4      *ABS*:000000000000003f __SREG__
+     /tmp/ccfkNSTM.s:5      *ABS*:0000000000000000 __tmp_reg__
+     /tmp/ccfkNSTM.s:6      *ABS*:0000000000000001 __zero_reg__
+     /tmp/ccfkNSTM.s:13     .text.gpt_cb:0000000000000000 gpt_cb
+     /tmp/ccfkNSTM.s:42     .text.startup.main:0000000000000000 main
+
+UNDEFINED SYMBOLS
+halInit
+chSysInit
+_pal_lld_setgroupmode
+GPTD1
+gptStart
+gptStartContinuous
+__do_copy_data

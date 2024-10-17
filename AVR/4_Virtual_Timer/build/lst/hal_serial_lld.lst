@@ -1,0 +1,476 @@
+   1               		.file	"hal_serial_lld.c"
+   2               	__SP_H__ = 0x3e
+   3               	__SP_L__ = 0x3d
+   4               	__SREG__ = 0x3f
+   5               	__tmp_reg__ = 0
+   6               	__zero_reg__ = 1
+   7               		.text
+   8               	.Ltext0:
+   9               		.cfi_sections	.debug_frame
+  10               		.section	.text.sd_lld_init,"ax",@progbits
+  11               	.global	sd_lld_init
+  13               	sd_lld_init:
+  14               	.LFB242:
+  15               		.file 1 "../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c"
+   1:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** /*
+   2:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     ChibiOS - Copyright (C) 2006..2018 Giovanni Di Sirio
+   3:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+   4:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     Licensed under the Apache License, Version 2.0 (the "License");
+   5:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     you may not use this file except in compliance with the License.
+   6:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     You may obtain a copy of the License at
+   7:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+   8:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****         http://www.apache.org/licenses/LICENSE-2.0
+   9:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+  10:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     Unless required by applicable law or agreed to in writing, software
+  11:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     distributed under the License is distributed on an "AS IS" BASIS,
+  12:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  13:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     See the License for the specific language governing permissions and
+  14:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     limitations under the License.
+  15:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** */
+  16:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+  17:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** /**
+  18:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  * @file    USARTv1/hal_serial_lld.c
+  19:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  * @brief   AVR/MEGA SERIAL subsystem low level driver code.
+  20:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  *
+  21:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  * @addtogroup SERIAL
+  22:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  * @{
+  23:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  */
+  24:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+  25:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** #include "hal.h"
+  26:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+  27:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** #if HAL_USE_SERIAL || defined(__DOXYGEN__)
+  28:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+  29:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** /*==========================================================================*/
+  30:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** /* Driver exported variables.                                               */
+  31:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** /*==========================================================================*/
+  32:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+  33:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** /**
+  34:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  * @brief   USART0 serial driver identifier.
+  35:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  * @note    The name does not follow the convention used in the other ports
+  36:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  *          (COMn) because a name conflict with the AVR headers.
+  37:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  */
+  38:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** #if AVR_SERIAL_USE_USART0 || defined(__DOXYGEN__)
+  39:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** SerialDriver SD1;
+  40:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+  41:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   /* USARTs are not consistently named across the AVR range. */
+  42:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   #ifdef USART0_RX_vect
+  43:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     #define AVR_SD1_RX_VECT USART0_RX_vect
+  44:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     #define AVR_SD1_TX_VECT USART0_UDRE_vect
+  45:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   #elif defined(USART_RX_vect)
+  46:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     #define AVR_SD1_RX_VECT USART_RX_vect
+  47:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     #define AVR_SD1_TX_VECT USART_UDRE_vect
+  48:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   #elif defined(USART0_RXC_vect)
+  49:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     #define AVR_SD1_RX_VECT USART0_RXC_vect
+  50:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     #define AVR_SD1_TX_VECT USART0_UDRE_vect
+  51:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   #else
+  52:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     #error "Cannot find USART to use for SD1"
+  53:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   #endif
+  54:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** #endif /* AVR_SERIAL_USE_USART0 */
+  55:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+  56:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** /**
+  57:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  * @brief   USART1 serial driver identifier.
+  58:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  * @note    The name does not follow the convention used in the other ports
+  59:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  *          (COMn) because a name conflict with the AVR headers.
+  60:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  */
+  61:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** #if AVR_SERIAL_USE_USART1 || defined(__DOXYGEN__)
+  62:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** SerialDriver SD2;
+  63:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+  64:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   /* Check if USART1 exists for this MCU. */
+  65:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   #ifdef USART1_RX_vect
+  66:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     #define AVR_SD2_RX_VECT USART1_RX_vect
+  67:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     #define AVR_SD2_TX_VECT USART1_UDRE_vect
+  68:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   #elif defined (USART1_RXC_vect)
+  69:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     #define AVR_SD2_RX_VECT USART1_RXC_vect
+  70:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     #define AVR_SD2_TX_VECT USART1_UDRE_vect
+  71:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   #else
+  72:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     #error "Cannot find USART to use for SD2"
+  73:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   #endif
+  74:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** #endif /* AVR_SERIAL_USE_USART1 */
+  75:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+  76:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** /*==========================================================================*/
+  77:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** /* Driver local variables and types.                                        */
+  78:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** /*==========================================================================*/
+  79:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+  80:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** /**
+  81:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  * @brief   Driver default configuration.
+  82:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  */
+  83:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** static const SerialConfig default_config = {
+  84:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   UBRR2x_F(SERIAL_DEFAULT_BITRATE),
+  85:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   USART_CHAR_SIZE_8
+  86:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** };
+  87:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+  88:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** /*==========================================================================*/
+  89:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** /* Driver local functions.                                                  */
+  90:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** /*==========================================================================*/
+  91:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+  92:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** static void set_error(uint8_t sra, SerialDriver *sdp) {
+  93:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   eventflags_t sts = 0;
+  94:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   uint8_t dor = 0;
+  95:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   uint8_t upe = 0;
+  96:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   uint8_t fe = 0;
+  97:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+  98:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** #if AVR_SERIAL_USE_USART0
+  99:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   if (&SD1 == sdp) {
+ 100:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     dor = (1 << DOR0);
+ 101:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     upe = (1 << UPE0);
+ 102:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     fe = (1 << FE0);
+ 103:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   }
+ 104:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** #endif
+ 105:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+ 106:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** #if AVR_SERIAL_USE_USART1
+ 107:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   if (&SD2 == sdp) {
+ 108:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     dor = (1 << DOR1);
+ 109:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     upe = (1 << UPE1);
+ 110:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     fe = (1 << FE1);
+ 111:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   }
+ 112:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** #endif
+ 113:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+ 114:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   if (sra & dor)
+ 115:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     sts |= SD_OVERRUN_ERROR;
+ 116:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   if (sra & upe)
+ 117:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     sts |= SD_PARITY_ERROR;
+ 118:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   if (sra & fe)
+ 119:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     sts |= SD_FRAMING_ERROR;
+ 120:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   osalSysLockFromISR();
+ 121:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   chnAddFlagsI(sdp, sts);
+ 122:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   osalSysUnlockFromISR();
+ 123:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** }
+ 124:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+ 125:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** #if AVR_SERIAL_USE_USART0 || defined(__DOXYGEN__)
+ 126:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** static void notify1(io_queue_t *qp) {
+ 127:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+ 128:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   (void)qp;
+ 129:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   UCSR0B |= (1 << UDRIE0);
+ 130:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** }
+ 131:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+ 132:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** /**
+ 133:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  * @brief   USART0 initialization.
+ 134:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  *
+ 135:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  * @param[in] config    the architecture-dependent serial driver configuration
+ 136:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  */
+ 137:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** static void usart0_init(const SerialConfig *config) {
+ 138:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+ 139:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   uint8_t ucsr0c;
+ 140:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+ 141:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   UBRR0L = config->sc_brr;
+ 142:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   UBRR0H = (config->sc_brr >> 8) & 0x0f;
+ 143:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   UCSR0A = (1 << U2X0);
+ 144:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   UCSR0B = (1 << RXEN0) | (1 << TXEN0) | (1 << RXCIE0);
+ 145:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   switch (config->sc_bits_per_char) {
+ 146:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   case USART_CHAR_SIZE_5:
+ 147:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     ucsr0c = 0;
+ 148:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     break;
+ 149:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   case USART_CHAR_SIZE_6:
+ 150:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     ucsr0c = (1 << UCSZ00);
+ 151:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     break;
+ 152:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   case USART_CHAR_SIZE_7:
+ 153:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     ucsr0c = (1 << UCSZ01);
+ 154:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     break;
+ 155:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   case USART_CHAR_SIZE_9:
+ 156:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     UCSR0B |= (1 << UCSZ02);
+ 157:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     ucsr0c = (1 << UCSZ00) | (1 << UCSZ01);
+ 158:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     break;
+ 159:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   case USART_CHAR_SIZE_8:
+ 160:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   default:
+ 161:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     ucsr0c = (1 << UCSZ00) | (1 << UCSZ01);
+ 162:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   }
+ 163:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+ 164:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** #if defined(__AVR_ATmega162__)
+ 165:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   UCSR0C = (1 << URSEL0) | ucsr0c;
+ 166:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** #else
+ 167:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   UCSR0C = ucsr0c;
+ 168:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** #endif
+ 169:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** }
+ 170:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+ 171:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** /**
+ 172:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  * @brief   USART0 de-initialization.
+ 173:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  */
+ 174:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** static void usart0_deinit(void) {
+ 175:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+ 176:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   UCSR0A = 0;
+ 177:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   UCSR0B = 0;
+ 178:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** #if defined(__AVR_ATmega162__)
+ 179:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   UCSR0C = (1 << URSEL0);
+ 180:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** #else
+ 181:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   UCSR0C = 0;
+ 182:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** #endif
+ 183:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** }
+ 184:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** #endif
+ 185:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+ 186:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** #if AVR_SERIAL_USE_USART1 || defined(__DOXYGEN__)
+ 187:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** static void notify2(io_queue_t *qp) {
+ 188:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+ 189:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   (void)qp;
+ 190:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   UCSR1B |= (1 << UDRIE1);
+ 191:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** }
+ 192:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+ 193:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** /**
+ 194:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  * @brief   USART1 initialization.
+ 195:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  *
+ 196:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  * @param[in] config    the architecture-dependent serial driver configuration
+ 197:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  */
+ 198:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** static void usart1_init(const SerialConfig *config) {
+ 199:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+ 200:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   uint8_t ucsr1c;
+ 201:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+ 202:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   UBRR1L = config->sc_brr;
+ 203:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   UBRR1H = (config->sc_brr >> 8) & 0x0f;
+ 204:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   UCSR1A = (1 << U2X0);
+ 205:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   UCSR1B = (1 << RXEN1) | (1 << TXEN1) | (1 << RXCIE1);
+ 206:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   switch (config->sc_bits_per_char) {
+ 207:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   case USART_CHAR_SIZE_5:
+ 208:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   ucsr1c = 0;
+ 209:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     break;
+ 210:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   case USART_CHAR_SIZE_6:
+ 211:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     ucsr1c = (1 << UCSZ10);
+ 212:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     break;
+ 213:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   case USART_CHAR_SIZE_7:
+ 214:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     ucsr1c = (1 << UCSZ11);
+ 215:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     break;
+ 216:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   case USART_CHAR_SIZE_9:
+ 217:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     UCSR1B |= (1 << UCSZ12);
+ 218:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     ucsr1c = (1 << UCSZ10) | (1 << UCSZ11);
+ 219:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     break;
+ 220:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   case USART_CHAR_SIZE_8:
+ 221:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   default:
+ 222:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     ucsr1c = (1 << UCSZ10) | (1 << UCSZ11);
+ 223:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   }
+ 224:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+ 225:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** #if defined(__AVR_ATmega162__)
+ 226:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   UCSR1C = (1 << URSEL1) | ucsr1c;
+ 227:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** #else
+ 228:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   UCSR1C = ucsr1c;
+ 229:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** #endif
+ 230:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** }
+ 231:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+ 232:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** /**
+ 233:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  * @brief   USART1 de-initialization.
+ 234:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  */
+ 235:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** static void usart1_deinit(void) {
+ 236:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+ 237:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   UCSR1A = 0;
+ 238:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   UCSR1B = 0;
+ 239:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** #if defined(__AVR_ATmega162__)
+ 240:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   UCSR1C = (1 << URSEL1);
+ 241:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** #else
+ 242:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   UCSR1C = 0;
+ 243:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** #endif
+ 244:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** }
+ 245:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** #endif
+ 246:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+ 247:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** /*==========================================================================*/
+ 248:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** /* Driver interrupt handlers.                                               */
+ 249:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** /*==========================================================================*/
+ 250:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+ 251:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** #if AVR_SERIAL_USE_USART0 || defined(__DOXYGEN__)
+ 252:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** /**
+ 253:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  * @brief   USART0 RX interrupt handler.
+ 254:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  *
+ 255:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  * @isr
+ 256:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  */
+ 257:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** OSAL_IRQ_HANDLER(AVR_SD1_RX_VECT) {
+ 258:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   uint8_t sra;
+ 259:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+ 260:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   OSAL_IRQ_PROLOGUE();
+ 261:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+ 262:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   sra = UCSR0A;
+ 263:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   if (sra & ((1 << DOR0) | (1 << UPE0) | (1 << FE0)))
+ 264:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     set_error(sra, &SD1);
+ 265:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   osalSysLockFromISR();
+ 266:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   sdIncomingDataI(&SD1, UDR0);
+ 267:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   osalSysUnlockFromISR();
+ 268:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+ 269:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   OSAL_IRQ_EPILOGUE();
+ 270:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** }
+ 271:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+ 272:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** /**
+ 273:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  * @brief   USART0 TX interrupt handler.
+ 274:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  *
+ 275:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  * @isr
+ 276:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  */
+ 277:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** OSAL_IRQ_HANDLER(AVR_SD1_TX_VECT) {
+ 278:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   msg_t b;
+ 279:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+ 280:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   OSAL_IRQ_PROLOGUE();
+ 281:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+ 282:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   osalSysLockFromISR();
+ 283:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   b = sdRequestDataI(&SD1);
+ 284:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   osalSysUnlockFromISR();
+ 285:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   if (b < MSG_OK)
+ 286:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     UCSR0B &= ~(1 << UDRIE0);
+ 287:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   else
+ 288:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     UDR0 = b;
+ 289:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+ 290:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   OSAL_IRQ_EPILOGUE();
+ 291:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** }
+ 292:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** #endif /* AVR_SERIAL_USE_USART0 */
+ 293:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+ 294:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** #if AVR_SERIAL_USE_USART1 || defined(__DOXYGEN__)
+ 295:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** /**
+ 296:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  * @brief   USART1 RX interrupt handler.
+ 297:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  *
+ 298:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  * @isr
+ 299:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  */
+ 300:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** OSAL_IRQ_HANDLER(AVR_SD2_RX_VECT) {
+ 301:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   uint8_t sra;
+ 302:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+ 303:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   OSAL_IRQ_PROLOGUE();
+ 304:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+ 305:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   sra = UCSR1A;
+ 306:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   if (sra & ((1 << DOR1) | (1 << UPE1) | (1 << FE1)))
+ 307:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     set_error(sra, &SD2);
+ 308:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   osalSysLockFromISR();
+ 309:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   sdIncomingDataI(&SD2, UDR1);
+ 310:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   osalSysUnlockFromISR();
+ 311:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+ 312:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   OSAL_IRQ_EPILOGUE();
+ 313:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** }
+ 314:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+ 315:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** /**
+ 316:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  * @brief   USART1 TX interrupt handler.
+ 317:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  *
+ 318:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  * @isr
+ 319:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  */
+ 320:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** OSAL_IRQ_HANDLER(AVR_SD2_TX_VECT) {
+ 321:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   msg_t b;
+ 322:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+ 323:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   OSAL_IRQ_PROLOGUE();
+ 324:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+ 325:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   osalSysLockFromISR();
+ 326:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   b = sdRequestDataI(&SD2);
+ 327:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   osalSysUnlockFromISR();
+ 328:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   if (b < MSG_OK)
+ 329:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     UCSR1B &= ~(1 << UDRIE1);
+ 330:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   else
+ 331:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     UDR1 = b;
+ 332:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+ 333:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   OSAL_IRQ_EPILOGUE();
+ 334:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** }
+ 335:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** #endif /* AVR_SERIAL_USE_USART1 */
+ 336:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+ 337:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** /*==========================================================================*/
+ 338:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** /* Driver exported functions.                                               */
+ 339:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** /*==========================================================================*/
+ 340:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+ 341:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** /**
+ 342:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  * @brief   Low level serial driver initialization.
+ 343:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  *
+ 344:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  * @notapi
+ 345:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  */
+ 346:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** void sd_lld_init(void) {
+  16               		.loc 1 346 0
+  17               		.cfi_startproc
+  18               	/* prologue: function */
+  19               	/* frame size = 0 */
+  20               	/* stack size = 0 */
+  21               	.L__stack_usage = 0
+  22 0000 0895      		ret
+  23               		.cfi_endproc
+  24               	.LFE242:
+  26               		.section	.text.sd_lld_start,"ax",@progbits
+  27               	.global	sd_lld_start
+  29               	sd_lld_start:
+  30               	.LFB243:
+ 347:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+ 348:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** #if AVR_SERIAL_USE_USART0
+ 349:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   sdObjectInit(&SD1, NULL, notify1);
+ 350:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** #endif
+ 351:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** #if AVR_SERIAL_USE_USART1
+ 352:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   sdObjectInit(&SD2, NULL, notify2);
+ 353:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** #endif
+ 354:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** }
+ 355:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+ 356:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** /**
+ 357:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  * @brief   Low level serial driver configuration and (re)start.
+ 358:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  *
+ 359:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  * @param[in] sdp       pointer to a @p SerialDriver object
+ 360:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  * @param[in] config    the architecture-dependent serial driver configuration.
+ 361:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  *                      If this parameter is set to @p NULL then a default
+ 362:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  *                      configuration is used.
+ 363:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  *
+ 364:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  * @notapi
+ 365:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  */
+ 366:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** void sd_lld_start(SerialDriver *sdp, const SerialConfig *config) {
+  31               		.loc 1 366 0
+  32               		.cfi_startproc
+  33               	.LVL0:
+  34               	/* prologue: function */
+  35               	/* frame size = 0 */
+  36               	/* stack size = 0 */
+  37               	.L__stack_usage = 0
+  38 0000 0895      		ret
+  39               		.cfi_endproc
+  40               	.LFE243:
+  42               		.section	.text.sd_lld_stop,"ax",@progbits
+  43               	.global	sd_lld_stop
+  45               	sd_lld_stop:
+  46               	.LFB244:
+ 367:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+ 368:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   if (config == NULL)
+ 369:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     config = &default_config;
+ 370:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+ 371:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** #if AVR_SERIAL_USE_USART0
+ 372:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   if (&SD1 == sdp) {
+ 373:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     usart0_init(config);
+ 374:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     return;
+ 375:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   }
+ 376:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** #endif
+ 377:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** #if AVR_SERIAL_USE_USART1
+ 378:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   if (&SD2 == sdp) {
+ 379:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     usart1_init(config);
+ 380:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****     return;
+ 381:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****   }
+ 382:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** #endif
+ 383:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** }
+ 384:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** 
+ 385:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** /**
+ 386:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  * @brief   Low level serial driver stop.
+ 387:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  * @details De-initializes the USART, stops the associated clock, resets the
+ 388:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  *          interrupt vector.
+ 389:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  *
+ 390:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  * @param[in] sdp       pointer to a @p SerialDriver object
+ 391:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  *
+ 392:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  * @notapi
+ 393:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c ****  */
+ 394:../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.c **** void sd_lld_stop(SerialDriver *sdp) {
+  47               		.loc 1 394 0
+  48               		.cfi_startproc
+  49               	.LVL1:
+  50               	/* prologue: function */
+  51               	/* frame size = 0 */
+  52               	/* stack size = 0 */
+  53               	.L__stack_usage = 0
+  54 0000 0895      		ret
+  55               		.cfi_endproc
+  56               	.LFE244:
+  58               		.text
+  59               	.Letext0:
+  60               		.file 2 "/usr/lib/gcc/avr/5.4.0/include/stddef.h"
+  61               		.file 3 "/usr/lib/avr/include/stdint.h"
+  62               		.file 4 "../../../os/common/ports/AVR/compilers/GCC/chtypes.h"
+  63               		.file 5 "../../../os/rt/include/chearly.h"
+  64               		.file 6 "../../../os/rt/include/chobjects.h"
+  65               		.file 7 "../../../os/rt/include/chrfcu.h"
+  66               		.file 8 "../../../os/rt/include/chdebug.h"
+  67               		.file 9 "../../../os/rt/include/chtime.h"
+  68               		.file 10 "../../../os/rt/include/chlists.h"
+  69               		.file 11 "../../../os/common/ports/AVR/chcore.h"
+  70               		.file 12 "../../../os/rt/include/chsem.h"
+  71               		.file 13 "../../../os/rt/include/chmtx.h"
+  72               		.file 14 "../../../os/rt/include/chevents.h"
+  73               		.file 15 "../../../os/hal/include/hal_queues.h"
+  74               		.file 16 "../../../os/hal/include/hal_serial.h"
+  75               		.file 17 "../../../os/hal/ports/AVR/MEGA/LLD/USARTv1/hal_serial_lld.h"
+  76               		.file 18 "../../../os/rt/include/chsys.h"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 hal_serial_lld.c
+     /tmp/ccMxvFa4.s:2      *ABS*:000000000000003e __SP_H__
+     /tmp/ccMxvFa4.s:3      *ABS*:000000000000003d __SP_L__
+     /tmp/ccMxvFa4.s:4      *ABS*:000000000000003f __SREG__
+     /tmp/ccMxvFa4.s:5      *ABS*:0000000000000000 __tmp_reg__
+     /tmp/ccMxvFa4.s:6      *ABS*:0000000000000001 __zero_reg__
+     /tmp/ccMxvFa4.s:13     .text.sd_lld_init:0000000000000000 sd_lld_init
+     /tmp/ccMxvFa4.s:29     .text.sd_lld_start:0000000000000000 sd_lld_start
+     /tmp/ccMxvFa4.s:45     .text.sd_lld_stop:0000000000000000 sd_lld_stop
+
+NO UNDEFINED SYMBOLS
