@@ -1,0 +1,275 @@
+   1               		.file	"main.c"
+   2               	__SP_H__ = 0x3e
+   3               	__SP_L__ = 0x3d
+   4               	__SREG__ = 0x3f
+   5               	__tmp_reg__ = 0
+   6               	__zero_reg__ = 1
+   7               		.text
+   8               	.Ltext0:
+   9               		.cfi_sections	.debug_frame
+  10               		.section	.text.config_interruption,"ax",@progbits
+  11               	.global	config_interruption
+  13               	config_interruption:
+  14               	.LFB241:
+  15               		.file 1 "main.c"
+   1:main.c        **** 
+   2:main.c        **** #include <avr/io.h>
+   3:main.c        **** #include <avr/cpufunc.h>
+   4:main.c        **** #include <avr/interrupt.h>
+   5:main.c        **** 
+   6:main.c        **** #include <stdint.h>
+   7:main.c        **** 
+   8:main.c        **** #include "ch.h"
+   9:main.c        **** #include "hal.h"
+  10:main.c        **** 
+  11:main.c        **** #define LED_PORT IOPORT4
+  12:main.c        **** #define LED_PIN 7
+  13:main.c        **** 
+  14:main.c        **** uint32_t n = 0;
+  15:main.c        **** 
+  16:main.c        **** void config_interruption(){
+  16               		.loc 1 16 0
+  17               		.cfi_startproc
+  18               	/* prologue: function */
+  19               	/* frame size = 0 */
+  20               	/* stack size = 0 */
+  21               	.L__stack_usage = 0
+  17:main.c        ****     EICRA |=  (1 << ISC01) | (1 << ISC00); // Ativando a interrupção INT0 para borda de subida.  
+  22               		.loc 1 17 0
+  23 0000 E9E6      		ldi r30,lo8(105)
+  24 0002 F0E0      		ldi r31,0
+  25 0004 8081      		ld r24,Z
+  26 0006 8360      		ori r24,lo8(3)
+  27 0008 8083      		st Z,r24
+  18:main.c        ****     EIMSK |= (1 << INT0);                  // Habilitando a interrupção INT0
+  28               		.loc 1 18 0
+  29 000a E89A      		sbi 0x1d,0
+  19:main.c        ****     sei();                                 // HAbilitaa interrupção de maniera geral
+  30               		.loc 1 19 0
+  31               	/* #APP */
+  32               	 ;  19 "main.c" 1
+  33 000c 7894      		sei
+  34               	 ;  0 "" 2
+  35               	/* #NOAPP */
+  36 000e 0895      		ret
+  37               		.cfi_endproc
+  38               	.LFE241:
+  40               		.section	.text.__vector_1,"ax",@progbits
+  41               	.global	__vector_1
+  43               	__vector_1:
+  44               	.LFB242:
+  20:main.c        **** 
+  21:main.c        **** }
+  22:main.c        **** 
+  23:main.c        **** 
+  24:main.c        **** ISR(INT0_vect) { 
+  45               		.loc 1 24 0
+  46               		.cfi_startproc
+  47 0000 1F92      		push r1
+  48               	.LCFI0:
+  49               		.cfi_def_cfa_offset 3
+  50               		.cfi_offset 1, -2
+  51 0002 0F92      		push r0
+  52               	.LCFI1:
+  53               		.cfi_def_cfa_offset 4
+  54               		.cfi_offset 0, -3
+  55 0004 0FB6      		in r0,__SREG__
+  56 0006 0F92      		push r0
+  57 0008 1124      		clr __zero_reg__
+  58 000a 8F93      		push r24
+  59               	.LCFI2:
+  60               		.cfi_def_cfa_offset 5
+  61               		.cfi_offset 24, -4
+  62               	/* prologue: Signal */
+  63               	/* frame size = 0 */
+  64               	/* stack size = 4 */
+  65               	.L__stack_usage = 4
+  25:main.c        **** 
+  26:main.c        ****     if (EICRA & (1 << ISC00)) {             // Se configurado para borda de subida
+  66               		.loc 1 26 0
+  67 000c 8091 6900 		lds r24,105
+  27:main.c        ****         EIMSK &= ~(1 << INT0);              // Desabilita a interrupção
+  68               		.loc 1 27 0
+  69 0010 E898      		cbi 0x1d,0
+  26:main.c        ****         EIMSK &= ~(1 << INT0);              // Desabilita a interrupção
+  70               		.loc 1 26 0
+  71 0012 80FF      		sbrs r24,0
+  72 0014 00C0      		rjmp .L3
+  28:main.c        ****         palWritePad(LED_PORT, LED_PIN, 1);  // LED ON
+  73               		.loc 1 28 0
+  74 0016 5F9A      		sbi 0xb,7
+  29:main.c        ****         while(n<5000){n++;}n=0;
+  75               		.loc 1 29 0
+  76 0018 1092 0000 		sts n,__zero_reg__
+  77 001c 1092 0000 		sts n+1,__zero_reg__
+  78 0020 1092 0000 		sts n+2,__zero_reg__
+  79 0024 1092 0000 		sts n+3,__zero_reg__
+  30:main.c        ****         EICRA &= ~(1 << ISC00);             // Configura para borda de descida
+  80               		.loc 1 30 0
+  81 0028 8091 6900 		lds r24,105
+  82 002c 8E7F      		andi r24,lo8(-2)
+  83 002e 8093 6900 		sts 105,r24
+  31:main.c        ****         EIMSK |= (1 << INT0);               // Habilita a interrupção
+  84               		.loc 1 31 0
+  85 0032 E89A      		sbi 0x1d,0
+  86               	/* epilogue start */
+  32:main.c        ****     } else {
+  33:main.c        ****         EIMSK &= ~(1 << INT0);              // Desabilita a interrupção
+  34:main.c        ****         palWritePad(LED_PORT, LED_PIN, 0);  // LED OFF
+  35:main.c        ****         while(n<5000){n++;}n=0;        
+  36:main.c        ****         EICRA |= (1 << ISC00);              // Configura para borda de subida
+  37:main.c        ****         EIMSK |= (1 << INT0);               // Habilita a interrupção       
+  38:main.c        ****     }
+  39:main.c        ****   
+  40:main.c        ****      
+  41:main.c        **** }
+  87               		.loc 1 41 0
+  88 0034 8F91      		pop r24
+  89 0036 0F90      		pop r0
+  90 0038 0FBE      		out __SREG__,r0
+  91 003a 0F90      		pop r0
+  92 003c 1F90      		pop r1
+  93 003e 1895      		reti
+  94               	.L3:
+  34:main.c        ****         while(n<5000){n++;}n=0;        
+  95               		.loc 1 34 0
+  96 0040 5F98      		cbi 0xb,7
+  35:main.c        ****         EICRA |= (1 << ISC00);              // Configura para borda de subida
+  97               		.loc 1 35 0
+  98 0042 1092 0000 		sts n,__zero_reg__
+  99 0046 1092 0000 		sts n+1,__zero_reg__
+ 100 004a 1092 0000 		sts n+2,__zero_reg__
+ 101 004e 1092 0000 		sts n+3,__zero_reg__
+  36:main.c        ****         EIMSK |= (1 << INT0);               // Habilita a interrupção       
+ 102               		.loc 1 36 0
+ 103 0052 8091 6900 		lds r24,105
+ 104 0056 8160      		ori r24,lo8(1)
+ 105 0058 8093 6900 		sts 105,r24
+  37:main.c        ****     }
+ 106               		.loc 1 37 0
+ 107 005c E89A      		sbi 0x1d,0
+ 108               	/* epilogue start */
+ 109               		.loc 1 41 0
+ 110 005e 8F91      		pop r24
+ 111 0060 0F90      		pop r0
+ 112 0062 0FBE      		out __SREG__,r0
+ 113 0064 0F90      		pop r0
+ 114 0066 1F90      		pop r1
+ 115 0068 1895      		reti
+ 116               		.cfi_endproc
+ 117               	.LFE242:
+ 119               		.section	.text.startup.main,"ax",@progbits
+ 120               	.global	main
+ 122               	main:
+ 123               	.LFB243:
+  42:main.c        **** 
+  43:main.c        **** /*
+  44:main.c        ****  * Application main function.
+  45:main.c        ****  */
+  46:main.c        **** int main(void) {
+ 124               		.loc 1 46 0
+ 125               		.cfi_startproc
+ 126               	/* prologue: function */
+ 127               	/* frame size = 0 */
+ 128               	/* stack size = 0 */
+ 129               	.L__stack_usage = 0
+  47:main.c        **** 
+  48:main.c        ****     halInit();
+ 130               		.loc 1 48 0
+ 131 0000 0E94 0000 		call halInit
+ 132               	.LVL0:
+  49:main.c        ****     chSysInit();
+ 133               		.loc 1 49 0
+ 134 0004 0E94 0000 		call chSysInit
+ 135               	.LVL1:
+ 136               	.LBB4:
+ 137               	.LBB5:
+  17:main.c        ****     EIMSK |= (1 << INT0);                  // Habilitando a interrupção INT0
+ 138               		.loc 1 17 0
+ 139 0008 8091 6900 		lds r24,105
+ 140 000c 8360      		ori r24,lo8(3)
+ 141 000e 8093 6900 		sts 105,r24
+  18:main.c        ****     sei();                                 // HAbilitaa interrupção de maniera geral
+ 142               		.loc 1 18 0
+ 143 0012 E89A      		sbi 0x1d,0
+  19:main.c        **** 
+ 144               		.loc 1 19 0
+ 145               	/* #APP */
+ 146               	 ;  19 "main.c" 1
+ 147 0014 7894      		sei
+ 148               	 ;  0 "" 2
+ 149               	/* #NOAPP */
+ 150               	.LBE5:
+ 151               	.LBE4:
+  50:main.c        ****     config_interruption();
+  51:main.c        ****     palSetPadMode(LED_PORT, 2, PAL_MODE_INPUT_PULLUP);
+ 152               		.loc 1 51 0
+ 153 0016 43E0      		ldi r20,lo8(3)
+ 154 0018 64E0      		ldi r22,lo8(4)
+ 155 001a 89E2      		ldi r24,lo8(41)
+ 156 001c 90E0      		ldi r25,0
+ 157 001e 0E94 0000 		call _pal_lld_setgroupmode
+ 158               	.LVL2:
+  52:main.c        ****     palSetPadMode(LED_PORT, LED_PIN, PAL_MODE_OUTPUT_PUSHPULL);
+ 159               		.loc 1 52 0
+ 160 0022 46E0      		ldi r20,lo8(6)
+ 161 0024 60E8      		ldi r22,lo8(-128)
+ 162 0026 89E2      		ldi r24,lo8(41)
+ 163 0028 90E0      		ldi r25,0
+ 164 002a 0E94 0000 		call _pal_lld_setgroupmode
+ 165               	.LVL3:
+  53:main.c        ****     palClearPad(LED_PORT, LED_PIN); 
+ 166               		.loc 1 53 0
+ 167 002e 5F98      		cbi 0xb,7
+ 168               	.L7:
+  54:main.c        ****     
+  55:main.c        **** 
+  56:main.c        ****     while(1){
+  57:main.c        ****         chThdSleepMilliseconds(500);
+ 169               		.loc 1 57 0 discriminator 1
+ 170 0030 84E8      		ldi r24,lo8(-124)
+ 171 0032 9EE1      		ldi r25,lo8(30)
+ 172 0034 0E94 0000 		call chThdSleep
+ 173               	.LVL4:
+ 174 0038 00C0      		rjmp .L7
+ 175               		.cfi_endproc
+ 176               	.LFE243:
+ 178               	.global	n
+ 179               		.section	.bss.n,"aw",@nobits
+ 182               	n:
+ 183 0000 0000 0000 		.zero	4
+ 184               		.text
+ 185               	.Letext0:
+ 186               		.file 2 "/usr/lib/avr/include/stdint.h"
+ 187               		.file 3 "../../../os/common/ports/AVR/compilers/GCC/chtypes.h"
+ 188               		.file 4 "../../../os/rt/include/chearly.h"
+ 189               		.file 5 "../../../os/rt/include/chobjects.h"
+ 190               		.file 6 "../../../os/rt/include/chrfcu.h"
+ 191               		.file 7 "../../../os/rt/include/chdebug.h"
+ 192               		.file 8 "../../../os/rt/include/chtime.h"
+ 193               		.file 9 "../../../os/rt/include/chlists.h"
+ 194               		.file 10 "../../../os/common/ports/AVR/chcore.h"
+ 195               		.file 11 "../../../os/rt/include/chsem.h"
+ 196               		.file 12 "../../../os/rt/include/chmtx.h"
+ 197               		.file 13 "../../../os/hal/ports/AVR/MEGA/LLD/GPIOv1/hal_pal_lld.h"
+ 198               		.file 14 "../../../os/rt/include/chsys.h"
+ 199               		.file 15 "../../../os/hal/include/hal.h"
+ 200               		.file 16 "../../../os/rt/include/chthreads.h"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 main.c
+     /tmp/ccypOY2S.s:2      *ABS*:000000000000003e __SP_H__
+     /tmp/ccypOY2S.s:3      *ABS*:000000000000003d __SP_L__
+     /tmp/ccypOY2S.s:4      *ABS*:000000000000003f __SREG__
+     /tmp/ccypOY2S.s:5      *ABS*:0000000000000000 __tmp_reg__
+     /tmp/ccypOY2S.s:6      *ABS*:0000000000000001 __zero_reg__
+     /tmp/ccypOY2S.s:13     .text.config_interruption:0000000000000000 config_interruption
+     /tmp/ccypOY2S.s:43     .text.__vector_1:0000000000000000 __vector_1
+     /tmp/ccypOY2S.s:182    .bss.n:0000000000000000 n
+     /tmp/ccypOY2S.s:122    .text.startup.main:0000000000000000 main
+
+UNDEFINED SYMBOLS
+halInit
+chSysInit
+_pal_lld_setgroupmode
+chThdSleep
+__do_clear_bss

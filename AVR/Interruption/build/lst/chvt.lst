@@ -1,0 +1,2362 @@
+   1               		.file	"chvt.c"
+   2               	__SP_H__ = 0x3e
+   3               	__SP_L__ = 0x3d
+   4               	__SREG__ = 0x3f
+   5               	__tmp_reg__ = 0
+   6               	__zero_reg__ = 1
+   7               		.text
+   8               	.Ltext0:
+   9               		.cfi_sections	.debug_frame
+  10               		.section	.text.chVTObjectInit,"ax",@progbits
+  11               	.global	chVTObjectInit
+  13               	chVTObjectInit:
+  14               	.LFB194:
+  15               		.file 1 "../../../os/rt/src/chvt.c"
+   1:../../../os/rt/src/chvt.c **** /*
+   2:../../../os/rt/src/chvt.c ****     ChibiOS - Copyright (C) 2006,2007,2008,2009,2010,2011,2012,2013,2014,
+   3:../../../os/rt/src/chvt.c ****               2015,2016,2017,2018,2019,2020,2021 Giovanni Di Sirio.
+   4:../../../os/rt/src/chvt.c **** 
+   5:../../../os/rt/src/chvt.c ****     This file is part of ChibiOS.
+   6:../../../os/rt/src/chvt.c **** 
+   7:../../../os/rt/src/chvt.c ****     ChibiOS is free software; you can redistribute it and/or modify
+   8:../../../os/rt/src/chvt.c ****     it under the terms of the GNU General Public License as published by
+   9:../../../os/rt/src/chvt.c ****     the Free Software Foundation version 3 of the License.
+  10:../../../os/rt/src/chvt.c **** 
+  11:../../../os/rt/src/chvt.c ****     ChibiOS is distributed in the hope that it will be useful,
+  12:../../../os/rt/src/chvt.c ****     but WITHOUT ANY WARRANTY; without even the implied warranty of
+  13:../../../os/rt/src/chvt.c ****     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  14:../../../os/rt/src/chvt.c ****     GNU General Public License for more details.
+  15:../../../os/rt/src/chvt.c **** 
+  16:../../../os/rt/src/chvt.c ****     You should have received a copy of the GNU General Public License
+  17:../../../os/rt/src/chvt.c ****     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  18:../../../os/rt/src/chvt.c **** */
+  19:../../../os/rt/src/chvt.c **** 
+  20:../../../os/rt/src/chvt.c **** /**
+  21:../../../os/rt/src/chvt.c ****  * @file    rt/src/chvt.c
+  22:../../../os/rt/src/chvt.c ****  * @brief   Time and Virtual Timers module code.
+  23:../../../os/rt/src/chvt.c ****  *
+  24:../../../os/rt/src/chvt.c ****  * @addtogroup time
+  25:../../../os/rt/src/chvt.c ****  * @details Time and Virtual Timers related APIs and services.
+  26:../../../os/rt/src/chvt.c ****  * @{
+  27:../../../os/rt/src/chvt.c ****  */
+  28:../../../os/rt/src/chvt.c **** 
+  29:../../../os/rt/src/chvt.c **** #include <string.h>
+  30:../../../os/rt/src/chvt.c **** 
+  31:../../../os/rt/src/chvt.c **** #include "ch.h"
+  32:../../../os/rt/src/chvt.c **** 
+  33:../../../os/rt/src/chvt.c **** /*===========================================================================*/
+  34:../../../os/rt/src/chvt.c **** /* Module local definitions.                                                 */
+  35:../../../os/rt/src/chvt.c **** /*===========================================================================*/
+  36:../../../os/rt/src/chvt.c **** 
+  37:../../../os/rt/src/chvt.c **** #if CH_CFG_INTERVALS_SIZE > CH_CFG_ST_RESOLUTION
+  38:../../../os/rt/src/chvt.c **** #define VT_MAX_DELAY                                                        \
+  39:../../../os/rt/src/chvt.c ****   (((sysinterval_t)TIME_MAX_SYSTIME) &                                      \
+  40:../../../os/rt/src/chvt.c ****    ~(sysinterval_t)(((sysinterval_t)1 << (CH_CFG_ST_RESOLUTION / 2)) - (sysinterval_t)1))
+  41:../../../os/rt/src/chvt.c **** #endif
+  42:../../../os/rt/src/chvt.c **** 
+  43:../../../os/rt/src/chvt.c **** /*===========================================================================*/
+  44:../../../os/rt/src/chvt.c **** /* Module exported variables.                                                */
+  45:../../../os/rt/src/chvt.c **** /*===========================================================================*/
+  46:../../../os/rt/src/chvt.c **** 
+  47:../../../os/rt/src/chvt.c **** /*===========================================================================*/
+  48:../../../os/rt/src/chvt.c **** /* Module local types.                                                       */
+  49:../../../os/rt/src/chvt.c **** /*===========================================================================*/
+  50:../../../os/rt/src/chvt.c **** 
+  51:../../../os/rt/src/chvt.c **** /*===========================================================================*/
+  52:../../../os/rt/src/chvt.c **** /* Module local variables.                                                   */
+  53:../../../os/rt/src/chvt.c **** /*===========================================================================*/
+  54:../../../os/rt/src/chvt.c **** 
+  55:../../../os/rt/src/chvt.c **** /*===========================================================================*/
+  56:../../../os/rt/src/chvt.c **** /* Module local functions.                                                   */
+  57:../../../os/rt/src/chvt.c **** /*===========================================================================*/
+  58:../../../os/rt/src/chvt.c **** 
+  59:../../../os/rt/src/chvt.c **** #if (CH_CFG_ST_TIMEDELTA > 0) || defined(__DOXYGEN__)
+  60:../../../os/rt/src/chvt.c **** /**
+  61:../../../os/rt/src/chvt.c ****  * @brief   Alarm time setup.
+  62:../../../os/rt/src/chvt.c ****  * @note    An RFCU fault is registered if the system time skips past
+  63:../../../os/rt/src/chvt.c ****  *          <tt>(now + delay)</tt>, the deadline is skipped forward
+  64:../../../os/rt/src/chvt.c ****  *          in order to compensate for the event.
+  65:../../../os/rt/src/chvt.c ****  *
+  66:../../../os/rt/src/chvt.c ****  * @param[in] vtlp      pointer to a @p virtual_timers_list_t structure
+  67:../../../os/rt/src/chvt.c ****  * @param[in] now       last known system time
+  68:../../../os/rt/src/chvt.c ****  * @param[in] delay     delay over @p now
+  69:../../../os/rt/src/chvt.c ****  */
+  70:../../../os/rt/src/chvt.c **** static void vt_set_alarm(virtual_timers_list_t *vtlp,
+  71:../../../os/rt/src/chvt.c ****                          systime_t now,
+  72:../../../os/rt/src/chvt.c ****                          sysinterval_t delay) {
+  73:../../../os/rt/src/chvt.c ****   sysinterval_t currdelta;
+  74:../../../os/rt/src/chvt.c **** 
+  75:../../../os/rt/src/chvt.c ****   /* Initial delta is what is configured statically.*/
+  76:../../../os/rt/src/chvt.c ****   currdelta = vtlp->lastdelta;
+  77:../../../os/rt/src/chvt.c **** 
+  78:../../../os/rt/src/chvt.c ****   if (delay < currdelta) {
+  79:../../../os/rt/src/chvt.c ****     /* We need to avoid that the system time goes past the alarm we are
+  80:../../../os/rt/src/chvt.c ****        going to set before the alarm is actually set.*/
+  81:../../../os/rt/src/chvt.c ****     delay = currdelta;
+  82:../../../os/rt/src/chvt.c ****   }
+  83:../../../os/rt/src/chvt.c **** #if CH_CFG_INTERVALS_SIZE > CH_CFG_ST_RESOLUTION
+  84:../../../os/rt/src/chvt.c ****   else if (delay > VT_MAX_DELAY) {
+  85:../../../os/rt/src/chvt.c ****     /* The delta could be too large for the physical timer to handle
+  86:../../../os/rt/src/chvt.c ****        this can happen when: sizeof (systime_t) < sizeof (sysinterval_t).*/
+  87:../../../os/rt/src/chvt.c ****     delay = VT_MAX_DELAY;
+  88:../../../os/rt/src/chvt.c ****   }
+  89:../../../os/rt/src/chvt.c **** #endif
+  90:../../../os/rt/src/chvt.c **** 
+  91:../../../os/rt/src/chvt.c ****   /* Deadline skip detection and correction loop.*/
+  92:../../../os/rt/src/chvt.c ****   while (true) {
+  93:../../../os/rt/src/chvt.c ****     sysinterval_t nowdelta;
+  94:../../../os/rt/src/chvt.c ****     systime_t newnow;
+  95:../../../os/rt/src/chvt.c **** 
+  96:../../../os/rt/src/chvt.c ****     /* Setting up the alarm on the next deadline.*/
+  97:../../../os/rt/src/chvt.c ****     port_timer_set_alarm(chTimeAddX(now, delay));
+  98:../../../os/rt/src/chvt.c **** 
+  99:../../../os/rt/src/chvt.c ****     /* Check on current time, we need to detect the error condition where
+ 100:../../../os/rt/src/chvt.c ****        current time skipped past the calculated deadline.
+ 101:../../../os/rt/src/chvt.c ****        Note that the "<" condition is intentional, we want to make sure
+ 102:../../../os/rt/src/chvt.c ****        that the alarm is set before the deadline is reached because the
+ 103:../../../os/rt/src/chvt.c ****        comparison could happen on the transition depending on the timer
+ 104:../../../os/rt/src/chvt.c ****        architecture.*/
+ 105:../../../os/rt/src/chvt.c ****     newnow = chVTGetSystemTimeX();
+ 106:../../../os/rt/src/chvt.c ****     nowdelta = chTimeDiffX(now, newnow);
+ 107:../../../os/rt/src/chvt.c ****     if (likely(nowdelta < delay)) {
+ 108:../../../os/rt/src/chvt.c ****       break;
+ 109:../../../os/rt/src/chvt.c ****     }
+ 110:../../../os/rt/src/chvt.c **** 
+ 111:../../../os/rt/src/chvt.c ****     /* Trying again with a more relaxed minimum delta.*/
+ 112:../../../os/rt/src/chvt.c ****     currdelta += (sysinterval_t)1;
+ 113:../../../os/rt/src/chvt.c **** 
+ 114:../../../os/rt/src/chvt.c ****     /* Current time becomes the new "base" time.*/
+ 115:../../../os/rt/src/chvt.c ****     now = newnow;
+ 116:../../../os/rt/src/chvt.c ****     delay = currdelta;
+ 117:../../../os/rt/src/chvt.c ****   }
+ 118:../../../os/rt/src/chvt.c **** 
+ 119:../../../os/rt/src/chvt.c **** #if !defined(CH_VT_RFCU_DISABLED)
+ 120:../../../os/rt/src/chvt.c ****   /* Checking if a skip occurred.*/
+ 121:../../../os/rt/src/chvt.c ****   if (currdelta > vtlp->lastdelta) {
+ 122:../../../os/rt/src/chvt.c ****     vtlp->lastdelta = currdelta;
+ 123:../../../os/rt/src/chvt.c ****     chRFCUCollectFaultsI(CH_RFCU_VT_INSUFFICIENT_DELTA);
+ 124:../../../os/rt/src/chvt.c ****   }
+ 125:../../../os/rt/src/chvt.c **** #else
+ 126:../../../os/rt/src/chvt.c ****   /* Assertions as fallback.*/
+ 127:../../../os/rt/src/chvt.c ****   chDbgAssert(currdelta <= CH_CFG_ST_TIMEDELTA, "insufficient delta");
+ 128:../../../os/rt/src/chvt.c **** #endif
+ 129:../../../os/rt/src/chvt.c **** }
+ 130:../../../os/rt/src/chvt.c **** 
+ 131:../../../os/rt/src/chvt.c **** /**
+ 132:../../../os/rt/src/chvt.c ****  * @brief   Inserts a timer as first element in a delta list.
+ 133:../../../os/rt/src/chvt.c ****  * @note    This is the special case when the delta list is initially empty.
+ 134:../../../os/rt/src/chvt.c ****  *
+ 135:../../../os/rt/src/chvt.c ****  * @param[in] vtlp      pointer to a @p virtual_timers_list_t structure
+ 136:../../../os/rt/src/chvt.c ****  * @param[in] vtp       pointer to a @p virtual_timer_t object
+ 137:../../../os/rt/src/chvt.c ****  * @param[in] now       last known system time
+ 138:../../../os/rt/src/chvt.c ****  * @param[in] delay     delay over @p now
+ 139:../../../os/rt/src/chvt.c ****  */
+ 140:../../../os/rt/src/chvt.c **** static void vt_insert_first(virtual_timers_list_t *vtlp,
+ 141:../../../os/rt/src/chvt.c ****                             virtual_timer_t *vtp,
+ 142:../../../os/rt/src/chvt.c ****                             systime_t now,
+ 143:../../../os/rt/src/chvt.c ****                             sysinterval_t delay) {
+ 144:../../../os/rt/src/chvt.c ****   sysinterval_t currdelta;
+ 145:../../../os/rt/src/chvt.c **** 
+ 146:../../../os/rt/src/chvt.c ****   /* The delta list is empty, the current time becomes the new
+ 147:../../../os/rt/src/chvt.c ****      delta list base time, the timer is inserted.*/
+ 148:../../../os/rt/src/chvt.c ****   vtlp->lasttime = now;
+ 149:../../../os/rt/src/chvt.c ****   ch_dlist_insert_after(&vtlp->dlist, &vtp->dlist, delay);
+ 150:../../../os/rt/src/chvt.c **** 
+ 151:../../../os/rt/src/chvt.c ****   /* Initial delta is what is configured statically.*/
+ 152:../../../os/rt/src/chvt.c ****   currdelta = vtlp->lastdelta;
+ 153:../../../os/rt/src/chvt.c **** 
+ 154:../../../os/rt/src/chvt.c ****   /* If the requested delay is lower than the minimum safe delta then it
+ 155:../../../os/rt/src/chvt.c ****      is raised to the minimum safe value.*/
+ 156:../../../os/rt/src/chvt.c ****   if (delay < currdelta) {
+ 157:../../../os/rt/src/chvt.c ****     /* We need to avoid that the system time goes past the alarm we are
+ 158:../../../os/rt/src/chvt.c ****        going to set before the alarm is actually set.*/
+ 159:../../../os/rt/src/chvt.c ****     delay = currdelta;
+ 160:../../../os/rt/src/chvt.c ****   }
+ 161:../../../os/rt/src/chvt.c **** #if CH_CFG_INTERVALS_SIZE > CH_CFG_ST_RESOLUTION
+ 162:../../../os/rt/src/chvt.c ****   else if (delay > VT_MAX_DELAY) {
+ 163:../../../os/rt/src/chvt.c ****     /* The delta could be too large for the physical timer to handle
+ 164:../../../os/rt/src/chvt.c ****        this can happen when: sizeof (systime_t) < sizeof (sysinterval_t).*/
+ 165:../../../os/rt/src/chvt.c ****     delay = VT_MAX_DELAY;
+ 166:../../../os/rt/src/chvt.c ****   }
+ 167:../../../os/rt/src/chvt.c **** #endif
+ 168:../../../os/rt/src/chvt.c **** 
+ 169:../../../os/rt/src/chvt.c ****   /* Being the first element inserted in the list the alarm timer
+ 170:../../../os/rt/src/chvt.c ****      is started.*/
+ 171:../../../os/rt/src/chvt.c ****   port_timer_start_alarm(chTimeAddX(vtlp->lasttime, delay));
+ 172:../../../os/rt/src/chvt.c **** 
+ 173:../../../os/rt/src/chvt.c ****   /* Deadline skip detection and correction loop.*/
+ 174:../../../os/rt/src/chvt.c ****   while (true) {
+ 175:../../../os/rt/src/chvt.c ****     systime_t newnow;
+ 176:../../../os/rt/src/chvt.c **** 
+ 177:../../../os/rt/src/chvt.c ****     /* Check on current time, we need to detect the error condition where
+ 178:../../../os/rt/src/chvt.c ****        current time skipped past the calculated deadline.
+ 179:../../../os/rt/src/chvt.c ****        Note that the "<" condition is intentional, we want to make sure
+ 180:../../../os/rt/src/chvt.c ****        that the alarm is set before the deadline is reached because the
+ 181:../../../os/rt/src/chvt.c ****        comparison could happen on the transition depending on the timer
+ 182:../../../os/rt/src/chvt.c ****        architecture.*/
+ 183:../../../os/rt/src/chvt.c ****     newnow = chVTGetSystemTimeX();
+ 184:../../../os/rt/src/chvt.c ****     if (likely(chTimeDiffX(now, newnow) < delay)) {
+ 185:../../../os/rt/src/chvt.c ****       break;
+ 186:../../../os/rt/src/chvt.c ****     }
+ 187:../../../os/rt/src/chvt.c **** 
+ 188:../../../os/rt/src/chvt.c ****     /* Trying again with a more relaxed minimum delta.*/
+ 189:../../../os/rt/src/chvt.c ****     currdelta += (sysinterval_t)1;
+ 190:../../../os/rt/src/chvt.c **** 
+ 191:../../../os/rt/src/chvt.c ****     /* Setting up the alarm on the next deadline.*/
+ 192:../../../os/rt/src/chvt.c ****     port_timer_set_alarm(chTimeAddX(now, currdelta));
+ 193:../../../os/rt/src/chvt.c **** 
+ 194:../../../os/rt/src/chvt.c ****     /* Current time becomes the new "base" time.*/
+ 195:../../../os/rt/src/chvt.c ****     now = newnow;
+ 196:../../../os/rt/src/chvt.c ****     delay = currdelta;
+ 197:../../../os/rt/src/chvt.c ****   }
+ 198:../../../os/rt/src/chvt.c **** 
+ 199:../../../os/rt/src/chvt.c **** #if !defined(CH_VT_RFCU_DISABLED)
+ 200:../../../os/rt/src/chvt.c ****   /* Checking if a skip occurred.*/
+ 201:../../../os/rt/src/chvt.c ****   if (currdelta > vtlp->lastdelta) {
+ 202:../../../os/rt/src/chvt.c ****     vtlp->lastdelta = currdelta;
+ 203:../../../os/rt/src/chvt.c ****     chRFCUCollectFaultsI(CH_RFCU_VT_INSUFFICIENT_DELTA);
+ 204:../../../os/rt/src/chvt.c ****   }
+ 205:../../../os/rt/src/chvt.c **** #else
+ 206:../../../os/rt/src/chvt.c ****   /* Assertions as fallback.*/
+ 207:../../../os/rt/src/chvt.c ****   chDbgAssert(currdelta <= CH_CFG_ST_TIMEDELTA, "insufficient delta");
+ 208:../../../os/rt/src/chvt.c **** #endif
+ 209:../../../os/rt/src/chvt.c **** }
+ 210:../../../os/rt/src/chvt.c **** #endif /* CH_CFG_ST_TIMEDELTA > 0 */
+ 211:../../../os/rt/src/chvt.c **** 
+ 212:../../../os/rt/src/chvt.c **** /**
+ 213:../../../os/rt/src/chvt.c ****  * @brief   Enqueues a virtual timer in a virtual timers list.
+ 214:../../../os/rt/src/chvt.c ****  *
+ 215:../../../os/rt/src/chvt.c ****  * @param[in] vtlp      pointer to a @p virtual_timers_list_t structure
+ 216:../../../os/rt/src/chvt.c ****  * @param[in] vtp       pointer to a @p virtual_timer_t object
+ 217:../../../os/rt/src/chvt.c ****  * @param[in] delay     delay over current system time
+ 218:../../../os/rt/src/chvt.c ****  */
+ 219:../../../os/rt/src/chvt.c **** static void vt_enqueue(virtual_timers_list_t *vtlp,
+ 220:../../../os/rt/src/chvt.c ****                        virtual_timer_t *vtp,
+ 221:../../../os/rt/src/chvt.c ****                        sysinterval_t delay) {
+ 222:../../../os/rt/src/chvt.c ****   sysinterval_t delta;
+ 223:../../../os/rt/src/chvt.c **** 
+ 224:../../../os/rt/src/chvt.c **** #if CH_CFG_ST_TIMEDELTA > 0
+ 225:../../../os/rt/src/chvt.c ****   {
+ 226:../../../os/rt/src/chvt.c ****     sysinterval_t nowdelta;
+ 227:../../../os/rt/src/chvt.c ****     systime_t now = chVTGetSystemTimeX();
+ 228:../../../os/rt/src/chvt.c **** 
+ 229:../../../os/rt/src/chvt.c ****     /* Special case where the timers list is empty.*/
+ 230:../../../os/rt/src/chvt.c ****     if (ch_dlist_isempty(&vtlp->dlist)) {
+ 231:../../../os/rt/src/chvt.c **** 
+ 232:../../../os/rt/src/chvt.c ****       vt_insert_first(vtlp, vtp, now, delay);
+ 233:../../../os/rt/src/chvt.c **** 
+ 234:../../../os/rt/src/chvt.c ****       return;
+ 235:../../../os/rt/src/chvt.c ****     }
+ 236:../../../os/rt/src/chvt.c **** 
+ 237:../../../os/rt/src/chvt.c ****     /* Delay as delta from 'lasttime'. Note, it can overflow and the value
+ 238:../../../os/rt/src/chvt.c ****        becomes lower than 'deltanow'.*/
+ 239:../../../os/rt/src/chvt.c ****     nowdelta = chTimeDiffX(vtlp->lasttime, now);
+ 240:../../../os/rt/src/chvt.c ****     delta    = nowdelta + delay;
+ 241:../../../os/rt/src/chvt.c **** 
+ 242:../../../os/rt/src/chvt.c ****     /* Scenario where a very large delay exceeded the numeric range, the
+ 243:../../../os/rt/src/chvt.c ****        delta is shortened to make it fit the numeric range, the timer
+ 244:../../../os/rt/src/chvt.c ****        will be triggered "deltanow" cycles earlier.*/
+ 245:../../../os/rt/src/chvt.c ****     if (delta < nowdelta) {
+ 246:../../../os/rt/src/chvt.c ****       delta = delay;
+ 247:../../../os/rt/src/chvt.c ****     }
+ 248:../../../os/rt/src/chvt.c **** 
+ 249:../../../os/rt/src/chvt.c ****     /* Checking if this timer would become the first in the delta list, this
+ 250:../../../os/rt/src/chvt.c ****        requires changing the current alarm setting.*/
+ 251:../../../os/rt/src/chvt.c ****     if (delta < vtlp->dlist.next->delta) {
+ 252:../../../os/rt/src/chvt.c **** 
+ 253:../../../os/rt/src/chvt.c ****       vt_set_alarm(vtlp, now, delay);
+ 254:../../../os/rt/src/chvt.c ****     }
+ 255:../../../os/rt/src/chvt.c ****   }
+ 256:../../../os/rt/src/chvt.c **** #else /* CH_CFG_ST_TIMEDELTA == 0 */
+ 257:../../../os/rt/src/chvt.c **** 
+ 258:../../../os/rt/src/chvt.c ****   /* Delta is initially equal to the specified delay.*/
+ 259:../../../os/rt/src/chvt.c ****   delta = delay;
+ 260:../../../os/rt/src/chvt.c **** #endif /* CH_CFG_ST_TIMEDELTA == 0 */
+ 261:../../../os/rt/src/chvt.c **** 
+ 262:../../../os/rt/src/chvt.c ****   ch_dlist_insert(&vtlp->dlist, &vtp->dlist, delta);
+ 263:../../../os/rt/src/chvt.c **** }
+ 264:../../../os/rt/src/chvt.c **** 
+ 265:../../../os/rt/src/chvt.c **** /*===========================================================================*/
+ 266:../../../os/rt/src/chvt.c **** /* Module exported functions.                                                */
+ 267:../../../os/rt/src/chvt.c **** /*===========================================================================*/
+ 268:../../../os/rt/src/chvt.c **** 
+ 269:../../../os/rt/src/chvt.c **** /**
+ 270:../../../os/rt/src/chvt.c ****  * @brief   Initializes a @p virtual_timer_t object.
+ 271:../../../os/rt/src/chvt.c ****  * @note    Initializing a timer object is not strictly required because
+ 272:../../../os/rt/src/chvt.c ****  *          the function @p chVTSetI() initializes the object too. This
+ 273:../../../os/rt/src/chvt.c ****  *          function is only useful if you need to perform a @p chVTIsArmed()
+ 274:../../../os/rt/src/chvt.c ****  *          check before calling @p chVTSetI().
+ 275:../../../os/rt/src/chvt.c ****  *
+ 276:../../../os/rt/src/chvt.c ****  * @param[out] vtp      pointer to a @p virtual_timer_t object
+ 277:../../../os/rt/src/chvt.c ****  *
+ 278:../../../os/rt/src/chvt.c ****  * @init
+ 279:../../../os/rt/src/chvt.c ****  */
+ 280:../../../os/rt/src/chvt.c **** void chVTObjectInit(virtual_timer_t *vtp) {
+  16               		.loc 1 280 0
+  17               		.cfi_startproc
+  18               	.LVL0:
+  19               	/* prologue: function */
+  20               	/* frame size = 0 */
+  21               	/* stack size = 0 */
+  22               	.L__stack_usage = 0
+ 281:../../../os/rt/src/chvt.c **** 
+ 282:../../../os/rt/src/chvt.c ****   vtp->dlist.next = NULL;
+  23               		.loc 1 282 0
+  24 0000 FC01      		movw r30,r24
+  25 0002 1182      		std Z+1,__zero_reg__
+  26 0004 1082      		st Z,__zero_reg__
+  27 0006 0895      		ret
+  28               		.cfi_endproc
+  29               	.LFE194:
+  31               		.section	.text.chVTObjectDispose,"ax",@progbits
+  32               	.global	chVTObjectDispose
+  34               	chVTObjectDispose:
+  35               	.LFB195:
+ 283:../../../os/rt/src/chvt.c **** }
+ 284:../../../os/rt/src/chvt.c **** 
+ 285:../../../os/rt/src/chvt.c **** /**
+ 286:../../../os/rt/src/chvt.c ****  * @brief   Disposes a virtual timer.
+ 287:../../../os/rt/src/chvt.c ****  * @note    Objects disposing does not involve freeing memory but just
+ 288:../../../os/rt/src/chvt.c ****  *          performing checks that make sure that the object is in a
+ 289:../../../os/rt/src/chvt.c ****  *          state compatible with operations stop.
+ 290:../../../os/rt/src/chvt.c ****  * @note    If the option @p CH_CFG_HARDENING_LEVEL is greater than zero then
+ 291:../../../os/rt/src/chvt.c ****  *          the object is also cleared, attempts to use the object would likely
+ 292:../../../os/rt/src/chvt.c ****  *          result in a clean memory access violation because dereferencing
+ 293:../../../os/rt/src/chvt.c ****  *          of @p NULL pointers rather than dereferencing previously valid
+ 294:../../../os/rt/src/chvt.c ****  *          pointers.
+ 295:../../../os/rt/src/chvt.c ****  *
+ 296:../../../os/rt/src/chvt.c ****  * @param[in] vtp       pointer to a @p virtual_timer_t object
+ 297:../../../os/rt/src/chvt.c ****  *
+ 298:../../../os/rt/src/chvt.c ****  * @dispose
+ 299:../../../os/rt/src/chvt.c ****  */
+ 300:../../../os/rt/src/chvt.c **** void chVTObjectDispose(virtual_timer_t *vtp) {
+  36               		.loc 1 300 0
+  37               		.cfi_startproc
+  38               	.LVL1:
+  39               	/* prologue: function */
+  40               	/* frame size = 0 */
+  41               	/* stack size = 0 */
+  42               	.L__stack_usage = 0
+  43 0000 0895      		ret
+  44               		.cfi_endproc
+  45               	.LFE195:
+  47               		.section	.text.chVTDoSetI,"ax",@progbits
+  48               	.global	chVTDoSetI
+  50               	chVTDoSetI:
+  51               	.LFB196:
+ 301:../../../os/rt/src/chvt.c **** 
+ 302:../../../os/rt/src/chvt.c ****   chDbgCheck(vtp != NULL);
+ 303:../../../os/rt/src/chvt.c ****   chDbgAssert(vtp->dlist.next != NULL, "object in use");
+ 304:../../../os/rt/src/chvt.c **** 
+ 305:../../../os/rt/src/chvt.c **** #if CH_CFG_HARDENING_LEVEL > 0
+ 306:../../../os/rt/src/chvt.c ****   memset((void *)vtp, 0, sizeof (virtual_timer_t));
+ 307:../../../os/rt/src/chvt.c **** #endif
+ 308:../../../os/rt/src/chvt.c **** }
+ 309:../../../os/rt/src/chvt.c **** 
+ 310:../../../os/rt/src/chvt.c **** /**
+ 311:../../../os/rt/src/chvt.c ****  * @brief   Enables a one-shot virtual timer.
+ 312:../../../os/rt/src/chvt.c ****  * @details The timer is enabled and programmed to trigger after the delay
+ 313:../../../os/rt/src/chvt.c ****  *          specified as parameter.
+ 314:../../../os/rt/src/chvt.c ****  * @pre     The timer must not be already armed before calling this function.
+ 315:../../../os/rt/src/chvt.c ****  * @note    The callback function is invoked from interrupt context.
+ 316:../../../os/rt/src/chvt.c ****  *
+ 317:../../../os/rt/src/chvt.c ****  * @param[out] vtp      pointer to a @p virtual_timer_t object
+ 318:../../../os/rt/src/chvt.c ****  * @param[in] delay     the number of ticks before the operation timeouts, the
+ 319:../../../os/rt/src/chvt.c ****  *                      special values are handled as follow:
+ 320:../../../os/rt/src/chvt.c ****  *                      - @a TIME_INFINITE is allowed but interpreted as a
+ 321:../../../os/rt/src/chvt.c ****  *                        normal time specification.
+ 322:../../../os/rt/src/chvt.c ****  *                      - @a TIME_IMMEDIATE this value is not allowed.
+ 323:../../../os/rt/src/chvt.c ****  * @param[in] vtfunc    the timer callback function. After invoking the
+ 324:../../../os/rt/src/chvt.c ****  *                      callback the timer is disabled and the structure can
+ 325:../../../os/rt/src/chvt.c ****  *                      be disposed or reused.
+ 326:../../../os/rt/src/chvt.c ****  * @param[in] par       a parameter that will be passed to the callback
+ 327:../../../os/rt/src/chvt.c ****  *                      function
+ 328:../../../os/rt/src/chvt.c ****  *
+ 329:../../../os/rt/src/chvt.c ****  * @iclass
+ 330:../../../os/rt/src/chvt.c ****  */
+ 331:../../../os/rt/src/chvt.c **** void chVTDoSetI(virtual_timer_t *vtp, sysinterval_t delay,
+ 332:../../../os/rt/src/chvt.c ****                 vtfunc_t vtfunc, void *par) {
+  52               		.loc 1 332 0
+  53               		.cfi_startproc
+  54               	.LVL2:
+  55               		.loc 1 332 0
+  56 0000 CF93      		push r28
+  57               	.LCFI0:
+  58               		.cfi_def_cfa_offset 3
+  59               		.cfi_offset 28, -2
+  60 0002 DF93      		push r29
+  61               	.LCFI1:
+  62               		.cfi_def_cfa_offset 4
+  63               		.cfi_offset 29, -3
+  64               	/* prologue: function */
+  65               	/* frame size = 0 */
+  66               	/* stack size = 2 */
+  67               	.L__stack_usage = 2
+  68 0004 DC01      		movw r26,r24
+  69               	.LVL3:
+ 333:../../../os/rt/src/chvt.c ****   virtual_timers_list_t *vtlp = &currcore->vtlist;
+ 334:../../../os/rt/src/chvt.c **** 
+ 335:../../../os/rt/src/chvt.c ****   chDbgCheckClassI();
+ 336:../../../os/rt/src/chvt.c ****   chDbgCheck((vtp != NULL) && (vtfunc != NULL) && (delay != TIME_IMMEDIATE));
+ 337:../../../os/rt/src/chvt.c **** 
+ 338:../../../os/rt/src/chvt.c ****   /* Timer initialization.*/
+ 339:../../../os/rt/src/chvt.c ****   vtp->par     = par;
+  70               		.loc 1 339 0
+  71 0006 1996      		adiw r26,8+1
+  72 0008 3C93      		st X,r19
+  73 000a 2E93      		st -X,r18
+  74 000c 1897      		sbiw r26,8
+ 340:../../../os/rt/src/chvt.c ****   vtp->func    = vtfunc;
+  75               		.loc 1 340 0
+  76 000e 1796      		adiw r26,6+1
+  77 0010 5C93      		st X,r21
+  78 0012 4E93      		st -X,r20
+  79 0014 1697      		sbiw r26,6
+ 341:../../../os/rt/src/chvt.c ****   vtp->reload  = (sysinterval_t)0;
+  80               		.loc 1 341 0
+  81 0016 1B96      		adiw r26,10+1
+  82 0018 1C92      		st X,__zero_reg__
+  83 001a 1E92      		st -X,__zero_reg__
+  84 001c 1A97      		sbiw r26,10
+  85               	.LVL4:
+  86 001e E091 0000 		lds r30,ch0+7
+  87 0022 F091 0000 		lds r31,ch0+7+1
+  88               	.LVL5:
+  89               	.LBB47:
+  90               	.LBB48:
+  91               	.LBB49:
+  92               	.LBB50:
+  93               		.file 2 "../../../os/rt/include/chlists.h"
+   1:../../../os/rt/include/chlists.h **** /*
+   2:../../../os/rt/include/chlists.h ****     ChibiOS - Copyright (C) 2006,2007,2008,2009,2010,2011,2012,2013,2014,
+   3:../../../os/rt/include/chlists.h ****               2015,2016,2017,2018,2019,2020,2021 Giovanni Di Sirio.
+   4:../../../os/rt/include/chlists.h **** 
+   5:../../../os/rt/include/chlists.h ****     This file is part of ChibiOS.
+   6:../../../os/rt/include/chlists.h **** 
+   7:../../../os/rt/include/chlists.h ****     ChibiOS is free software; you can redistribute it and/or modify
+   8:../../../os/rt/include/chlists.h ****     it under the terms of the GNU General Public License as published by
+   9:../../../os/rt/include/chlists.h ****     the Free Software Foundation version 3 of the License.
+  10:../../../os/rt/include/chlists.h **** 
+  11:../../../os/rt/include/chlists.h ****     ChibiOS is distributed in the hope that it will be useful,
+  12:../../../os/rt/include/chlists.h ****     but WITHOUT ANY WARRANTY; without even the implied warranty of
+  13:../../../os/rt/include/chlists.h ****     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  14:../../../os/rt/include/chlists.h ****     GNU General Public License for more details.
+  15:../../../os/rt/include/chlists.h **** 
+  16:../../../os/rt/include/chlists.h ****     You should have received a copy of the GNU General Public License
+  17:../../../os/rt/include/chlists.h ****     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  18:../../../os/rt/include/chlists.h **** */
+  19:../../../os/rt/include/chlists.h **** 
+  20:../../../os/rt/include/chlists.h **** /**
+  21:../../../os/rt/include/chlists.h ****  * @file    chlists.h
+  22:../../../os/rt/include/chlists.h ****  * @brief   Lists and Queues header.
+  23:../../../os/rt/include/chlists.h ****  *
+  24:../../../os/rt/include/chlists.h ****  * @addtogroup os_lists
+  25:../../../os/rt/include/chlists.h ****  * @{
+  26:../../../os/rt/include/chlists.h ****  */
+  27:../../../os/rt/include/chlists.h **** 
+  28:../../../os/rt/include/chlists.h **** #ifndef CHLISTS_H
+  29:../../../os/rt/include/chlists.h **** #define CHLISTS_H
+  30:../../../os/rt/include/chlists.h **** 
+  31:../../../os/rt/include/chlists.h **** /*===========================================================================*/
+  32:../../../os/rt/include/chlists.h **** /* Module constants.                                                         */
+  33:../../../os/rt/include/chlists.h **** /*===========================================================================*/
+  34:../../../os/rt/include/chlists.h **** 
+  35:../../../os/rt/include/chlists.h **** /*===========================================================================*/
+  36:../../../os/rt/include/chlists.h **** /* Module pre-compile time settings.                                         */
+  37:../../../os/rt/include/chlists.h **** /*===========================================================================*/
+  38:../../../os/rt/include/chlists.h **** 
+  39:../../../os/rt/include/chlists.h **** /*===========================================================================*/
+  40:../../../os/rt/include/chlists.h **** /* Derived constants and error checks.                                       */
+  41:../../../os/rt/include/chlists.h **** /*===========================================================================*/
+  42:../../../os/rt/include/chlists.h **** 
+  43:../../../os/rt/include/chlists.h **** /*===========================================================================*/
+  44:../../../os/rt/include/chlists.h **** /* Module data structures and types.                                         */
+  45:../../../os/rt/include/chlists.h **** /*===========================================================================*/
+  46:../../../os/rt/include/chlists.h **** 
+  47:../../../os/rt/include/chlists.h **** /**
+  48:../../../os/rt/include/chlists.h ****  * @brief   Type of a generic single link list header and element.
+  49:../../../os/rt/include/chlists.h ****  */
+  50:../../../os/rt/include/chlists.h **** typedef struct ch_list ch_list_t;
+  51:../../../os/rt/include/chlists.h **** 
+  52:../../../os/rt/include/chlists.h **** /**
+  53:../../../os/rt/include/chlists.h ****  * @brief   Structure representing a generic single link list header
+  54:../../../os/rt/include/chlists.h ****  *          and element.
+  55:../../../os/rt/include/chlists.h ****  */
+  56:../../../os/rt/include/chlists.h **** struct ch_list {
+  57:../../../os/rt/include/chlists.h ****   ch_list_t             *next;      /**< @brief Next in the list/queue.     */
+  58:../../../os/rt/include/chlists.h **** };
+  59:../../../os/rt/include/chlists.h **** 
+  60:../../../os/rt/include/chlists.h **** /**
+  61:../../../os/rt/include/chlists.h ****  * @brief   Type of a generic bidirectional linked list header and element.
+  62:../../../os/rt/include/chlists.h ****  */
+  63:../../../os/rt/include/chlists.h **** typedef struct ch_queue ch_queue_t;
+  64:../../../os/rt/include/chlists.h **** 
+  65:../../../os/rt/include/chlists.h **** /**
+  66:../../../os/rt/include/chlists.h ****  * @brief   Structure representing a generic bidirectional linked list header
+  67:../../../os/rt/include/chlists.h ****  *          and element.
+  68:../../../os/rt/include/chlists.h ****  */
+  69:../../../os/rt/include/chlists.h **** struct ch_queue {
+  70:../../../os/rt/include/chlists.h ****   ch_queue_t            *next;      /**< @brief Next in the list/queue.     */
+  71:../../../os/rt/include/chlists.h ****   ch_queue_t            *prev;      /**< @brief Previous in the queue.      */
+  72:../../../os/rt/include/chlists.h **** };
+  73:../../../os/rt/include/chlists.h **** 
+  74:../../../os/rt/include/chlists.h **** /**
+  75:../../../os/rt/include/chlists.h ****  * @brief   Type of a generic priority-ordered bidirectional linked list
+  76:../../../os/rt/include/chlists.h ****  *          header and element.
+  77:../../../os/rt/include/chlists.h ****  */
+  78:../../../os/rt/include/chlists.h **** typedef struct ch_priority_queue ch_priority_queue_t;
+  79:../../../os/rt/include/chlists.h **** 
+  80:../../../os/rt/include/chlists.h **** /**
+  81:../../../os/rt/include/chlists.h ****  * @brief   Structure representing a generic priority-ordered bidirectional
+  82:../../../os/rt/include/chlists.h ****  *          linked list header and element.
+  83:../../../os/rt/include/chlists.h ****  * @note    Link fields are void pointers in order to avoid aliasing issues.
+  84:../../../os/rt/include/chlists.h ****  */
+  85:../../../os/rt/include/chlists.h **** struct ch_priority_queue {
+  86:../../../os/rt/include/chlists.h ****   ch_priority_queue_t   *next;      /**< @brief Next in the queue.          */
+  87:../../../os/rt/include/chlists.h ****   ch_priority_queue_t   *prev;      /**< @brief Previous in the queue.      */
+  88:../../../os/rt/include/chlists.h ****   tprio_t               prio;       /**< @brief Priority of this element.   */
+  89:../../../os/rt/include/chlists.h **** };
+  90:../../../os/rt/include/chlists.h **** 
+  91:../../../os/rt/include/chlists.h **** /**
+  92:../../../os/rt/include/chlists.h ****  * @brief   Type of a generic bidirectional linked delta list
+  93:../../../os/rt/include/chlists.h ****  *          header and element.
+  94:../../../os/rt/include/chlists.h ****  */
+  95:../../../os/rt/include/chlists.h **** typedef struct ch_delta_list ch_delta_list_t;
+  96:../../../os/rt/include/chlists.h **** 
+  97:../../../os/rt/include/chlists.h **** /**
+  98:../../../os/rt/include/chlists.h ****  * @brief   Delta list element and header structure.
+  99:../../../os/rt/include/chlists.h ****  */
+ 100:../../../os/rt/include/chlists.h **** struct ch_delta_list {
+ 101:../../../os/rt/include/chlists.h ****   ch_delta_list_t       *next;      /**< @brief Next in the delta list.     */
+ 102:../../../os/rt/include/chlists.h ****   ch_delta_list_t       *prev;      /**< @brief Previous in the delta list. */
+ 103:../../../os/rt/include/chlists.h ****   sysinterval_t         delta;      /**< @brief Time interval from previous.*/
+ 104:../../../os/rt/include/chlists.h **** };
+ 105:../../../os/rt/include/chlists.h **** 
+ 106:../../../os/rt/include/chlists.h **** /*===========================================================================*/
+ 107:../../../os/rt/include/chlists.h **** /* Module macros.                                                            */
+ 108:../../../os/rt/include/chlists.h **** /*===========================================================================*/
+ 109:../../../os/rt/include/chlists.h **** 
+ 110:../../../os/rt/include/chlists.h **** /**
+ 111:../../../os/rt/include/chlists.h ****  * @brief   Data part of a static queue object initializer.
+ 112:../../../os/rt/include/chlists.h ****  * @details This macro should be used when statically initializing a
+ 113:../../../os/rt/include/chlists.h ****  *          queue that is part of a bigger structure.
+ 114:../../../os/rt/include/chlists.h ****  *
+ 115:../../../os/rt/include/chlists.h ****  * @param[in] name      the name of the queue variable
+ 116:../../../os/rt/include/chlists.h ****  */
+ 117:../../../os/rt/include/chlists.h **** #define __CH_QUEUE_DATA(name) {(ch_queue_t *)&name, (ch_queue_t *)&name}
+ 118:../../../os/rt/include/chlists.h **** 
+ 119:../../../os/rt/include/chlists.h **** /**
+ 120:../../../os/rt/include/chlists.h ****  * @brief   Static queue object initializer.
+ 121:../../../os/rt/include/chlists.h ****  * @details Statically initialized queues require no explicit
+ 122:../../../os/rt/include/chlists.h ****  *          initialization using @p queue_init().
+ 123:../../../os/rt/include/chlists.h ****  *
+ 124:../../../os/rt/include/chlists.h ****  * @param[in] name      the name of the queue variable
+ 125:../../../os/rt/include/chlists.h ****  */
+ 126:../../../os/rt/include/chlists.h **** #define CH_QUEUE_DECL(name)                                                 \
+ 127:../../../os/rt/include/chlists.h ****   ch_queue_t name = __CH_QUEUE_DATA(name)
+ 128:../../../os/rt/include/chlists.h **** 
+ 129:../../../os/rt/include/chlists.h **** /**
+ 130:../../../os/rt/include/chlists.h ****  * @brief   Iterate over a queue list forwards
+ 131:../../../os/rt/include/chlists.h ****  *
+ 132:../../../os/rt/include/chlists.h ****  * @param[in] pos  pointer to @p ch_queue_t object to use as a loop cursor
+ 133:../../../os/rt/include/chlists.h ****  * @param[in] head pointer to @p ch_queue_t head of queue
+ 134:../../../os/rt/include/chlists.h ****  *
+ 135:../../../os/rt/include/chlists.h ****  * @notapi
+ 136:../../../os/rt/include/chlists.h ****  */
+ 137:../../../os/rt/include/chlists.h **** #define ch_queue_for_each(pos, head)                                        \
+ 138:../../../os/rt/include/chlists.h ****   for (pos = (head)->next; pos != (head); pos = pos->next)
+ 139:../../../os/rt/include/chlists.h **** 
+ 140:../../../os/rt/include/chlists.h **** /**
+ 141:../../../os/rt/include/chlists.h ****  * @brief   Iterate over a queue list backwards
+ 142:../../../os/rt/include/chlists.h ****  *
+ 143:../../../os/rt/include/chlists.h ****  * @param[in] pos   pointer to @p ch_queue_t object to use as a loop cursor
+ 144:../../../os/rt/include/chlists.h ****  * @param[in] head  pointer to @p ch_queue_t head of queue
+ 145:../../../os/rt/include/chlists.h ****  *
+ 146:../../../os/rt/include/chlists.h ****  * @notapi
+ 147:../../../os/rt/include/chlists.h ****  */
+ 148:../../../os/rt/include/chlists.h **** #define ch_queue_for_each_reverse(pos, head)                                \
+ 149:../../../os/rt/include/chlists.h ****   for (pos = (head)->prev; pos != (head); pos = pos->prev)
+ 150:../../../os/rt/include/chlists.h **** 
+ 151:../../../os/rt/include/chlists.h **** /**
+ 152:../../../os/rt/include/chlists.h ****  * @brief   Get the enclosing object of a queue object
+ 153:../../../os/rt/include/chlists.h ****  *
+ 154:../../../os/rt/include/chlists.h ****  * @param[in] ptr       pointer to the member @p ch_queue_t object
+ 155:../../../os/rt/include/chlists.h ****  * @param[in] type      the type of the enclosing object
+ 156:../../../os/rt/include/chlists.h ****  * @param[in] member    the name of the @p ch_queue_t object
+ 157:../../../os/rt/include/chlists.h ****  *
+ 158:../../../os/rt/include/chlists.h ****  * @notapi
+ 159:../../../os/rt/include/chlists.h ****  */
+ 160:../../../os/rt/include/chlists.h **** #define ch_queue_get_owner(ptr, type, member)                               \
+ 161:../../../os/rt/include/chlists.h ****   __CH_OWNEROF(ptr, type, member)
+ 162:../../../os/rt/include/chlists.h **** 
+ 163:../../../os/rt/include/chlists.h **** /**
+ 164:../../../os/rt/include/chlists.h ****  * @brief   Get the first entry of a queue
+ 165:../../../os/rt/include/chlists.h ****  * @note    The queue is assumed to be not empty
+ 166:../../../os/rt/include/chlists.h ****  *
+ 167:../../../os/rt/include/chlists.h ****  * @param[in] head      pointer to @p ch_queue_t head of queue
+ 168:../../../os/rt/include/chlists.h ****  * @param[in] type      the type of the enclosing object
+ 169:../../../os/rt/include/chlists.h ****  * @param[in] member    the name of the @p ch_queue_t object
+ 170:../../../os/rt/include/chlists.h ****  *
+ 171:../../../os/rt/include/chlists.h ****  * @notapi
+ 172:../../../os/rt/include/chlists.h ****  */
+ 173:../../../os/rt/include/chlists.h **** #define ch_queue_first_owner(head, type, member)                            \
+ 174:../../../os/rt/include/chlists.h ****   __CH_OWNEROF((head)->next, type, member)
+ 175:../../../os/rt/include/chlists.h **** 
+ 176:../../../os/rt/include/chlists.h **** /**
+ 177:../../../os/rt/include/chlists.h ****  * @brief   Get the last entry of a queue
+ 178:../../../os/rt/include/chlists.h ****  * @note    The queue is assumed to be not empty
+ 179:../../../os/rt/include/chlists.h ****  *
+ 180:../../../os/rt/include/chlists.h ****  * @param[in] head      pointer to @p ch_queue_t head of queue
+ 181:../../../os/rt/include/chlists.h ****  * @param[in] type      the type of the enclosing object
+ 182:../../../os/rt/include/chlists.h ****  * @param[in] member    the name of the @p ch_queue_t object
+ 183:../../../os/rt/include/chlists.h ****  *
+ 184:../../../os/rt/include/chlists.h ****  * @notapi
+ 185:../../../os/rt/include/chlists.h ****  */
+ 186:../../../os/rt/include/chlists.h **** #define ch_queue_last_owner(head, type, member)                             \
+ 187:../../../os/rt/include/chlists.h ****   __CH_OWNEROF((head)->prev, type, member)
+ 188:../../../os/rt/include/chlists.h **** 
+ 189:../../../os/rt/include/chlists.h **** /*===========================================================================*/
+ 190:../../../os/rt/include/chlists.h **** /* External declarations.                                                    */
+ 191:../../../os/rt/include/chlists.h **** /*===========================================================================*/
+ 192:../../../os/rt/include/chlists.h **** 
+ 193:../../../os/rt/include/chlists.h **** /* Early function prototypes required by the following headers.*/
+ 194:../../../os/rt/include/chlists.h **** #ifdef __cplusplus
+ 195:../../../os/rt/include/chlists.h **** extern "C" {
+ 196:../../../os/rt/include/chlists.h **** #endif
+ 197:../../../os/rt/include/chlists.h **** 
+ 198:../../../os/rt/include/chlists.h **** #ifdef __cplusplus
+ 199:../../../os/rt/include/chlists.h **** }
+ 200:../../../os/rt/include/chlists.h **** #endif
+ 201:../../../os/rt/include/chlists.h **** 
+ 202:../../../os/rt/include/chlists.h **** /*===========================================================================*/
+ 203:../../../os/rt/include/chlists.h **** /* Module inline functions.                                                  */
+ 204:../../../os/rt/include/chlists.h **** /*===========================================================================*/
+ 205:../../../os/rt/include/chlists.h **** 
+ 206:../../../os/rt/include/chlists.h **** /**
+ 207:../../../os/rt/include/chlists.h ****  * @brief   List initialization.
+ 208:../../../os/rt/include/chlists.h ****  *
+ 209:../../../os/rt/include/chlists.h ****  * @param[out] lp       pointer to the list header
+ 210:../../../os/rt/include/chlists.h ****  *
+ 211:../../../os/rt/include/chlists.h ****  * @notapi
+ 212:../../../os/rt/include/chlists.h ****  */
+ 213:../../../os/rt/include/chlists.h **** static inline void ch_list_init(ch_list_t *lp) {
+ 214:../../../os/rt/include/chlists.h **** 
+ 215:../../../os/rt/include/chlists.h ****   lp->next = lp;
+ 216:../../../os/rt/include/chlists.h **** }
+ 217:../../../os/rt/include/chlists.h **** 
+ 218:../../../os/rt/include/chlists.h **** /**
+ 219:../../../os/rt/include/chlists.h ****  * @brief   Evaluates to @p true if the specified list is empty.
+ 220:../../../os/rt/include/chlists.h ****  *
+ 221:../../../os/rt/include/chlists.h ****  * @param[in] lp        pointer to the list header
+ 222:../../../os/rt/include/chlists.h ****  * @return              The status of the list.
+ 223:../../../os/rt/include/chlists.h ****  *
+ 224:../../../os/rt/include/chlists.h ****  * @notapi
+ 225:../../../os/rt/include/chlists.h ****  */
+ 226:../../../os/rt/include/chlists.h **** static inline bool ch_list_isempty(ch_list_t *lp) {
+ 227:../../../os/rt/include/chlists.h **** 
+ 228:../../../os/rt/include/chlists.h ****   return (bool)(lp->next == lp);
+ 229:../../../os/rt/include/chlists.h **** }
+ 230:../../../os/rt/include/chlists.h **** 
+ 231:../../../os/rt/include/chlists.h **** /**
+ 232:../../../os/rt/include/chlists.h ****  * @brief   Evaluates to @p true if the specified list is not empty.
+ 233:../../../os/rt/include/chlists.h ****  *
+ 234:../../../os/rt/include/chlists.h ****  * @param[in] lp        pointer to the list header
+ 235:../../../os/rt/include/chlists.h ****  * @return              The status of the list.
+ 236:../../../os/rt/include/chlists.h ****  *
+ 237:../../../os/rt/include/chlists.h ****  * @notapi
+ 238:../../../os/rt/include/chlists.h ****  */
+ 239:../../../os/rt/include/chlists.h **** static inline bool ch_list_notempty(ch_list_t *lp) {
+ 240:../../../os/rt/include/chlists.h **** 
+ 241:../../../os/rt/include/chlists.h ****   return (bool)(lp->next != lp);
+ 242:../../../os/rt/include/chlists.h **** }
+ 243:../../../os/rt/include/chlists.h **** 
+ 244:../../../os/rt/include/chlists.h **** /**
+ 245:../../../os/rt/include/chlists.h ****  * @brief   Pushes an element on top of a stack list.
+ 246:../../../os/rt/include/chlists.h ****  *
+ 247:../../../os/rt/include/chlists.h ****  * @param[in] lp    the pointer to the list header
+ 248:../../../os/rt/include/chlists.h ****  * @param[in] p     the pointer to the element to be inserted in the list
+ 249:../../../os/rt/include/chlists.h ****  *
+ 250:../../../os/rt/include/chlists.h ****  * @notapi
+ 251:../../../os/rt/include/chlists.h ****  */
+ 252:../../../os/rt/include/chlists.h **** static inline void ch_list_link(ch_list_t *lp, ch_list_t *p) {
+ 253:../../../os/rt/include/chlists.h **** 
+ 254:../../../os/rt/include/chlists.h ****   p->next = lp->next;
+ 255:../../../os/rt/include/chlists.h ****   lp->next = p;
+ 256:../../../os/rt/include/chlists.h **** }
+ 257:../../../os/rt/include/chlists.h **** 
+ 258:../../../os/rt/include/chlists.h **** /**
+ 259:../../../os/rt/include/chlists.h ****  * @brief   Pops an element from the top of a stack list and returns it.
+ 260:../../../os/rt/include/chlists.h ****  * @pre     The list must be non-empty before calling this function.
+ 261:../../../os/rt/include/chlists.h ****  *
+ 262:../../../os/rt/include/chlists.h ****  * @param[in] lp        the pointer to the list header
+ 263:../../../os/rt/include/chlists.h ****  * @return              The removed element pointer.
+ 264:../../../os/rt/include/chlists.h ****  *
+ 265:../../../os/rt/include/chlists.h ****  * @notapi
+ 266:../../../os/rt/include/chlists.h ****  */
+ 267:../../../os/rt/include/chlists.h **** static inline ch_list_t *ch_list_unlink(ch_list_t *lp) {
+ 268:../../../os/rt/include/chlists.h **** 
+ 269:../../../os/rt/include/chlists.h ****   ch_list_t *p = lp->next;
+ 270:../../../os/rt/include/chlists.h ****   lp->next = p->next;
+ 271:../../../os/rt/include/chlists.h **** 
+ 272:../../../os/rt/include/chlists.h ****   return p;
+ 273:../../../os/rt/include/chlists.h **** }
+ 274:../../../os/rt/include/chlists.h **** 
+ 275:../../../os/rt/include/chlists.h **** /**
+ 276:../../../os/rt/include/chlists.h ****  * @brief   Queue initialization.
+ 277:../../../os/rt/include/chlists.h ****  *
+ 278:../../../os/rt/include/chlists.h ****  * @param[out] qp       pointer to the queue header
+ 279:../../../os/rt/include/chlists.h ****  *
+ 280:../../../os/rt/include/chlists.h ****  * @notapi
+ 281:../../../os/rt/include/chlists.h ****  */
+ 282:../../../os/rt/include/chlists.h **** static inline void ch_queue_init(ch_queue_t *qp) {
+ 283:../../../os/rt/include/chlists.h **** 
+ 284:../../../os/rt/include/chlists.h ****   qp->next = qp;
+ 285:../../../os/rt/include/chlists.h ****   qp->prev = qp;
+ 286:../../../os/rt/include/chlists.h **** }
+ 287:../../../os/rt/include/chlists.h **** 
+ 288:../../../os/rt/include/chlists.h **** /**
+ 289:../../../os/rt/include/chlists.h ****  * @brief   Evaluates to @p true if the specified queue is empty.
+ 290:../../../os/rt/include/chlists.h ****  *
+ 291:../../../os/rt/include/chlists.h ****  * @param[in] qp        pointer to the queue header
+ 292:../../../os/rt/include/chlists.h ****  * @return              The status of the queue.
+ 293:../../../os/rt/include/chlists.h ****  *
+ 294:../../../os/rt/include/chlists.h ****  * @notapi
+ 295:../../../os/rt/include/chlists.h ****  */
+ 296:../../../os/rt/include/chlists.h **** static inline bool ch_queue_isempty(const ch_queue_t *qp) {
+ 297:../../../os/rt/include/chlists.h **** 
+ 298:../../../os/rt/include/chlists.h ****   return (bool)(qp->next == qp);
+ 299:../../../os/rt/include/chlists.h **** }
+ 300:../../../os/rt/include/chlists.h **** 
+ 301:../../../os/rt/include/chlists.h **** /**
+ 302:../../../os/rt/include/chlists.h ****  * @brief   Evaluates to @p true if the specified queue is not empty.
+ 303:../../../os/rt/include/chlists.h ****  *
+ 304:../../../os/rt/include/chlists.h ****  * @param[in] qp        pointer to the queue header
+ 305:../../../os/rt/include/chlists.h ****  * @return              The status of the queue.
+ 306:../../../os/rt/include/chlists.h ****  *
+ 307:../../../os/rt/include/chlists.h ****  * @notapi
+ 308:../../../os/rt/include/chlists.h ****  */
+ 309:../../../os/rt/include/chlists.h **** static inline bool ch_queue_notempty(const ch_queue_t *qp) {
+ 310:../../../os/rt/include/chlists.h **** 
+ 311:../../../os/rt/include/chlists.h ****   return (bool)(qp->next != qp);
+ 312:../../../os/rt/include/chlists.h **** }
+ 313:../../../os/rt/include/chlists.h **** 
+ 314:../../../os/rt/include/chlists.h **** /**
+ 315:../../../os/rt/include/chlists.h ****  * @brief   Inserts an element into a queue.
+ 316:../../../os/rt/include/chlists.h ****  *
+ 317:../../../os/rt/include/chlists.h ****  * @param[in] qp        the pointer to the queue header
+ 318:../../../os/rt/include/chlists.h ****  * @param[in] p         the pointer to the element to be inserted in the queue
+ 319:../../../os/rt/include/chlists.h ****  *
+ 320:../../../os/rt/include/chlists.h ****  * @notapi
+ 321:../../../os/rt/include/chlists.h ****  */
+ 322:../../../os/rt/include/chlists.h **** static inline void ch_queue_insert(ch_queue_t *qp, ch_queue_t *p) {
+ 323:../../../os/rt/include/chlists.h **** 
+ 324:../../../os/rt/include/chlists.h ****   p->next       = qp;
+ 325:../../../os/rt/include/chlists.h ****   p->prev       = qp->prev;
+ 326:../../../os/rt/include/chlists.h ****   p->prev->next = p;
+ 327:../../../os/rt/include/chlists.h ****   qp->prev      = p;
+ 328:../../../os/rt/include/chlists.h **** }
+ 329:../../../os/rt/include/chlists.h **** 
+ 330:../../../os/rt/include/chlists.h **** /**
+ 331:../../../os/rt/include/chlists.h ****  * @brief   Removes the first-out element from a queue and returns it.
+ 332:../../../os/rt/include/chlists.h ****  * @note    If the queue is priority ordered then this function returns the
+ 333:../../../os/rt/include/chlists.h ****  *          element with the highest priority.
+ 334:../../../os/rt/include/chlists.h ****  *
+ 335:../../../os/rt/include/chlists.h ****  * @param[in] qp        the pointer to the queue list header
+ 336:../../../os/rt/include/chlists.h ****  * @return              The removed element pointer.
+ 337:../../../os/rt/include/chlists.h ****  *
+ 338:../../../os/rt/include/chlists.h ****  * @notapi
+ 339:../../../os/rt/include/chlists.h ****  */
+ 340:../../../os/rt/include/chlists.h **** static inline ch_queue_t *ch_queue_fifo_remove(ch_queue_t *qp) {
+ 341:../../../os/rt/include/chlists.h ****   ch_queue_t *p = qp->next;
+ 342:../../../os/rt/include/chlists.h **** 
+ 343:../../../os/rt/include/chlists.h ****   qp->next       = p->next;
+ 344:../../../os/rt/include/chlists.h ****   qp->next->prev = qp;
+ 345:../../../os/rt/include/chlists.h **** 
+ 346:../../../os/rt/include/chlists.h ****   return p;
+ 347:../../../os/rt/include/chlists.h **** }
+ 348:../../../os/rt/include/chlists.h **** 
+ 349:../../../os/rt/include/chlists.h **** /**
+ 350:../../../os/rt/include/chlists.h ****  * @brief   Removes the last-out element from a queue and returns it.
+ 351:../../../os/rt/include/chlists.h ****  * @note    If the queue is priority ordered then this function returns the
+ 352:../../../os/rt/include/chlists.h ****  *          element with the lowest priority.
+ 353:../../../os/rt/include/chlists.h ****  *
+ 354:../../../os/rt/include/chlists.h ****  * @param[in] qp    the pointer to the queue list header
+ 355:../../../os/rt/include/chlists.h ****  * @return          The removed element pointer.
+ 356:../../../os/rt/include/chlists.h ****  *
+ 357:../../../os/rt/include/chlists.h ****  * @notapi
+ 358:../../../os/rt/include/chlists.h ****  */
+ 359:../../../os/rt/include/chlists.h **** static inline ch_queue_t *ch_queue_lifo_remove(ch_queue_t *qp) {
+ 360:../../../os/rt/include/chlists.h ****   ch_queue_t *p = qp->prev;
+ 361:../../../os/rt/include/chlists.h **** 
+ 362:../../../os/rt/include/chlists.h ****   qp->prev       = p->prev;
+ 363:../../../os/rt/include/chlists.h ****   qp->prev->next = qp;
+ 364:../../../os/rt/include/chlists.h **** 
+ 365:../../../os/rt/include/chlists.h ****   return p;
+ 366:../../../os/rt/include/chlists.h **** }
+ 367:../../../os/rt/include/chlists.h **** 
+ 368:../../../os/rt/include/chlists.h **** /**
+ 369:../../../os/rt/include/chlists.h ****  * @brief   Removes an element from a queue and returns it.
+ 370:../../../os/rt/include/chlists.h ****  * @details The element is removed from the queue regardless of its relative
+ 371:../../../os/rt/include/chlists.h ****  *          position and regardless the used insertion method.
+ 372:../../../os/rt/include/chlists.h ****  *
+ 373:../../../os/rt/include/chlists.h ****  * @param[in] p         the pointer to the element to be removed from the queue
+ 374:../../../os/rt/include/chlists.h ****  * @return              The removed element pointer.
+ 375:../../../os/rt/include/chlists.h ****  *
+ 376:../../../os/rt/include/chlists.h ****  * @notapi
+ 377:../../../os/rt/include/chlists.h ****  */
+ 378:../../../os/rt/include/chlists.h **** static inline ch_queue_t *ch_queue_dequeue(ch_queue_t *p) {
+ 379:../../../os/rt/include/chlists.h **** 
+ 380:../../../os/rt/include/chlists.h ****   p->prev->next = p->next;
+ 381:../../../os/rt/include/chlists.h ****   p->next->prev = p->prev;
+ 382:../../../os/rt/include/chlists.h **** 
+ 383:../../../os/rt/include/chlists.h ****   return p;
+ 384:../../../os/rt/include/chlists.h **** }
+ 385:../../../os/rt/include/chlists.h **** 
+ 386:../../../os/rt/include/chlists.h **** /**
+ 387:../../../os/rt/include/chlists.h ****  * @brief   Priority queue initialization.
+ 388:../../../os/rt/include/chlists.h ****  * @note    The queue header priority is initialized to zero, all other
+ 389:../../../os/rt/include/chlists.h ****  *          elements in the queue are assumed to have priority greater
+ 390:../../../os/rt/include/chlists.h ****  *          than zero.
+ 391:../../../os/rt/include/chlists.h ****  *
+ 392:../../../os/rt/include/chlists.h ****  * @param[out] pqp      pointer to the priority queue header
+ 393:../../../os/rt/include/chlists.h ****  *
+ 394:../../../os/rt/include/chlists.h ****  * @notapi
+ 395:../../../os/rt/include/chlists.h ****  */
+ 396:../../../os/rt/include/chlists.h **** static inline void ch_pqueue_init(ch_priority_queue_t *pqp) {
+ 397:../../../os/rt/include/chlists.h **** 
+ 398:../../../os/rt/include/chlists.h ****   pqp->next = pqp;
+ 399:../../../os/rt/include/chlists.h ****   pqp->prev = pqp;
+ 400:../../../os/rt/include/chlists.h ****   pqp->prio = (tprio_t)0;
+ 401:../../../os/rt/include/chlists.h **** }
+ 402:../../../os/rt/include/chlists.h **** 
+ 403:../../../os/rt/include/chlists.h **** /**
+ 404:../../../os/rt/include/chlists.h ****  * @brief   Removes the highest priority element from a priority queue and
+ 405:../../../os/rt/include/chlists.h ****  *          returns it.
+ 406:../../../os/rt/include/chlists.h ****  *
+ 407:../../../os/rt/include/chlists.h ****  * @param[in] pqp       the pointer to the priority queue list header
+ 408:../../../os/rt/include/chlists.h ****  * @return              The removed element pointer.
+ 409:../../../os/rt/include/chlists.h ****  *
+ 410:../../../os/rt/include/chlists.h ****  * @notapi
+ 411:../../../os/rt/include/chlists.h ****  */
+ 412:../../../os/rt/include/chlists.h **** static inline ch_priority_queue_t *ch_pqueue_remove_highest(ch_priority_queue_t *pqp) {
+ 413:../../../os/rt/include/chlists.h ****   ch_priority_queue_t *p = pqp->next;
+ 414:../../../os/rt/include/chlists.h **** 
+ 415:../../../os/rt/include/chlists.h ****   pqp->next       = p->next;
+ 416:../../../os/rt/include/chlists.h ****   pqp->next->prev = pqp;
+ 417:../../../os/rt/include/chlists.h **** 
+ 418:../../../os/rt/include/chlists.h ****   return p;
+ 419:../../../os/rt/include/chlists.h **** }
+ 420:../../../os/rt/include/chlists.h **** 
+ 421:../../../os/rt/include/chlists.h **** /**
+ 422:../../../os/rt/include/chlists.h ****  * @brief   Inserts an element in the priority queue placing it behind
+ 423:../../../os/rt/include/chlists.h ****  *          its peers.
+ 424:../../../os/rt/include/chlists.h ****  * @details The element is positioned behind all elements with higher or
+ 425:../../../os/rt/include/chlists.h ****  *          equal priority.
+ 426:../../../os/rt/include/chlists.h ****  *
+ 427:../../../os/rt/include/chlists.h ****  * @param[in] pqp       the pointer to the priority queue list header
+ 428:../../../os/rt/include/chlists.h ****  * @param[in] p         the pointer to the element to be inserted in the queue
+ 429:../../../os/rt/include/chlists.h ****  * @return              The inserted element pointer.
+ 430:../../../os/rt/include/chlists.h ****  *
+ 431:../../../os/rt/include/chlists.h ****  * @notapi
+ 432:../../../os/rt/include/chlists.h ****  */
+ 433:../../../os/rt/include/chlists.h **** static inline ch_priority_queue_t *ch_pqueue_insert_behind(ch_priority_queue_t *pqp,
+ 434:../../../os/rt/include/chlists.h ****                                                            ch_priority_queue_t *p) {
+ 435:../../../os/rt/include/chlists.h **** 
+ 436:../../../os/rt/include/chlists.h ****   /* Scanning priority queue, the list is assumed to be mostly empty.*/
+ 437:../../../os/rt/include/chlists.h ****   do {
+ 438:../../../os/rt/include/chlists.h ****     pqp = pqp->next;
+ 439:../../../os/rt/include/chlists.h ****   } while (unlikely(pqp->prio >= p->prio));
+ 440:../../../os/rt/include/chlists.h **** 
+ 441:../../../os/rt/include/chlists.h ****   /* Insertion on prev.*/
+ 442:../../../os/rt/include/chlists.h ****   p->next       = pqp;
+ 443:../../../os/rt/include/chlists.h ****   p->prev       = pqp->prev;
+ 444:../../../os/rt/include/chlists.h ****   p->prev->next = p;
+ 445:../../../os/rt/include/chlists.h ****   pqp->prev     = p;
+ 446:../../../os/rt/include/chlists.h **** 
+ 447:../../../os/rt/include/chlists.h ****   return p;
+ 448:../../../os/rt/include/chlists.h **** }
+ 449:../../../os/rt/include/chlists.h **** 
+ 450:../../../os/rt/include/chlists.h **** /**
+ 451:../../../os/rt/include/chlists.h ****  * @brief   Inserts an element in the priority queue placing it ahead of
+ 452:../../../os/rt/include/chlists.h ****  *          its peers.
+ 453:../../../os/rt/include/chlists.h ****  * @details The element is positioned ahead of all elements with higher or
+ 454:../../../os/rt/include/chlists.h ****  *          equal priority.
+ 455:../../../os/rt/include/chlists.h ****  *
+ 456:../../../os/rt/include/chlists.h ****  * @param[in] pqp       the pointer to the priority queue list header
+ 457:../../../os/rt/include/chlists.h ****  * @param[in] p         the pointer to the element to be inserted in the queue
+ 458:../../../os/rt/include/chlists.h ****  * @return              The inserted element pointer.
+ 459:../../../os/rt/include/chlists.h ****  *
+ 460:../../../os/rt/include/chlists.h ****  * @notapi
+ 461:../../../os/rt/include/chlists.h ****  */
+ 462:../../../os/rt/include/chlists.h **** static inline ch_priority_queue_t *ch_pqueue_insert_ahead(ch_priority_queue_t *pqp,
+ 463:../../../os/rt/include/chlists.h ****                                                           ch_priority_queue_t *p) {
+ 464:../../../os/rt/include/chlists.h **** 
+ 465:../../../os/rt/include/chlists.h ****   /* Scanning priority queue, the list is assumed to be mostly empty.*/
+ 466:../../../os/rt/include/chlists.h ****   do {
+ 467:../../../os/rt/include/chlists.h ****     pqp = pqp->next;
+ 468:../../../os/rt/include/chlists.h ****   } while (unlikely(pqp->prio > p->prio));
+ 469:../../../os/rt/include/chlists.h **** 
+ 470:../../../os/rt/include/chlists.h ****   /* Insertion on prev.*/
+ 471:../../../os/rt/include/chlists.h ****   p->next       = pqp;
+ 472:../../../os/rt/include/chlists.h ****   p->prev       = pqp->prev;
+ 473:../../../os/rt/include/chlists.h ****   p->prev->next = p;
+ 474:../../../os/rt/include/chlists.h ****   pqp->prev     = p;
+ 475:../../../os/rt/include/chlists.h **** 
+ 476:../../../os/rt/include/chlists.h ****   return p;
+ 477:../../../os/rt/include/chlists.h **** }
+ 478:../../../os/rt/include/chlists.h **** 
+ 479:../../../os/rt/include/chlists.h **** /**
+ 480:../../../os/rt/include/chlists.h ****  * @brief   Delta list initialization.
+ 481:../../../os/rt/include/chlists.h ****  *
+ 482:../../../os/rt/include/chlists.h ****  * @param[out] dlhp    pointer to the delta list header
+ 483:../../../os/rt/include/chlists.h ****  *
+ 484:../../../os/rt/include/chlists.h ****  * @notapi
+ 485:../../../os/rt/include/chlists.h ****  */
+ 486:../../../os/rt/include/chlists.h **** static inline void ch_dlist_init(ch_delta_list_t *dlhp) {
+ 487:../../../os/rt/include/chlists.h **** 
+ 488:../../../os/rt/include/chlists.h ****   dlhp->next  = dlhp;
+ 489:../../../os/rt/include/chlists.h ****   dlhp->prev  = dlhp;
+ 490:../../../os/rt/include/chlists.h ****   dlhp->delta = (sysinterval_t)-1;
+ 491:../../../os/rt/include/chlists.h **** }
+ 492:../../../os/rt/include/chlists.h **** 
+ 493:../../../os/rt/include/chlists.h **** /**
+ 494:../../../os/rt/include/chlists.h ****  * @brief   Evaluates to @p true if the specified delta list is empty.
+ 495:../../../os/rt/include/chlists.h ****  *
+ 496:../../../os/rt/include/chlists.h ****  * @param[in] dlhp      pointer to the delta list header
+ 497:../../../os/rt/include/chlists.h ****  * @return              The status of the delta list.
+ 498:../../../os/rt/include/chlists.h ****  *
+ 499:../../../os/rt/include/chlists.h ****  * @notapi
+ 500:../../../os/rt/include/chlists.h ****  */
+ 501:../../../os/rt/include/chlists.h **** static inline bool ch_dlist_isempty(ch_delta_list_t *dlhp) {
+ 502:../../../os/rt/include/chlists.h **** 
+ 503:../../../os/rt/include/chlists.h ****   return (bool)(dlhp == dlhp->next);
+ 504:../../../os/rt/include/chlists.h **** }
+ 505:../../../os/rt/include/chlists.h **** 
+ 506:../../../os/rt/include/chlists.h **** /**
+ 507:../../../os/rt/include/chlists.h ****  * @brief   Evaluates to @p true if the specified queue is not empty.
+ 508:../../../os/rt/include/chlists.h ****  *
+ 509:../../../os/rt/include/chlists.h ****  * @param[in] dlhp      pointer to the delta list header
+ 510:../../../os/rt/include/chlists.h ****  * @return              The status of the delta list.
+ 511:../../../os/rt/include/chlists.h ****  *
+ 512:../../../os/rt/include/chlists.h ****  * @notapi
+ 513:../../../os/rt/include/chlists.h ****  */
+ 514:../../../os/rt/include/chlists.h **** static inline bool ch_dlist_notempty(ch_delta_list_t *dlhp) {
+ 515:../../../os/rt/include/chlists.h **** 
+ 516:../../../os/rt/include/chlists.h ****   return (bool)(dlhp != dlhp->next);
+ 517:../../../os/rt/include/chlists.h **** }
+ 518:../../../os/rt/include/chlists.h **** 
+ 519:../../../os/rt/include/chlists.h **** /**
+ 520:../../../os/rt/include/chlists.h ****  * @brief   Last element in the delta list check.
+ 521:../../../os/rt/include/chlists.h ****  *
+ 522:../../../os/rt/include/chlists.h ****  * @param[in] dlhp      pointer to the delta list header
+ 523:../../../os/rt/include/chlists.h ****  * @param[in] dlp       pointer to the delta list element
+ 524:../../../os/rt/include/chlists.h ****  *
+ 525:../../../os/rt/include/chlists.h ****  * @notapi
+ 526:../../../os/rt/include/chlists.h ****  */
+ 527:../../../os/rt/include/chlists.h **** static inline bool ch_dlist_islast(ch_delta_list_t *dlhp,
+ 528:../../../os/rt/include/chlists.h ****                                    ch_delta_list_t *dlp) {
+ 529:../../../os/rt/include/chlists.h **** 
+ 530:../../../os/rt/include/chlists.h ****   return (bool)(dlp->next == dlhp);
+ 531:../../../os/rt/include/chlists.h **** }
+ 532:../../../os/rt/include/chlists.h **** 
+ 533:../../../os/rt/include/chlists.h **** /**
+ 534:../../../os/rt/include/chlists.h ****  * @brief   Fist element in the delta list check.
+ 535:../../../os/rt/include/chlists.h ****  *
+ 536:../../../os/rt/include/chlists.h ****  * @param[in] dlhp      pointer to the delta list header
+ 537:../../../os/rt/include/chlists.h ****  * @param[in] dlp       pointer to the delta list element
+ 538:../../../os/rt/include/chlists.h ****  *
+ 539:../../../os/rt/include/chlists.h ****  * @notapi
+ 540:../../../os/rt/include/chlists.h ****  */
+ 541:../../../os/rt/include/chlists.h **** static inline bool ch_dlist_isfirst(ch_delta_list_t *dlhp,
+ 542:../../../os/rt/include/chlists.h ****                                     ch_delta_list_t *dlp) {
+ 543:../../../os/rt/include/chlists.h **** 
+ 544:../../../os/rt/include/chlists.h ****   return (bool)(dlhp->next == dlp);
+ 545:../../../os/rt/include/chlists.h **** }
+ 546:../../../os/rt/include/chlists.h **** 
+ 547:../../../os/rt/include/chlists.h **** /**
+ 548:../../../os/rt/include/chlists.h ****  * @brief   Inserts an element after another header element.
+ 549:../../../os/rt/include/chlists.h ****  *
+ 550:../../../os/rt/include/chlists.h ****  * @param[in] dlhp      pointer to the delta list header element
+ 551:../../../os/rt/include/chlists.h ****  * @param[in] dlp       element to be inserted after the header element
+ 552:../../../os/rt/include/chlists.h ****  * @param[in] delta     delta of the element to be inserted
+ 553:../../../os/rt/include/chlists.h ****  *
+ 554:../../../os/rt/include/chlists.h ****  * @notapi
+ 555:../../../os/rt/include/chlists.h ****  */
+ 556:../../../os/rt/include/chlists.h **** static inline void ch_dlist_insert_after(ch_delta_list_t *dlhp,
+ 557:../../../os/rt/include/chlists.h ****                                          ch_delta_list_t *dlp,
+ 558:../../../os/rt/include/chlists.h ****                                          sysinterval_t delta) {
+ 559:../../../os/rt/include/chlists.h **** 
+ 560:../../../os/rt/include/chlists.h ****   dlp->delta      = delta;
+ 561:../../../os/rt/include/chlists.h ****   dlp->prev       = dlhp;
+ 562:../../../os/rt/include/chlists.h ****   dlp->next       = dlp->prev->next;
+ 563:../../../os/rt/include/chlists.h ****   dlp->next->prev = dlp;
+ 564:../../../os/rt/include/chlists.h ****   dlhp->next      = dlp;
+ 565:../../../os/rt/include/chlists.h **** }
+ 566:../../../os/rt/include/chlists.h **** 
+ 567:../../../os/rt/include/chlists.h **** /**
+ 568:../../../os/rt/include/chlists.h ****  * @brief   Inserts an element before another header element.
+ 569:../../../os/rt/include/chlists.h ****  *
+ 570:../../../os/rt/include/chlists.h ****  * @param[in] dlhp      pointer to the delta list header element
+ 571:../../../os/rt/include/chlists.h ****  * @param[in] dlp       element to be inserted before the header element
+ 572:../../../os/rt/include/chlists.h ****  * @param[in] delta     delta of the element to be inserted
+ 573:../../../os/rt/include/chlists.h ****  *
+ 574:../../../os/rt/include/chlists.h ****  * @notapi
+ 575:../../../os/rt/include/chlists.h ****  */
+ 576:../../../os/rt/include/chlists.h **** static inline void ch_dlist_insert_before(ch_delta_list_t *dlhp,
+ 577:../../../os/rt/include/chlists.h ****                                           ch_delta_list_t *dlp,
+ 578:../../../os/rt/include/chlists.h ****                                           sysinterval_t delta) {
+ 579:../../../os/rt/include/chlists.h **** 
+ 580:../../../os/rt/include/chlists.h ****   dlp->delta      = delta;
+ 581:../../../os/rt/include/chlists.h ****   dlp->next       = dlhp;
+ 582:../../../os/rt/include/chlists.h ****   dlp->prev       = dlp->next->prev;
+ 583:../../../os/rt/include/chlists.h ****   dlp->prev->next = dlp;
+ 584:../../../os/rt/include/chlists.h ****   dlhp->prev      = dlp;
+ 585:../../../os/rt/include/chlists.h **** }
+ 586:../../../os/rt/include/chlists.h **** 
+ 587:../../../os/rt/include/chlists.h **** /**
+ 588:../../../os/rt/include/chlists.h ****  * @brief   Inserts an element in a delta list.
+ 589:../../../os/rt/include/chlists.h ****  *
+ 590:../../../os/rt/include/chlists.h ****  * @param[in] dlhp      pointer to the delta list header element
+ 591:../../../os/rt/include/chlists.h ****  * @param[in] dlep      element to be inserted before the header element
+ 592:../../../os/rt/include/chlists.h ****  * @param[in] delta     delta of the element to be inserted
+ 593:../../../os/rt/include/chlists.h ****  *
+ 594:../../../os/rt/include/chlists.h ****  * @notapi
+ 595:../../../os/rt/include/chlists.h ****  */
+ 596:../../../os/rt/include/chlists.h **** static inline void ch_dlist_insert(ch_delta_list_t *dlhp,
+ 597:../../../os/rt/include/chlists.h ****                                    ch_delta_list_t *dlep,
+ 598:../../../os/rt/include/chlists.h ****                                    sysinterval_t delta) {
+ 599:../../../os/rt/include/chlists.h ****   ch_delta_list_t *dlp;
+ 600:../../../os/rt/include/chlists.h **** 
+ 601:../../../os/rt/include/chlists.h ****   /* The delta list is scanned in order to find the correct position for
+ 602:../../../os/rt/include/chlists.h ****      this element. */
+ 603:../../../os/rt/include/chlists.h ****   dlp = dlhp->next;
+ 604:../../../os/rt/include/chlists.h ****   while (likely(dlp->delta < delta)) {
+  94               		.loc 2 604 0
+  95 0026 2481      		ldd r18,Z+4
+  96 0028 3581      		ldd r19,Z+5
+  97               	.LVL6:
+  98 002a 2617      		cp r18,r22
+  99 002c 3707      		cpc r19,r23
+ 100 002e 00F4      		brsh .L4
+ 101               	.LVL7:
+ 102               	.L5:
+ 605:../../../os/rt/include/chlists.h ****     /* Debug assert if the element is already in the list.*/
+ 606:../../../os/rt/include/chlists.h ****     chDbgAssert(dlp != dlep, "element already in list");
+ 607:../../../os/rt/include/chlists.h **** 
+ 608:../../../os/rt/include/chlists.h ****     delta -= dlp->delta;
+ 103               		.loc 2 608 0
+ 104 0030 621B      		sub r22,r18
+ 105 0032 730B      		sbc r23,r19
+ 106               	.LVL8:
+ 609:../../../os/rt/include/chlists.h ****     dlp = dlp->next;
+ 107               		.loc 2 609 0
+ 108 0034 0190      		ld __tmp_reg__,Z+
+ 109 0036 F081      		ld r31,Z
+ 110 0038 E02D      		mov r30,__tmp_reg__
+ 111               	.LVL9:
+ 604:../../../os/rt/include/chlists.h ****     /* Debug assert if the element is already in the list.*/
+ 112               		.loc 2 604 0
+ 113 003a 2481      		ldd r18,Z+4
+ 114 003c 3581      		ldd r19,Z+5
+ 115 003e 2617      		cp r18,r22
+ 116 0040 3707      		cpc r19,r23
+ 117 0042 00F0      		brlo .L5
+ 118               	.L4:
+ 119               	.LVL10:
+ 120               	.LBB51:
+ 121               	.LBB52:
+ 580:../../../os/rt/include/chlists.h ****   dlp->next       = dlhp;
+ 122               		.loc 2 580 0
+ 123 0044 1596      		adiw r26,4+1
+ 124 0046 7C93      		st X,r23
+ 125 0048 6E93      		st -X,r22
+ 126 004a 1497      		sbiw r26,4
+ 581:../../../os/rt/include/chlists.h ****   dlp->prev       = dlp->next->prev;
+ 127               		.loc 2 581 0
+ 128 004c 1196      		adiw r26,1
+ 129 004e FC93      		st X,r31
+ 130 0050 EE93      		st -X,r30
+ 582:../../../os/rt/include/chlists.h ****   dlp->prev->next = dlp;
+ 131               		.loc 2 582 0
+ 132 0052 C281      		ldd r28,Z+2
+ 133 0054 D381      		ldd r29,Z+3
+ 134 0056 1396      		adiw r26,2+1
+ 135 0058 DC93      		st X,r29
+ 136 005a CE93      		st -X,r28
+ 137 005c 1297      		sbiw r26,2
+ 583:../../../os/rt/include/chlists.h ****   dlhp->prev      = dlp;
+ 138               		.loc 2 583 0
+ 139 005e B983      		std Y+1,r27
+ 140 0060 A883      		st Y,r26
+ 584:../../../os/rt/include/chlists.h **** }
+ 141               		.loc 2 584 0
+ 142 0062 B383      		std Z+3,r27
+ 143 0064 A283      		std Z+2,r26
+ 144               	.LVL11:
+ 145               	.LBE52:
+ 146               	.LBE51:
+ 610:../../../os/rt/include/chlists.h ****   }
+ 611:../../../os/rt/include/chlists.h **** 
+ 612:../../../os/rt/include/chlists.h ****   /* The timer is inserted in the delta list.*/
+ 613:../../../os/rt/include/chlists.h ****   ch_dlist_insert_before(dlp, dlep, delta);
+ 614:../../../os/rt/include/chlists.h **** 
+ 615:../../../os/rt/include/chlists.h ****   /* Adjusting delta for the following element.*/
+ 616:../../../os/rt/include/chlists.h ****   dlp->delta -= delta;
+ 147               		.loc 2 616 0
+ 148 0066 8481      		ldd r24,Z+4
+ 149 0068 9581      		ldd r25,Z+5
+ 150               	.LVL12:
+ 151 006a 861B      		sub r24,r22
+ 152 006c 970B      		sbc r25,r23
+ 153 006e 9583      		std Z+5,r25
+ 154 0070 8483      		std Z+4,r24
+ 617:../../../os/rt/include/chlists.h **** 
+ 618:../../../os/rt/include/chlists.h ****   /* Special case when the inserted element is in last position in the list,
+ 619:../../../os/rt/include/chlists.h ****      the value in the header must be restored, just doing it is faster than
+ 620:../../../os/rt/include/chlists.h ****      checking then doing.*/
+ 621:../../../os/rt/include/chlists.h ****   dlhp->delta = (sysinterval_t)-1;
+ 155               		.loc 2 621 0
+ 156 0072 8FEF      		ldi r24,lo8(-1)
+ 157 0074 9FEF      		ldi r25,lo8(-1)
+ 158 0076 9093 0000 		sts ch0+11+1,r25
+ 159 007a 8093 0000 		sts ch0+11,r24
+ 160               	.LVL13:
+ 161               	/* epilogue start */
+ 162               	.LBE50:
+ 163               	.LBE49:
+ 164               	.LBE48:
+ 165               	.LBE47:
+ 342:../../../os/rt/src/chvt.c **** 
+ 343:../../../os/rt/src/chvt.c ****   /* Inserting the timer in the delta list.*/
+ 344:../../../os/rt/src/chvt.c ****   vt_enqueue(vtlp, vtp, delay);
+ 345:../../../os/rt/src/chvt.c **** }
+ 166               		.loc 1 345 0
+ 167 007e DF91      		pop r29
+ 168 0080 CF91      		pop r28
+ 169 0082 0895      		ret
+ 170               		.cfi_endproc
+ 171               	.LFE196:
+ 173               		.section	.text.chVTDoSetContinuousI,"ax",@progbits
+ 174               	.global	chVTDoSetContinuousI
+ 176               	chVTDoSetContinuousI:
+ 177               	.LFB197:
+ 346:../../../os/rt/src/chvt.c **** 
+ 347:../../../os/rt/src/chvt.c **** /**
+ 348:../../../os/rt/src/chvt.c ****  * @brief   Enables a continuous virtual timer.
+ 349:../../../os/rt/src/chvt.c ****  * @details The timer is enabled and programmed to trigger after the delay
+ 350:../../../os/rt/src/chvt.c ****  *          specified as parameter.
+ 351:../../../os/rt/src/chvt.c ****  * @pre     The timer must not be already armed before calling this function.
+ 352:../../../os/rt/src/chvt.c ****  * @note    The callback function is invoked from interrupt context.
+ 353:../../../os/rt/src/chvt.c ****  *
+ 354:../../../os/rt/src/chvt.c ****  * @param[out] vtp      pointer to a @p virtual_timer_t object
+ 355:../../../os/rt/src/chvt.c ****  * @param[in] delay     the number of ticks before the operation timeouts, the
+ 356:../../../os/rt/src/chvt.c ****  *                      special values are handled as follow:
+ 357:../../../os/rt/src/chvt.c ****  *                      - @a TIME_INFINITE is allowed but interpreted as a
+ 358:../../../os/rt/src/chvt.c ****  *                        normal time specification.
+ 359:../../../os/rt/src/chvt.c ****  *                      - @a TIME_IMMEDIATE this value is not allowed.
+ 360:../../../os/rt/src/chvt.c ****  * @param[in] vtfunc    the timer callback function. After invoking the
+ 361:../../../os/rt/src/chvt.c ****  *                      callback the timer is restarted.
+ 362:../../../os/rt/src/chvt.c ****  * @param[in] par       a parameter that will be passed to the callback
+ 363:../../../os/rt/src/chvt.c ****  *                      function
+ 364:../../../os/rt/src/chvt.c ****  *
+ 365:../../../os/rt/src/chvt.c ****  * @iclass
+ 366:../../../os/rt/src/chvt.c ****  */
+ 367:../../../os/rt/src/chvt.c **** void chVTDoSetContinuousI(virtual_timer_t *vtp, sysinterval_t delay,
+ 368:../../../os/rt/src/chvt.c ****                           vtfunc_t vtfunc, void *par) {
+ 178               		.loc 1 368 0
+ 179               		.cfi_startproc
+ 180               	.LVL14:
+ 181 0000 CF93      		push r28
+ 182               	.LCFI2:
+ 183               		.cfi_def_cfa_offset 3
+ 184               		.cfi_offset 28, -2
+ 185 0002 DF93      		push r29
+ 186               	.LCFI3:
+ 187               		.cfi_def_cfa_offset 4
+ 188               		.cfi_offset 29, -3
+ 189               	/* prologue: function */
+ 190               	/* frame size = 0 */
+ 191               	/* stack size = 2 */
+ 192               	.L__stack_usage = 2
+ 193 0004 DC01      		movw r26,r24
+ 194               	.LVL15:
+ 369:../../../os/rt/src/chvt.c ****   virtual_timers_list_t *vtlp = &currcore->vtlist;
+ 370:../../../os/rt/src/chvt.c **** 
+ 371:../../../os/rt/src/chvt.c ****   chDbgCheckClassI();
+ 372:../../../os/rt/src/chvt.c ****   chDbgCheck((vtp != NULL) && (vtfunc != NULL) && (delay != TIME_IMMEDIATE));
+ 373:../../../os/rt/src/chvt.c **** 
+ 374:../../../os/rt/src/chvt.c ****   /* Timer initialization.*/
+ 375:../../../os/rt/src/chvt.c ****   vtp->par     = par;
+ 195               		.loc 1 375 0
+ 196 0006 1996      		adiw r26,8+1
+ 197 0008 3C93      		st X,r19
+ 198 000a 2E93      		st -X,r18
+ 199 000c 1897      		sbiw r26,8
+ 376:../../../os/rt/src/chvt.c ****   vtp->func    = vtfunc;
+ 200               		.loc 1 376 0
+ 201 000e 1796      		adiw r26,6+1
+ 202 0010 5C93      		st X,r21
+ 203 0012 4E93      		st -X,r20
+ 204 0014 1697      		sbiw r26,6
+ 377:../../../os/rt/src/chvt.c ****   vtp->reload  = delay;
+ 205               		.loc 1 377 0
+ 206 0016 1B96      		adiw r26,10+1
+ 207 0018 7C93      		st X,r23
+ 208 001a 6E93      		st -X,r22
+ 209 001c 1A97      		sbiw r26,10
+ 210               	.LVL16:
+ 211 001e E091 0000 		lds r30,ch0+7
+ 212 0022 F091 0000 		lds r31,ch0+7+1
+ 213               	.LVL17:
+ 214               	.LBB53:
+ 215               	.LBB54:
+ 216               	.LBB55:
+ 217               	.LBB56:
+ 604:../../../os/rt/include/chlists.h ****     /* Debug assert if the element is already in the list.*/
+ 218               		.loc 2 604 0
+ 219 0026 2481      		ldd r18,Z+4
+ 220 0028 3581      		ldd r19,Z+5
+ 221               	.LVL18:
+ 222 002a 2617      		cp r18,r22
+ 223 002c 3707      		cpc r19,r23
+ 224 002e 00F4      		brsh .L9
+ 225               	.LVL19:
+ 226               	.L10:
+ 608:../../../os/rt/include/chlists.h ****     dlp = dlp->next;
+ 227               		.loc 2 608 0
+ 228 0030 621B      		sub r22,r18
+ 229 0032 730B      		sbc r23,r19
+ 230               	.LVL20:
+ 609:../../../os/rt/include/chlists.h ****   }
+ 231               		.loc 2 609 0
+ 232 0034 0190      		ld __tmp_reg__,Z+
+ 233 0036 F081      		ld r31,Z
+ 234 0038 E02D      		mov r30,__tmp_reg__
+ 235               	.LVL21:
+ 604:../../../os/rt/include/chlists.h ****     /* Debug assert if the element is already in the list.*/
+ 236               		.loc 2 604 0
+ 237 003a 2481      		ldd r18,Z+4
+ 238 003c 3581      		ldd r19,Z+5
+ 239 003e 2617      		cp r18,r22
+ 240 0040 3707      		cpc r19,r23
+ 241 0042 00F0      		brlo .L10
+ 242               	.L9:
+ 243               	.LVL22:
+ 244               	.LBB57:
+ 245               	.LBB58:
+ 580:../../../os/rt/include/chlists.h ****   dlp->next       = dlhp;
+ 246               		.loc 2 580 0
+ 247 0044 1596      		adiw r26,4+1
+ 248 0046 7C93      		st X,r23
+ 249 0048 6E93      		st -X,r22
+ 250 004a 1497      		sbiw r26,4
+ 581:../../../os/rt/include/chlists.h ****   dlp->prev       = dlp->next->prev;
+ 251               		.loc 2 581 0
+ 252 004c 1196      		adiw r26,1
+ 253 004e FC93      		st X,r31
+ 254 0050 EE93      		st -X,r30
+ 582:../../../os/rt/include/chlists.h ****   dlp->prev->next = dlp;
+ 255               		.loc 2 582 0
+ 256 0052 C281      		ldd r28,Z+2
+ 257 0054 D381      		ldd r29,Z+3
+ 258 0056 1396      		adiw r26,2+1
+ 259 0058 DC93      		st X,r29
+ 260 005a CE93      		st -X,r28
+ 261 005c 1297      		sbiw r26,2
+ 583:../../../os/rt/include/chlists.h ****   dlhp->prev      = dlp;
+ 262               		.loc 2 583 0
+ 263 005e B983      		std Y+1,r27
+ 264 0060 A883      		st Y,r26
+ 584:../../../os/rt/include/chlists.h **** }
+ 265               		.loc 2 584 0
+ 266 0062 B383      		std Z+3,r27
+ 267 0064 A283      		std Z+2,r26
+ 268               	.LVL23:
+ 269               	.LBE58:
+ 270               	.LBE57:
+ 616:../../../os/rt/include/chlists.h **** 
+ 271               		.loc 2 616 0
+ 272 0066 8481      		ldd r24,Z+4
+ 273 0068 9581      		ldd r25,Z+5
+ 274               	.LVL24:
+ 275 006a 861B      		sub r24,r22
+ 276 006c 970B      		sbc r25,r23
+ 277 006e 9583      		std Z+5,r25
+ 278 0070 8483      		std Z+4,r24
+ 279               		.loc 2 621 0
+ 280 0072 8FEF      		ldi r24,lo8(-1)
+ 281 0074 9FEF      		ldi r25,lo8(-1)
+ 282 0076 9093 0000 		sts ch0+11+1,r25
+ 283 007a 8093 0000 		sts ch0+11,r24
+ 284               	.LVL25:
+ 285               	/* epilogue start */
+ 286               	.LBE56:
+ 287               	.LBE55:
+ 288               	.LBE54:
+ 289               	.LBE53:
+ 378:../../../os/rt/src/chvt.c **** 
+ 379:../../../os/rt/src/chvt.c ****   /* Inserting the timer in the delta list.*/
+ 380:../../../os/rt/src/chvt.c ****   vt_enqueue(vtlp, vtp, delay);
+ 381:../../../os/rt/src/chvt.c **** }
+ 290               		.loc 1 381 0
+ 291 007e DF91      		pop r29
+ 292 0080 CF91      		pop r28
+ 293 0082 0895      		ret
+ 294               		.cfi_endproc
+ 295               	.LFE197:
+ 297               		.section	.text.chVTDoResetI,"ax",@progbits
+ 298               	.global	chVTDoResetI
+ 300               	chVTDoResetI:
+ 301               	.LFB198:
+ 382:../../../os/rt/src/chvt.c **** 
+ 383:../../../os/rt/src/chvt.c **** /**
+ 384:../../../os/rt/src/chvt.c ****  * @brief   Disables a Virtual Timer.
+ 385:../../../os/rt/src/chvt.c ****  * @pre     The timer must be in armed state before calling this function.
+ 386:../../../os/rt/src/chvt.c ****  *
+ 387:../../../os/rt/src/chvt.c ****  * @param[in] vtp       pointer to a @p virtual_timer_t object
+ 388:../../../os/rt/src/chvt.c ****  *
+ 389:../../../os/rt/src/chvt.c ****  * @iclass
+ 390:../../../os/rt/src/chvt.c ****  */
+ 391:../../../os/rt/src/chvt.c **** void chVTDoResetI(virtual_timer_t *vtp) {
+ 302               		.loc 1 391 0
+ 303               		.cfi_startproc
+ 304               	.LVL26:
+ 305 0000 CF93      		push r28
+ 306               	.LCFI4:
+ 307               		.cfi_def_cfa_offset 3
+ 308               		.cfi_offset 28, -2
+ 309 0002 DF93      		push r29
+ 310               	.LCFI5:
+ 311               		.cfi_def_cfa_offset 4
+ 312               		.cfi_offset 29, -3
+ 313               	/* prologue: function */
+ 314               	/* frame size = 0 */
+ 315               	/* stack size = 2 */
+ 316               	.L__stack_usage = 2
+ 317 0004 FC01      		movw r30,r24
+ 318               	.LVL27:
+ 392:../../../os/rt/src/chvt.c ****   virtual_timers_list_t *vtlp = &currcore->vtlist;
+ 393:../../../os/rt/src/chvt.c **** 
+ 394:../../../os/rt/src/chvt.c ****   chDbgCheckClassI();
+ 395:../../../os/rt/src/chvt.c ****   chDbgCheck(vtp != NULL);
+ 396:../../../os/rt/src/chvt.c ****   chDbgAssert(chVTIsArmedI(vtp), "timer not armed");
+ 397:../../../os/rt/src/chvt.c **** 
+ 398:../../../os/rt/src/chvt.c **** #if CH_CFG_ST_TIMEDELTA == 0
+ 399:../../../os/rt/src/chvt.c **** 
+ 400:../../../os/rt/src/chvt.c ****   /* The delta of the timer is added to the next timer.*/
+ 401:../../../os/rt/src/chvt.c ****   vtp->dlist.next->delta += vtp->dlist.delta;
+ 319               		.loc 1 401 0
+ 320 0006 A081      		ld r26,Z
+ 321 0008 B181      		ldd r27,Z+1
+ 322 000a 1496      		adiw r26,4
+ 323 000c 2D91      		ld r18,X+
+ 324 000e 3C91      		ld r19,X
+ 325 0010 1597      		sbiw r26,4+1
+ 326 0012 8481      		ldd r24,Z+4
+ 327 0014 9581      		ldd r25,Z+5
+ 328               	.LVL28:
+ 329 0016 820F      		add r24,r18
+ 330 0018 931F      		adc r25,r19
+ 331 001a 1596      		adiw r26,4+1
+ 332 001c 9C93      		st X,r25
+ 333 001e 8E93      		st -X,r24
+ 334 0020 1497      		sbiw r26,4
+ 335               	.LVL29:
+ 336               	.LBB59:
+ 337               	.LBB60:
+ 622:../../../os/rt/include/chlists.h **** }
+ 623:../../../os/rt/include/chlists.h **** 
+ 624:../../../os/rt/include/chlists.h **** /**
+ 625:../../../os/rt/include/chlists.h ****  * @brief   Dequeues an element from the delta list.
+ 626:../../../os/rt/include/chlists.h ****  *
+ 627:../../../os/rt/include/chlists.h ****  * @param[in] dlhp      pointer to the delta list header
+ 628:../../../os/rt/include/chlists.h ****  *
+ 629:../../../os/rt/include/chlists.h ****  * @notapi
+ 630:../../../os/rt/include/chlists.h ****  */
+ 631:../../../os/rt/include/chlists.h **** static inline ch_delta_list_t *ch_dlist_remove_first(ch_delta_list_t *dlhp) {
+ 632:../../../os/rt/include/chlists.h ****   ch_delta_list_t *dlp = dlhp->next;
+ 633:../../../os/rt/include/chlists.h **** 
+ 634:../../../os/rt/include/chlists.h ****   dlhp->next       = dlp->next;
+ 635:../../../os/rt/include/chlists.h ****   dlhp->next->prev = dlhp;
+ 636:../../../os/rt/include/chlists.h **** 
+ 637:../../../os/rt/include/chlists.h ****   return dlp;
+ 638:../../../os/rt/include/chlists.h **** }
+ 639:../../../os/rt/include/chlists.h **** 
+ 640:../../../os/rt/include/chlists.h **** /**
+ 641:../../../os/rt/include/chlists.h ****  * @brief   Dequeues an element from the delta list.
+ 642:../../../os/rt/include/chlists.h ****  *
+ 643:../../../os/rt/include/chlists.h ****  * @param[in] dlp       pointer to the delta list element
+ 644:../../../os/rt/include/chlists.h ****  *
+ 645:../../../os/rt/include/chlists.h ****  * @notapi
+ 646:../../../os/rt/include/chlists.h ****  */
+ 647:../../../os/rt/include/chlists.h **** static inline ch_delta_list_t *ch_dlist_dequeue(ch_delta_list_t *dlp) {
+ 648:../../../os/rt/include/chlists.h **** 
+ 649:../../../os/rt/include/chlists.h ****   dlp->prev->next = dlp->next;
+ 338               		.loc 2 649 0
+ 339 0022 C281      		ldd r28,Z+2
+ 340 0024 D381      		ldd r29,Z+3
+ 341 0026 B983      		std Y+1,r27
+ 342 0028 A883      		st Y,r26
+ 650:../../../os/rt/include/chlists.h ****   dlp->next->prev = dlp->prev;
+ 343               		.loc 2 650 0
+ 344 002a A081      		ld r26,Z
+ 345 002c B181      		ldd r27,Z+1
+ 346 002e 1396      		adiw r26,2+1
+ 347 0030 DC93      		st X,r29
+ 348 0032 CE93      		st -X,r28
+ 349 0034 1297      		sbiw r26,2
+ 350               	.LVL30:
+ 351               	.LBE60:
+ 352               	.LBE59:
+ 402:../../../os/rt/src/chvt.c **** 
+ 403:../../../os/rt/src/chvt.c ****  /* Removing the element from the delta list, marking it as not armed.*/
+ 404:../../../os/rt/src/chvt.c ****   (void) ch_dlist_dequeue(&vtp->dlist);
+ 405:../../../os/rt/src/chvt.c ****   vtp->dlist.next = NULL;
+ 353               		.loc 1 405 0
+ 354 0036 1182      		std Z+1,__zero_reg__
+ 355 0038 1082      		st Z,__zero_reg__
+ 406:../../../os/rt/src/chvt.c **** 
+ 407:../../../os/rt/src/chvt.c ****   /* The above code changes the value in the header when the removed element
+ 408:../../../os/rt/src/chvt.c ****      is the last of the list, restoring it.*/
+ 409:../../../os/rt/src/chvt.c ****   vtlp->dlist.delta = (sysinterval_t)-1;
+ 356               		.loc 1 409 0
+ 357 003a 8FEF      		ldi r24,lo8(-1)
+ 358 003c 9FEF      		ldi r25,lo8(-1)
+ 359 003e 9093 0000 		sts ch0+11+1,r25
+ 360 0042 8093 0000 		sts ch0+11,r24
+ 361               	/* epilogue start */
+ 410:../../../os/rt/src/chvt.c **** #else /* CH_CFG_ST_TIMEDELTA > 0 */
+ 411:../../../os/rt/src/chvt.c ****   systime_t now;
+ 412:../../../os/rt/src/chvt.c ****   sysinterval_t nowdelta, delta;
+ 413:../../../os/rt/src/chvt.c **** 
+ 414:../../../os/rt/src/chvt.c ****   /* If the timer is not the first of the list then it is simply unlinked
+ 415:../../../os/rt/src/chvt.c ****      else the operation is more complex.*/
+ 416:../../../os/rt/src/chvt.c ****   if (!ch_dlist_isfirst(&vtlp->dlist, &vtp->dlist)) {
+ 417:../../../os/rt/src/chvt.c **** 
+ 418:../../../os/rt/src/chvt.c ****     /* Removing the element from the delta list.*/
+ 419:../../../os/rt/src/chvt.c ****     (void) ch_dlist_dequeue(&vtp->dlist);
+ 420:../../../os/rt/src/chvt.c **** 
+ 421:../../../os/rt/src/chvt.c ****     /* Adding delta to the next element, if it is not the last one.*/
+ 422:../../../os/rt/src/chvt.c ****     vtp->dlist.next->delta += vtp->dlist.delta;
+ 423:../../../os/rt/src/chvt.c **** 
+ 424:../../../os/rt/src/chvt.c ****     /* Marking timer as not armed.*/
+ 425:../../../os/rt/src/chvt.c ****     vtp->dlist.next = NULL;
+ 426:../../../os/rt/src/chvt.c **** 
+ 427:../../../os/rt/src/chvt.c ****     /* Special case when the removed element from the last position in the list,
+ 428:../../../os/rt/src/chvt.c ****        the value in the header must be restored, just doing it is faster than
+ 429:../../../os/rt/src/chvt.c ****        checking then doing.*/
+ 430:../../../os/rt/src/chvt.c ****     vtlp->dlist.delta = (sysinterval_t)-1;
+ 431:../../../os/rt/src/chvt.c **** 
+ 432:../../../os/rt/src/chvt.c ****     return;
+ 433:../../../os/rt/src/chvt.c ****   }
+ 434:../../../os/rt/src/chvt.c **** 
+ 435:../../../os/rt/src/chvt.c ****   /* Removing the first timer from the list, marking it as not armed.*/
+ 436:../../../os/rt/src/chvt.c ****   ch_dlist_remove_first(&vtlp->dlist);
+ 437:../../../os/rt/src/chvt.c ****   vtp->dlist.next = NULL;
+ 438:../../../os/rt/src/chvt.c **** 
+ 439:../../../os/rt/src/chvt.c ****   /* If the list become empty then the alarm timer is stopped and done.*/
+ 440:../../../os/rt/src/chvt.c ****   if (ch_dlist_isempty(&vtlp->dlist)) {
+ 441:../../../os/rt/src/chvt.c **** 
+ 442:../../../os/rt/src/chvt.c ****     port_timer_stop_alarm();
+ 443:../../../os/rt/src/chvt.c **** 
+ 444:../../../os/rt/src/chvt.c ****     return;
+ 445:../../../os/rt/src/chvt.c ****   }
+ 446:../../../os/rt/src/chvt.c **** 
+ 447:../../../os/rt/src/chvt.c ****   /* The delta of the removed timer is added to the new first timer.*/
+ 448:../../../os/rt/src/chvt.c ****   vtlp->dlist.next->delta += vtp->dlist.delta;
+ 449:../../../os/rt/src/chvt.c **** 
+ 450:../../../os/rt/src/chvt.c ****   /* Distance in ticks between the last alarm event and current time.*/
+ 451:../../../os/rt/src/chvt.c ****   now = chVTGetSystemTimeX();
+ 452:../../../os/rt/src/chvt.c ****   nowdelta = chTimeDiffX(vtlp->lasttime, now);
+ 453:../../../os/rt/src/chvt.c **** 
+ 454:../../../os/rt/src/chvt.c ****   /* If the current time surpassed the time of the next element in list
+ 455:../../../os/rt/src/chvt.c ****      then the event interrupt is already pending, just return.*/
+ 456:../../../os/rt/src/chvt.c ****   if (nowdelta >= vtlp->dlist.next->delta) {
+ 457:../../../os/rt/src/chvt.c ****     return;
+ 458:../../../os/rt/src/chvt.c ****   }
+ 459:../../../os/rt/src/chvt.c **** 
+ 460:../../../os/rt/src/chvt.c ****   /* Distance from the next scheduled event and now.*/
+ 461:../../../os/rt/src/chvt.c ****   delta = vtlp->dlist.next->delta - nowdelta;
+ 462:../../../os/rt/src/chvt.c **** 
+ 463:../../../os/rt/src/chvt.c ****   /* Setting up the alarm.*/
+ 464:../../../os/rt/src/chvt.c ****   vt_set_alarm(vtlp, now, delta);
+ 465:../../../os/rt/src/chvt.c **** #endif /* CH_CFG_ST_TIMEDELTA > 0 */
+ 466:../../../os/rt/src/chvt.c **** }
+ 362               		.loc 1 466 0
+ 363 0046 DF91      		pop r29
+ 364 0048 CF91      		pop r28
+ 365 004a 0895      		ret
+ 366               		.cfi_endproc
+ 367               	.LFE198:
+ 369               		.section	.text.chVTGetRemainingIntervalI,"ax",@progbits
+ 370               	.global	chVTGetRemainingIntervalI
+ 372               	chVTGetRemainingIntervalI:
+ 373               	.LFB199:
+ 467:../../../os/rt/src/chvt.c **** 
+ 468:../../../os/rt/src/chvt.c **** /**
+ 469:../../../os/rt/src/chvt.c ****  * @brief   Returns the remaining time interval before next timer trigger.
+ 470:../../../os/rt/src/chvt.c ****  * @note    This function can be called while the timer is active.
+ 471:../../../os/rt/src/chvt.c ****  *
+ 472:../../../os/rt/src/chvt.c ****  * @param[in] vtp       pointer to a @p virtual_timer_t object
+ 473:../../../os/rt/src/chvt.c ****  * @return              The remaining time interval.
+ 474:../../../os/rt/src/chvt.c ****  *
+ 475:../../../os/rt/src/chvt.c ****  * @iclass
+ 476:../../../os/rt/src/chvt.c ****  */
+ 477:../../../os/rt/src/chvt.c **** sysinterval_t chVTGetRemainingIntervalI(virtual_timer_t *vtp) {
+ 374               		.loc 1 477 0
+ 375               		.cfi_startproc
+ 376               	.LVL31:
+ 377               	/* prologue: function */
+ 378               	/* frame size = 0 */
+ 379               	/* stack size = 0 */
+ 380               	.L__stack_usage = 0
+ 478:../../../os/rt/src/chvt.c ****   virtual_timers_list_t *vtlp = &currcore->vtlist;
+ 479:../../../os/rt/src/chvt.c ****   sysinterval_t delta;
+ 480:../../../os/rt/src/chvt.c ****   ch_delta_list_t *dlp;
+ 481:../../../os/rt/src/chvt.c **** 
+ 482:../../../os/rt/src/chvt.c ****   chDbgCheckClassI();
+ 483:../../../os/rt/src/chvt.c **** 
+ 484:../../../os/rt/src/chvt.c ****   delta = (sysinterval_t)0;
+ 485:../../../os/rt/src/chvt.c ****   dlp = vtlp->dlist.next;
+ 381               		.loc 1 485 0
+ 382 0000 E091 0000 		lds r30,ch0+7
+ 383 0004 F091 0000 		lds r31,ch0+7+1
+ 384               	.LVL32:
+ 484:../../../os/rt/src/chvt.c ****   dlp = vtlp->dlist.next;
+ 385               		.loc 1 484 0
+ 386 0008 20E0      		ldi r18,0
+ 387 000a 30E0      		ldi r19,0
+ 388 000c 00C0      		rjmp .L15
+ 389               	.LVL33:
+ 390               	.L19:
+ 486:../../../os/rt/src/chvt.c ****   do {
+ 487:../../../os/rt/src/chvt.c ****     delta += dlp->delta;
+ 488:../../../os/rt/src/chvt.c ****     if (dlp == &vtp->dlist) {
+ 489:../../../os/rt/src/chvt.c **** #if CH_CFG_ST_TIMEDELTA > 0
+ 490:../../../os/rt/src/chvt.c ****       systime_t now = chVTGetSystemTimeX();
+ 491:../../../os/rt/src/chvt.c ****       sysinterval_t nowdelta = chTimeDiffX(vtlp->lasttime, now);
+ 492:../../../os/rt/src/chvt.c ****       if (nowdelta > delta) {
+ 493:../../../os/rt/src/chvt.c ****         return (sysinterval_t)0;
+ 494:../../../os/rt/src/chvt.c ****       }
+ 495:../../../os/rt/src/chvt.c ****       return delta - nowdelta;
+ 496:../../../os/rt/src/chvt.c **** #else
+ 497:../../../os/rt/src/chvt.c ****       return delta;
+ 498:../../../os/rt/src/chvt.c **** #endif
+ 499:../../../os/rt/src/chvt.c ****     }
+ 500:../../../os/rt/src/chvt.c ****     dlp = dlp->next;
+ 391               		.loc 1 500 0
+ 392 000e 0190      		ld __tmp_reg__,Z+
+ 393 0010 F081      		ld r31,Z
+ 394 0012 E02D      		mov r30,__tmp_reg__
+ 395               	.LVL34:
+ 501:../../../os/rt/src/chvt.c ****   } while (dlp != &vtlp->dlist);
+ 396               		.loc 1 501 0
+ 397 0014 40E0      		ldi r20,hi8(ch0+7)
+ 398 0016 E030      		cpi r30,lo8(ch0+7)
+ 399 0018 F407      		cpc r31,r20
+ 400 001a 01F0      		breq .L18
+ 401               	.LVL35:
+ 402               	.L15:
+ 487:../../../os/rt/src/chvt.c ****     if (dlp == &vtp->dlist) {
+ 403               		.loc 1 487 0
+ 404 001c 4481      		ldd r20,Z+4
+ 405 001e 5581      		ldd r21,Z+5
+ 406 0020 240F      		add r18,r20
+ 407 0022 351F      		adc r19,r21
+ 408               	.LVL36:
+ 488:../../../os/rt/src/chvt.c **** #if CH_CFG_ST_TIMEDELTA > 0
+ 409               		.loc 1 488 0
+ 410 0024 E817      		cp r30,r24
+ 411 0026 F907      		cpc r31,r25
+ 412 0028 01F4      		brne .L19
+ 487:../../../os/rt/src/chvt.c ****     if (dlp == &vtp->dlist) {
+ 413               		.loc 1 487 0
+ 414 002a C901      		movw r24,r18
+ 415               	.LVL37:
+ 502:../../../os/rt/src/chvt.c **** 
+ 503:../../../os/rt/src/chvt.c ****   chDbgAssert(false, "timer not in list");
+ 504:../../../os/rt/src/chvt.c **** 
+ 505:../../../os/rt/src/chvt.c ****   return (sysinterval_t)-1;
+ 506:../../../os/rt/src/chvt.c **** }
+ 416               		.loc 1 506 0
+ 417 002c 0895      		ret
+ 418               	.LVL38:
+ 419               	.L18:
+ 505:../../../os/rt/src/chvt.c **** }
+ 420               		.loc 1 505 0
+ 421 002e 8FEF      		ldi r24,lo8(-1)
+ 422               	.LVL39:
+ 423 0030 9FEF      		ldi r25,lo8(-1)
+ 424 0032 0895      		ret
+ 425               		.cfi_endproc
+ 426               	.LFE199:
+ 428               		.section	.text.chVTDoTickI,"ax",@progbits
+ 429               	.global	chVTDoTickI
+ 431               	chVTDoTickI:
+ 432               	.LFB200:
+ 507:../../../os/rt/src/chvt.c **** 
+ 508:../../../os/rt/src/chvt.c **** /**
+ 509:../../../os/rt/src/chvt.c ****  * @brief   Virtual timers ticker.
+ 510:../../../os/rt/src/chvt.c ****  * @note    The system lock is released before entering the callback and
+ 511:../../../os/rt/src/chvt.c ****  *          re-acquired immediately after. It is callback's responsibility
+ 512:../../../os/rt/src/chvt.c ****  *          to acquire the lock if needed. This is done in order to reduce
+ 513:../../../os/rt/src/chvt.c ****  *          interrupts jitter when many timers are in use.
+ 514:../../../os/rt/src/chvt.c ****  *
+ 515:../../../os/rt/src/chvt.c ****  * @iclass
+ 516:../../../os/rt/src/chvt.c ****  */
+ 517:../../../os/rt/src/chvt.c **** void chVTDoTickI(void) {
+ 433               		.loc 1 517 0
+ 434               		.cfi_startproc
+ 435 0000 0F93      		push r16
+ 436               	.LCFI6:
+ 437               		.cfi_def_cfa_offset 3
+ 438               		.cfi_offset 16, -2
+ 439 0002 1F93      		push r17
+ 440               	.LCFI7:
+ 441               		.cfi_def_cfa_offset 4
+ 442               		.cfi_offset 17, -3
+ 443 0004 CF93      		push r28
+ 444               	.LCFI8:
+ 445               		.cfi_def_cfa_offset 5
+ 446               		.cfi_offset 28, -4
+ 447 0006 DF93      		push r29
+ 448               	.LCFI9:
+ 449               		.cfi_def_cfa_offset 6
+ 450               		.cfi_offset 29, -5
+ 451               	/* prologue: function */
+ 452               	/* frame size = 0 */
+ 453               	/* stack size = 4 */
+ 454               	.L__stack_usage = 4
+ 455               	.LVL40:
+ 518:../../../os/rt/src/chvt.c ****   virtual_timers_list_t *vtlp = &currcore->vtlist;
+ 519:../../../os/rt/src/chvt.c **** 
+ 520:../../../os/rt/src/chvt.c ****   chDbgCheckClassI();
+ 521:../../../os/rt/src/chvt.c **** 
+ 522:../../../os/rt/src/chvt.c **** #if CH_CFG_ST_TIMEDELTA == 0
+ 523:../../../os/rt/src/chvt.c ****   vtlp->systime++;
+ 456               		.loc 1 523 0
+ 457 0008 8091 0000 		lds r24,ch0+13
+ 458 000c 9091 0000 		lds r25,ch0+13+1
+ 459 0010 0196      		adiw r24,1
+ 460 0012 9093 0000 		sts ch0+13+1,r25
+ 461 0016 8093 0000 		sts ch0+13,r24
+ 462               	.LVL41:
+ 463               	.LBB61:
+ 464               	.LBB62:
+ 516:../../../os/rt/include/chlists.h **** }
+ 465               		.loc 2 516 0
+ 466 001a C091 0000 		lds r28,ch0+7
+ 467 001e D091 0000 		lds r29,ch0+7+1
+ 468               	.LVL42:
+ 469               	.LBE62:
+ 470               	.LBE61:
+ 524:../../../os/rt/src/chvt.c ****   if (ch_dlist_notempty(&vtlp->dlist)) {
+ 471               		.loc 1 524 0
+ 472 0022 40E0      		ldi r20,hi8(ch0+7)
+ 473 0024 C030      		cpi r28,lo8(ch0+7)
+ 474 0026 D407      		cpc r29,r20
+ 475 0028 01F0      		breq .L20
+ 525:../../../os/rt/src/chvt.c ****     /* The list is not empty, processing elements on top.*/
+ 526:../../../os/rt/src/chvt.c ****     --vtlp->dlist.next->delta;
+ 476               		.loc 1 526 0
+ 477 002a 8C81      		ldd r24,Y+4
+ 478 002c 9D81      		ldd r25,Y+5
+ 479 002e 0197      		sbiw r24,1
+ 480 0030 9D83      		std Y+5,r25
+ 481 0032 8C83      		std Y+4,r24
+ 482               	.LBB63:
+ 483               	.LBB64:
+ 484               	.LBB65:
+ 621:../../../os/rt/include/chlists.h **** }
+ 485               		.loc 2 621 0
+ 486 0034 0FEF      		ldi r16,lo8(-1)
+ 487 0036 1FEF      		ldi r17,lo8(-1)
+ 488               	.LBE65:
+ 489               	.LBE64:
+ 490               	.LBE63:
+ 527:../../../os/rt/src/chvt.c ****     while (vtlp->dlist.next->delta == (sysinterval_t)0) {
+ 491               		.loc 1 527 0
+ 492 0038 00C0      		rjmp .L24
+ 493               	.L27:
+ 494               	.LVL43:
+ 495               	.LBB72:
+ 496               	.LBB69:
+ 497               	.LBB70:
+ 649:../../../os/rt/include/chlists.h ****   dlp->next->prev = dlp->prev;
+ 498               		.loc 2 649 0
+ 499 003a EA81      		ldd r30,Y+2
+ 500 003c FB81      		ldd r31,Y+3
+ 501 003e 8881      		ld r24,Y
+ 502 0040 9981      		ldd r25,Y+1
+ 503 0042 9183      		std Z+1,r25
+ 504 0044 8083      		st Z,r24
+ 505               	.LVL44:
+ 506               		.loc 2 650 0
+ 507 0046 A881      		ld r26,Y
+ 508 0048 B981      		ldd r27,Y+1
+ 509 004a 1396      		adiw r26,2+1
+ 510 004c FC93      		st X,r31
+ 511 004e EE93      		st -X,r30
+ 512 0050 1297      		sbiw r26,2
+ 513               	.LBE70:
+ 514               	.LBE69:
+ 528:../../../os/rt/src/chvt.c ****       virtual_timer_t *vtp;
+ 529:../../../os/rt/src/chvt.c **** 
+ 530:../../../os/rt/src/chvt.c ****       /* Triggered timer.*/
+ 531:../../../os/rt/src/chvt.c ****       vtp = (virtual_timer_t *)vtlp->dlist.next;
+ 532:../../../os/rt/src/chvt.c **** 
+ 533:../../../os/rt/src/chvt.c ****       /* Removing the element from the delta list, marking it as not armed.*/
+ 534:../../../os/rt/src/chvt.c ****       (void) ch_dlist_dequeue(&vtp->dlist);
+ 535:../../../os/rt/src/chvt.c ****       vtp->dlist.next = NULL;
+ 515               		.loc 1 535 0
+ 516 0052 1982      		std Y+1,__zero_reg__
+ 517 0054 1882      		st Y,__zero_reg__
+ 536:../../../os/rt/src/chvt.c **** 
+ 537:../../../os/rt/src/chvt.c ****       chSysUnlockFromISR();
+ 538:../../../os/rt/src/chvt.c ****       vtp->func(vtp, vtp->par);
+ 518               		.loc 1 538 0
+ 519 0056 6885      		ldd r22,Y+8
+ 520 0058 7985      		ldd r23,Y+9
+ 521 005a EE81      		ldd r30,Y+6
+ 522 005c FF81      		ldd r31,Y+7
+ 523 005e CE01      		movw r24,r28
+ 524 0060 0995      		icall
+ 525               	.LVL45:
+ 539:../../../os/rt/src/chvt.c ****       chSysLockFromISR();
+ 540:../../../os/rt/src/chvt.c **** 
+ 541:../../../os/rt/src/chvt.c ****       /* If a reload is defined the timer needs to be restarted.*/
+ 542:../../../os/rt/src/chvt.c ****       if (vtp->reload > (sysinterval_t)0) {
+ 526               		.loc 1 542 0
+ 527 0062 8A85      		ldd r24,Y+10
+ 528 0064 9B85      		ldd r25,Y+11
+ 529 0066 0097      		sbiw r24,0
+ 530 0068 01F4      		brne .L31
+ 531               	.L30:
+ 532 006a C091 0000 		lds r28,ch0+7
+ 533 006e D091 0000 		lds r29,ch0+7+1
+ 534 0072 8C81      		ldd r24,Y+4
+ 535 0074 9D81      		ldd r25,Y+5
+ 536               	.L24:
+ 537               	.LBE72:
+ 527:../../../os/rt/src/chvt.c ****       virtual_timer_t *vtp;
+ 538               		.loc 1 527 0
+ 539 0076 892B      		or r24,r25
+ 540 0078 01F0      		breq .L27
+ 541               	.L20:
+ 542               	/* epilogue start */
+ 543:../../../os/rt/src/chvt.c ****         ch_dlist_insert(&vtlp->dlist, &vtp->dlist, vtp->reload);
+ 544:../../../os/rt/src/chvt.c ****       }
+ 545:../../../os/rt/src/chvt.c ****     }
+ 546:../../../os/rt/src/chvt.c ****   }
+ 547:../../../os/rt/src/chvt.c **** #else /* CH_CFG_ST_TIMEDELTA > 0 */
+ 548:../../../os/rt/src/chvt.c ****   virtual_timer_t *vtp;
+ 549:../../../os/rt/src/chvt.c ****   sysinterval_t nowdelta;
+ 550:../../../os/rt/src/chvt.c ****   systime_t now;
+ 551:../../../os/rt/src/chvt.c **** 
+ 552:../../../os/rt/src/chvt.c ****   /* Looping through timers consuming all timers with deltas lower or equal
+ 553:../../../os/rt/src/chvt.c ****      than the interval between "now" and "lasttime".*/
+ 554:../../../os/rt/src/chvt.c ****   while (true) {
+ 555:../../../os/rt/src/chvt.c ****     systime_t lasttime;
+ 556:../../../os/rt/src/chvt.c **** 
+ 557:../../../os/rt/src/chvt.c ****     /* First timer in the delta list.*/
+ 558:../../../os/rt/src/chvt.c ****     vtp = (virtual_timer_t *)vtlp->dlist.next;
+ 559:../../../os/rt/src/chvt.c **** 
+ 560:../../../os/rt/src/chvt.c ****     /* Delta between current time and last execution time.*/
+ 561:../../../os/rt/src/chvt.c ****     now = chVTGetSystemTimeX();
+ 562:../../../os/rt/src/chvt.c ****     nowdelta = chTimeDiffX(vtlp->lasttime, now);
+ 563:../../../os/rt/src/chvt.c **** 
+ 564:../../../os/rt/src/chvt.c ****     /* Loop break condition.
+ 565:../../../os/rt/src/chvt.c ****        Note that the list scan is limited by the delta list header having
+ 566:../../../os/rt/src/chvt.c ****        "vtlp->dlist.delta == (sysinterval_t)-1" which is greater than all
+ 567:../../../os/rt/src/chvt.c ****        deltas*/
+ 568:../../../os/rt/src/chvt.c ****     if (nowdelta < vtp->dlist.delta) {
+ 569:../../../os/rt/src/chvt.c ****       break;
+ 570:../../../os/rt/src/chvt.c ****     }
+ 571:../../../os/rt/src/chvt.c **** 
+ 572:../../../os/rt/src/chvt.c ****     /* Last time deadline is updated to the next timer's time.*/
+ 573:../../../os/rt/src/chvt.c ****     lasttime = chTimeAddX(vtlp->lasttime, vtp->dlist.delta);
+ 574:../../../os/rt/src/chvt.c ****     vtlp->lasttime = lasttime;
+ 575:../../../os/rt/src/chvt.c **** 
+ 576:../../../os/rt/src/chvt.c ****     /* Removing the timer from the list, marking it as not armed.*/
+ 577:../../../os/rt/src/chvt.c ****     (void) ch_dlist_dequeue(&vtp->dlist);
+ 578:../../../os/rt/src/chvt.c ****     vtp->dlist.next = NULL;
+ 579:../../../os/rt/src/chvt.c **** 
+ 580:../../../os/rt/src/chvt.c ****     /* If the list becomes empty then the alarm is disabled.*/
+ 581:../../../os/rt/src/chvt.c ****     if (ch_dlist_isempty(&vtlp->dlist)) {
+ 582:../../../os/rt/src/chvt.c ****       port_timer_stop_alarm();
+ 583:../../../os/rt/src/chvt.c ****     }
+ 584:../../../os/rt/src/chvt.c **** 
+ 585:../../../os/rt/src/chvt.c ****     /* The callback is invoked outside the kernel critical section, it
+ 586:../../../os/rt/src/chvt.c ****        is re-entered on the callback return. Note that "lasttime" can be
+ 587:../../../os/rt/src/chvt.c ****        modified within the callback if some timer function is called.*/
+ 588:../../../os/rt/src/chvt.c ****     chSysUnlockFromISR();
+ 589:../../../os/rt/src/chvt.c **** 
+ 590:../../../os/rt/src/chvt.c ****     vtp->func(vtp, vtp->par);
+ 591:../../../os/rt/src/chvt.c **** 
+ 592:../../../os/rt/src/chvt.c ****     chSysLockFromISR();
+ 593:../../../os/rt/src/chvt.c **** 
+ 594:../../../os/rt/src/chvt.c ****     /* If a reload is defined the timer needs to be restarted.*/
+ 595:../../../os/rt/src/chvt.c ****     if (unlikely(vtp->reload > (sysinterval_t)0)) {
+ 596:../../../os/rt/src/chvt.c ****       sysinterval_t delta, delay;
+ 597:../../../os/rt/src/chvt.c **** 
+ 598:../../../os/rt/src/chvt.c ****       /* Refreshing the now delta after spending time in the callback for
+ 599:../../../os/rt/src/chvt.c ****          a more accurate detection of too fast reloads.*/
+ 600:../../../os/rt/src/chvt.c ****       now = chVTGetSystemTimeX();
+ 601:../../../os/rt/src/chvt.c ****       nowdelta = chTimeDiffX(lasttime, now);
+ 602:../../../os/rt/src/chvt.c **** 
+ 603:../../../os/rt/src/chvt.c **** #if !defined(CH_VT_RFCU_DISABLED)
+ 604:../../../os/rt/src/chvt.c ****       /* Checking if the required reload is feasible.*/
+ 605:../../../os/rt/src/chvt.c ****       if (nowdelta > vtp->reload) {
+ 606:../../../os/rt/src/chvt.c ****         /* System time is already past the deadline, logging the fault and
+ 607:../../../os/rt/src/chvt.c ****            proceeding with a minimum delay.*/
+ 608:../../../os/rt/src/chvt.c **** 
+ 609:../../../os/rt/src/chvt.c ****         chDbgAssert(false, "skipped deadline");
+ 610:../../../os/rt/src/chvt.c ****         chRFCUCollectFaultsI(CH_RFCU_VT_SKIPPED_DEADLINE);
+ 611:../../../os/rt/src/chvt.c **** 
+ 612:../../../os/rt/src/chvt.c ****         delay = (sysinterval_t)0;
+ 613:../../../os/rt/src/chvt.c ****       }
+ 614:../../../os/rt/src/chvt.c ****       else {
+ 615:../../../os/rt/src/chvt.c ****         /* Enqueuing the timer again using the calculated delta.*/
+ 616:../../../os/rt/src/chvt.c ****         delay = vtp->reload - nowdelta;
+ 617:../../../os/rt/src/chvt.c ****       }
+ 618:../../../os/rt/src/chvt.c **** #else
+ 619:../../../os/rt/src/chvt.c ****       /* Assertions as fallback.*/
+ 620:../../../os/rt/src/chvt.c ****       chDbgAssert(nowdelta <= vtp->reload, "skipped deadline");
+ 621:../../../os/rt/src/chvt.c **** 
+ 622:../../../os/rt/src/chvt.c ****       /* Enqueuing the timer again using the calculated delta.*/
+ 623:../../../os/rt/src/chvt.c ****       delay = vtp->reload - nowdelta;
+ 624:../../../os/rt/src/chvt.c **** #endif
+ 625:../../../os/rt/src/chvt.c **** 
+ 626:../../../os/rt/src/chvt.c ****       /* Special case where the timers list is empty.*/
+ 627:../../../os/rt/src/chvt.c ****       if (ch_dlist_isempty(&vtlp->dlist)) {
+ 628:../../../os/rt/src/chvt.c **** 
+ 629:../../../os/rt/src/chvt.c ****         vt_insert_first(vtlp, vtp, now, delay);
+ 630:../../../os/rt/src/chvt.c **** 
+ 631:../../../os/rt/src/chvt.c ****         return;
+ 632:../../../os/rt/src/chvt.c ****       }
+ 633:../../../os/rt/src/chvt.c **** 
+ 634:../../../os/rt/src/chvt.c ****       /* Delay as delta from 'lasttime'. Note, it can overflow and the value
+ 635:../../../os/rt/src/chvt.c ****          becomes lower than 'nowdelta'. In that case the delta is shortened
+ 636:../../../os/rt/src/chvt.c ****          to make it fit the numeric range and the timer will be triggered
+ 637:../../../os/rt/src/chvt.c ****          "nowdelta" cycles earlier.*/
+ 638:../../../os/rt/src/chvt.c ****       delta = nowdelta + delay;
+ 639:../../../os/rt/src/chvt.c ****       if (delta < nowdelta) {
+ 640:../../../os/rt/src/chvt.c ****         delta = delay;
+ 641:../../../os/rt/src/chvt.c ****       }
+ 642:../../../os/rt/src/chvt.c **** 
+ 643:../../../os/rt/src/chvt.c ****       /* Insert into delta list. */
+ 644:../../../os/rt/src/chvt.c ****       ch_dlist_insert(&vtlp->dlist, &vtp->dlist, delta);
+ 645:../../../os/rt/src/chvt.c ****     }
+ 646:../../../os/rt/src/chvt.c ****   }
+ 647:../../../os/rt/src/chvt.c **** 
+ 648:../../../os/rt/src/chvt.c ****   /* If the list is empty, nothing else to do.*/
+ 649:../../../os/rt/src/chvt.c ****   if (ch_dlist_isempty(&vtlp->dlist)) {
+ 650:../../../os/rt/src/chvt.c ****     return;
+ 651:../../../os/rt/src/chvt.c ****   }
+ 652:../../../os/rt/src/chvt.c **** 
+ 653:../../../os/rt/src/chvt.c ****   /* The "unprocessed nowdelta" time slice is added to "last time"
+ 654:../../../os/rt/src/chvt.c ****      and subtracted to next timer's delta.*/
+ 655:../../../os/rt/src/chvt.c ****   vtlp->lasttime += nowdelta;
+ 656:../../../os/rt/src/chvt.c ****   vtp->dlist.delta -= nowdelta;
+ 657:../../../os/rt/src/chvt.c **** 
+ 658:../../../os/rt/src/chvt.c ****   /* Update alarm time to next timer.*/
+ 659:../../../os/rt/src/chvt.c ****   vt_set_alarm(vtlp, now, vtp->dlist.delta);
+ 660:../../../os/rt/src/chvt.c **** #endif /* CH_CFG_ST_TIMEDELTA > 0 */
+ 661:../../../os/rt/src/chvt.c **** }
+ 543               		.loc 1 661 0
+ 544 007a DF91      		pop r29
+ 545 007c CF91      		pop r28
+ 546 007e 1F91      		pop r17
+ 547 0080 0F91      		pop r16
+ 548 0082 0895      		ret
+ 549               	.L31:
+ 550 0084 E091 0000 		lds r30,ch0+7
+ 551 0088 F091 0000 		lds r31,ch0+7+1
+ 552               	.LVL46:
+ 553               	.LBB73:
+ 554               	.LBB71:
+ 555               	.LBB68:
+ 604:../../../os/rt/include/chlists.h ****     /* Debug assert if the element is already in the list.*/
+ 556               		.loc 2 604 0
+ 557 008c 2481      		ldd r18,Z+4
+ 558 008e 3581      		ldd r19,Z+5
+ 559 0090 2817      		cp r18,r24
+ 560 0092 3907      		cpc r19,r25
+ 561 0094 00F4      		brsh .L25
+ 562               	.L26:
+ 608:../../../os/rt/include/chlists.h ****     dlp = dlp->next;
+ 563               		.loc 2 608 0
+ 564 0096 821B      		sub r24,r18
+ 565 0098 930B      		sbc r25,r19
+ 566               	.LVL47:
+ 609:../../../os/rt/include/chlists.h ****   }
+ 567               		.loc 2 609 0
+ 568 009a 0190      		ld __tmp_reg__,Z+
+ 569 009c F081      		ld r31,Z
+ 570 009e E02D      		mov r30,__tmp_reg__
+ 571               	.LVL48:
+ 604:../../../os/rt/include/chlists.h ****     /* Debug assert if the element is already in the list.*/
+ 572               		.loc 2 604 0
+ 573 00a0 2481      		ldd r18,Z+4
+ 574 00a2 3581      		ldd r19,Z+5
+ 575 00a4 2817      		cp r18,r24
+ 576 00a6 3907      		cpc r19,r25
+ 577 00a8 00F0      		brlo .L26
+ 578               	.L25:
+ 579               	.LVL49:
+ 580               	.LBB66:
+ 581               	.LBB67:
+ 580:../../../os/rt/include/chlists.h ****   dlp->next       = dlhp;
+ 582               		.loc 2 580 0
+ 583 00aa 9D83      		std Y+5,r25
+ 584 00ac 8C83      		std Y+4,r24
+ 581:../../../os/rt/include/chlists.h ****   dlp->prev       = dlp->next->prev;
+ 585               		.loc 2 581 0
+ 586 00ae F983      		std Y+1,r31
+ 587 00b0 E883      		st Y,r30
+ 582:../../../os/rt/include/chlists.h ****   dlp->prev->next = dlp;
+ 588               		.loc 2 582 0
+ 589 00b2 A281      		ldd r26,Z+2
+ 590 00b4 B381      		ldd r27,Z+3
+ 591 00b6 BB83      		std Y+3,r27
+ 592 00b8 AA83      		std Y+2,r26
+ 583:../../../os/rt/include/chlists.h ****   dlhp->prev      = dlp;
+ 593               		.loc 2 583 0
+ 594 00ba CD93      		st X+,r28
+ 595 00bc DC93      		st X,r29
+ 584:../../../os/rt/include/chlists.h **** }
+ 596               		.loc 2 584 0
+ 597 00be D383      		std Z+3,r29
+ 598 00c0 C283      		std Z+2,r28
+ 599               	.LVL50:
+ 600               	.LBE67:
+ 601               	.LBE66:
+ 616:../../../os/rt/include/chlists.h **** 
+ 602               		.loc 2 616 0
+ 603 00c2 2481      		ldd r18,Z+4
+ 604 00c4 3581      		ldd r19,Z+5
+ 605 00c6 A901      		movw r20,r18
+ 606 00c8 481B      		sub r20,r24
+ 607 00ca 590B      		sbc r21,r25
+ 608 00cc 5583      		std Z+5,r21
+ 609 00ce 4483      		std Z+4,r20
+ 621:../../../os/rt/include/chlists.h **** }
+ 610               		.loc 2 621 0
+ 611 00d0 1093 0000 		sts ch0+11+1,r17
+ 612 00d4 0093 0000 		sts ch0+11,r16
+ 613 00d8 00C0      		rjmp .L30
+ 614               	.LBE68:
+ 615               	.LBE71:
+ 616               	.LBE73:
+ 617               		.cfi_endproc
+ 618               	.LFE200:
+ 620               		.section	.text.chVTGetTimeStampI,"ax",@progbits
+ 621               	.global	chVTGetTimeStampI
+ 623               	chVTGetTimeStampI:
+ 624               	.LFB201:
+ 662:../../../os/rt/src/chvt.c **** 
+ 663:../../../os/rt/src/chvt.c **** #if (CH_CFG_USE_TIMESTAMP == TRUE) || defined(__DOXYGEN__)
+ 664:../../../os/rt/src/chvt.c **** /**
+ 665:../../../os/rt/src/chvt.c ****  * @brief   Generates a monotonic time stamp.
+ 666:../../../os/rt/src/chvt.c ****  * @details This function generates a monotonic time stamp synchronized with
+ 667:../../../os/rt/src/chvt.c ****  *          the system time. The time stamp has the same resolution of
+ 668:../../../os/rt/src/chvt.c ****  *          system time.
+ 669:../../../os/rt/src/chvt.c ****  * @note    There is an assumption, this function must be called at
+ 670:../../../os/rt/src/chvt.c ****  *          least once before the system time wraps back to zero or
+ 671:../../../os/rt/src/chvt.c ****  *          synchronization is lost. You may use a periodic virtual timer with
+ 672:../../../os/rt/src/chvt.c ****  *          a very large interval in order to keep time stamps synchronized
+ 673:../../../os/rt/src/chvt.c ****  *          by calling this function.
+ 674:../../../os/rt/src/chvt.c ****  *
+ 675:../../../os/rt/src/chvt.c ****  * @return              The time stamp.
+ 676:../../../os/rt/src/chvt.c ****  *
+ 677:../../../os/rt/src/chvt.c ****  * @iclass
+ 678:../../../os/rt/src/chvt.c ****  */
+ 679:../../../os/rt/src/chvt.c **** systimestamp_t chVTGetTimeStampI(void) {
+ 625               		.loc 1 679 0
+ 626               		.cfi_startproc
+ 627 0000 2F92      		push r2
+ 628               	.LCFI10:
+ 629               		.cfi_def_cfa_offset 3
+ 630               		.cfi_offset 2, -2
+ 631 0002 3F92      		push r3
+ 632               	.LCFI11:
+ 633               		.cfi_def_cfa_offset 4
+ 634               		.cfi_offset 3, -3
+ 635 0004 4F92      		push r4
+ 636               	.LCFI12:
+ 637               		.cfi_def_cfa_offset 5
+ 638               		.cfi_offset 4, -4
+ 639 0006 5F92      		push r5
+ 640               	.LCFI13:
+ 641               		.cfi_def_cfa_offset 6
+ 642               		.cfi_offset 5, -5
+ 643 0008 6F92      		push r6
+ 644               	.LCFI14:
+ 645               		.cfi_def_cfa_offset 7
+ 646               		.cfi_offset 6, -6
+ 647 000a 7F92      		push r7
+ 648               	.LCFI15:
+ 649               		.cfi_def_cfa_offset 8
+ 650               		.cfi_offset 7, -7
+ 651 000c 8F92      		push r8
+ 652               	.LCFI16:
+ 653               		.cfi_def_cfa_offset 9
+ 654               		.cfi_offset 8, -8
+ 655 000e 9F92      		push r9
+ 656               	.LCFI17:
+ 657               		.cfi_def_cfa_offset 10
+ 658               		.cfi_offset 9, -9
+ 659 0010 AF92      		push r10
+ 660               	.LCFI18:
+ 661               		.cfi_def_cfa_offset 11
+ 662               		.cfi_offset 10, -10
+ 663 0012 BF92      		push r11
+ 664               	.LCFI19:
+ 665               		.cfi_def_cfa_offset 12
+ 666               		.cfi_offset 11, -11
+ 667 0014 CF92      		push r12
+ 668               	.LCFI20:
+ 669               		.cfi_def_cfa_offset 13
+ 670               		.cfi_offset 12, -12
+ 671 0016 DF92      		push r13
+ 672               	.LCFI21:
+ 673               		.cfi_def_cfa_offset 14
+ 674               		.cfi_offset 13, -13
+ 675 0018 EF92      		push r14
+ 676               	.LCFI22:
+ 677               		.cfi_def_cfa_offset 15
+ 678               		.cfi_offset 14, -14
+ 679 001a FF92      		push r15
+ 680               	.LCFI23:
+ 681               		.cfi_def_cfa_offset 16
+ 682               		.cfi_offset 15, -15
+ 683 001c 0F93      		push r16
+ 684               	.LCFI24:
+ 685               		.cfi_def_cfa_offset 17
+ 686               		.cfi_offset 16, -16
+ 687 001e 1F93      		push r17
+ 688               	.LCFI25:
+ 689               		.cfi_def_cfa_offset 18
+ 690               		.cfi_offset 17, -17
+ 691               	/* prologue: function */
+ 692               	/* frame size = 0 */
+ 693               	/* stack size = 16 */
+ 694               	.L__stack_usage = 16
+ 695               	.LVL51:
+ 696               	.LBB74:
+ 697               	.LBB75:
+ 698               		.file 3 "../../../os/rt/include/chvt.h"
+   1:../../../os/rt/include/chvt.h **** /*
+   2:../../../os/rt/include/chvt.h ****     ChibiOS - Copyright (C) 2006,2007,2008,2009,2010,2011,2012,2013,2014,
+   3:../../../os/rt/include/chvt.h ****               2015,2016,2017,2018,2019,2020,2021 Giovanni Di Sirio.
+   4:../../../os/rt/include/chvt.h **** 
+   5:../../../os/rt/include/chvt.h ****     This file is part of ChibiOS.
+   6:../../../os/rt/include/chvt.h **** 
+   7:../../../os/rt/include/chvt.h ****     ChibiOS is free software; you can redistribute it and/or modify
+   8:../../../os/rt/include/chvt.h ****     it under the terms of the GNU General Public License as published by
+   9:../../../os/rt/include/chvt.h ****     the Free Software Foundation version 3 of the License.
+  10:../../../os/rt/include/chvt.h **** 
+  11:../../../os/rt/include/chvt.h ****     ChibiOS is distributed in the hope that it will be useful,
+  12:../../../os/rt/include/chvt.h ****     but WITHOUT ANY WARRANTY; without even the implied warranty of
+  13:../../../os/rt/include/chvt.h ****     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  14:../../../os/rt/include/chvt.h ****     GNU General Public License for more details.
+  15:../../../os/rt/include/chvt.h **** 
+  16:../../../os/rt/include/chvt.h ****     You should have received a copy of the GNU General Public License
+  17:../../../os/rt/include/chvt.h ****     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  18:../../../os/rt/include/chvt.h **** */
+  19:../../../os/rt/include/chvt.h **** 
+  20:../../../os/rt/include/chvt.h **** /**
+  21:../../../os/rt/include/chvt.h ****  * @file    rt/include/chvt.h
+  22:../../../os/rt/include/chvt.h ****  * @brief   Time and Virtual Timers module macros and structures.
+  23:../../../os/rt/include/chvt.h ****  *
+  24:../../../os/rt/include/chvt.h ****  * @addtogroup time
+  25:../../../os/rt/include/chvt.h ****  * @{
+  26:../../../os/rt/include/chvt.h ****  */
+  27:../../../os/rt/include/chvt.h **** 
+  28:../../../os/rt/include/chvt.h **** #ifndef CHVT_H
+  29:../../../os/rt/include/chvt.h **** #define CHVT_H
+  30:../../../os/rt/include/chvt.h **** 
+  31:../../../os/rt/include/chvt.h **** /*===========================================================================*/
+  32:../../../os/rt/include/chvt.h **** /* Module constants.                                                         */
+  33:../../../os/rt/include/chvt.h **** /*===========================================================================*/
+  34:../../../os/rt/include/chvt.h **** 
+  35:../../../os/rt/include/chvt.h **** /*===========================================================================*/
+  36:../../../os/rt/include/chvt.h **** /* Module pre-compile time settings.                                         */
+  37:../../../os/rt/include/chvt.h **** /*===========================================================================*/
+  38:../../../os/rt/include/chvt.h **** 
+  39:../../../os/rt/include/chvt.h **** /*===========================================================================*/
+  40:../../../os/rt/include/chvt.h **** /* Derived constants and error checks.                                       */
+  41:../../../os/rt/include/chvt.h **** /*===========================================================================*/
+  42:../../../os/rt/include/chvt.h **** 
+  43:../../../os/rt/include/chvt.h **** #if (CH_CFG_ST_TIMEDELTA < 0) || (CH_CFG_ST_TIMEDELTA == 1)
+  44:../../../os/rt/include/chvt.h **** #error "invalid CH_CFG_ST_TIMEDELTA specified, must "                       \
+  45:../../../os/rt/include/chvt.h ****        "be zero or greater than one"
+  46:../../../os/rt/include/chvt.h **** #endif
+  47:../../../os/rt/include/chvt.h **** 
+  48:../../../os/rt/include/chvt.h **** #if (CH_CFG_ST_TIMEDELTA > 0) && (CH_CFG_TIME_QUANTUM > 0)
+  49:../../../os/rt/include/chvt.h **** #error "CH_CFG_TIME_QUANTUM not supported in tickless mode"
+  50:../../../os/rt/include/chvt.h **** #endif
+  51:../../../os/rt/include/chvt.h **** 
+  52:../../../os/rt/include/chvt.h **** #if (CH_CFG_ST_TIMEDELTA > 0) && (CH_DBG_THREADS_PROFILING == TRUE)
+  53:../../../os/rt/include/chvt.h **** #error "CH_DBG_THREADS_PROFILING not supported in tickless mode"
+  54:../../../os/rt/include/chvt.h **** #endif
+  55:../../../os/rt/include/chvt.h **** 
+  56:../../../os/rt/include/chvt.h **** /*===========================================================================*/
+  57:../../../os/rt/include/chvt.h **** /* Module data structures and types.                                         */
+  58:../../../os/rt/include/chvt.h **** /*===========================================================================*/
+  59:../../../os/rt/include/chvt.h **** 
+  60:../../../os/rt/include/chvt.h **** /*===========================================================================*/
+  61:../../../os/rt/include/chvt.h **** /* Module macros.                                                            */
+  62:../../../os/rt/include/chvt.h **** /*===========================================================================*/
+  63:../../../os/rt/include/chvt.h **** 
+  64:../../../os/rt/include/chvt.h **** /**
+  65:../../../os/rt/include/chvt.h ****  * @brief   Data part of a static virtual timer initializer.
+  66:../../../os/rt/include/chvt.h ****  * @details This macro should be used when statically initializing a virtual
+  67:../../../os/rt/include/chvt.h ****  *          timer that is part of a bigger structure.
+  68:../../../os/rt/include/chvt.h ****  *
+  69:../../../os/rt/include/chvt.h ****  */
+  70:../../../os/rt/include/chvt.h **** #define __VIRTUAL_TIMER_DATA() {                                            \
+  71:../../../os/rt/include/chvt.h ****   .dlist = {                                                                \
+  72:../../../os/rt/include/chvt.h ****     .next   = NULL,                                                         \
+  73:../../../os/rt/include/chvt.h ****     .prev   = NULL,                                                         \
+  74:../../../os/rt/include/chvt.h ****     .delta  = (sysinterval_t)0                                              \
+  75:../../../os/rt/include/chvt.h ****   },                                                                        \
+  76:../../../os/rt/include/chvt.h ****   .func     = NULL,                                                         \
+  77:../../../os/rt/include/chvt.h ****   .par      = NULL,                                                         \
+  78:../../../os/rt/include/chvt.h ****   .reload   = (sysinterval_t)0                                              \
+  79:../../../os/rt/include/chvt.h **** }
+  80:../../../os/rt/include/chvt.h **** 
+  81:../../../os/rt/include/chvt.h **** /**
+  82:../../../os/rt/include/chvt.h ****  * @brief   Static virtual timer initializer.
+  83:../../../os/rt/include/chvt.h ****  * @details Statically initialized virtual timers require no explicit
+  84:../../../os/rt/include/chvt.h ****  *          initialization using @p chVTObjectInit().
+  85:../../../os/rt/include/chvt.h ****  *
+  86:../../../os/rt/include/chvt.h ****  * @param[in] name      the name of the virtual timer variable
+  87:../../../os/rt/include/chvt.h ****  */
+  88:../../../os/rt/include/chvt.h **** #define VIRTUAL_TIMER_DECL(name)                                            \
+  89:../../../os/rt/include/chvt.h ****   virtual_timer_t name = __VIRTUAL_TIMER_DATA()
+  90:../../../os/rt/include/chvt.h **** 
+  91:../../../os/rt/include/chvt.h **** /*===========================================================================*/
+  92:../../../os/rt/include/chvt.h **** /* External declarations.                                                    */
+  93:../../../os/rt/include/chvt.h **** /*===========================================================================*/
+  94:../../../os/rt/include/chvt.h **** 
+  95:../../../os/rt/include/chvt.h **** /*
+  96:../../../os/rt/include/chvt.h ****  * Virtual Timers APIs.
+  97:../../../os/rt/include/chvt.h ****  */
+  98:../../../os/rt/include/chvt.h **** #ifdef __cplusplus
+  99:../../../os/rt/include/chvt.h **** extern "C" {
+ 100:../../../os/rt/include/chvt.h **** #endif
+ 101:../../../os/rt/include/chvt.h ****   void chVTObjectInit(virtual_timer_t *vtp);
+ 102:../../../os/rt/include/chvt.h ****   void chVTObjectDispose(virtual_timer_t *vtp);
+ 103:../../../os/rt/include/chvt.h ****   void chVTDoSetI(virtual_timer_t *vtp, sysinterval_t delay,
+ 104:../../../os/rt/include/chvt.h ****                   vtfunc_t vtfunc, void *par);
+ 105:../../../os/rt/include/chvt.h ****   void chVTDoSetContinuousI(virtual_timer_t *vtp, sysinterval_t delay,
+ 106:../../../os/rt/include/chvt.h ****                             vtfunc_t vtfunc, void *par);
+ 107:../../../os/rt/include/chvt.h ****   void chVTDoResetI(virtual_timer_t *vtp);
+ 108:../../../os/rt/include/chvt.h ****   sysinterval_t chVTGetRemainingIntervalI(virtual_timer_t *vtp);
+ 109:../../../os/rt/include/chvt.h ****   void chVTDoTickI(void);
+ 110:../../../os/rt/include/chvt.h **** #if CH_CFG_USE_TIMESTAMP == TRUE
+ 111:../../../os/rt/include/chvt.h ****   systimestamp_t chVTGetTimeStampI(void);
+ 112:../../../os/rt/include/chvt.h ****   void chVTResetTimeStampI(void);
+ 113:../../../os/rt/include/chvt.h **** #endif
+ 114:../../../os/rt/include/chvt.h **** #ifdef __cplusplus
+ 115:../../../os/rt/include/chvt.h **** }
+ 116:../../../os/rt/include/chvt.h **** #endif
+ 117:../../../os/rt/include/chvt.h **** 
+ 118:../../../os/rt/include/chvt.h **** /*===========================================================================*/
+ 119:../../../os/rt/include/chvt.h **** /* Module inline functions.                                                  */
+ 120:../../../os/rt/include/chvt.h **** /*===========================================================================*/
+ 121:../../../os/rt/include/chvt.h **** 
+ 122:../../../os/rt/include/chvt.h **** /**
+ 123:../../../os/rt/include/chvt.h ****  * @brief   Current system time.
+ 124:../../../os/rt/include/chvt.h ****  * @details Returns the number of system ticks since the @p chSysInit()
+ 125:../../../os/rt/include/chvt.h ****  *          invocation.
+ 126:../../../os/rt/include/chvt.h ****  * @note    The counter can reach its maximum and then restart from zero.
+ 127:../../../os/rt/include/chvt.h ****  * @note    This function can be called from any context but its atomicity
+ 128:../../../os/rt/include/chvt.h ****  *          is not guaranteed on architectures whose word size is less than
+ 129:../../../os/rt/include/chvt.h ****  *          @p systime_t size.
+ 130:../../../os/rt/include/chvt.h ****  *
+ 131:../../../os/rt/include/chvt.h ****  * @return              The system time in ticks.
+ 132:../../../os/rt/include/chvt.h ****  *
+ 133:../../../os/rt/include/chvt.h ****  * @xclass
+ 134:../../../os/rt/include/chvt.h ****  */
+ 135:../../../os/rt/include/chvt.h **** static inline systime_t chVTGetSystemTimeX(void) {
+ 136:../../../os/rt/include/chvt.h **** 
+ 137:../../../os/rt/include/chvt.h **** #if CH_CFG_ST_TIMEDELTA == 0
+ 138:../../../os/rt/include/chvt.h ****   return currcore->vtlist.systime;
+ 699               		.loc 3 138 0
+ 700 0020 E0E0      		ldi r30,lo8(ch0)
+ 701 0022 F0E0      		ldi r31,hi8(ch0)
+ 702 0024 4585      		ldd r20,Z+13
+ 703 0026 5685      		ldd r21,Z+14
+ 704               	.LBE75:
+ 705               	.LBE74:
+ 680:../../../os/rt/src/chvt.c ****   os_instance_t * oip = currcore;
+ 681:../../../os/rt/src/chvt.c ****   systimestamp_t last, stamp;
+ 682:../../../os/rt/src/chvt.c ****   systime_t now;
+ 683:../../../os/rt/src/chvt.c **** 
+ 684:../../../os/rt/src/chvt.c ****   chDbgCheckClassI();
+ 685:../../../os/rt/src/chvt.c **** 
+ 686:../../../os/rt/src/chvt.c ****   /* Current system time.*/
+ 687:../../../os/rt/src/chvt.c ****   now = chVTGetSystemTimeX();
+ 688:../../../os/rt/src/chvt.c **** 
+ 689:../../../os/rt/src/chvt.c ****   /* Last time stamp generated.*/
+ 690:../../../os/rt/src/chvt.c ****   last = oip->vtlist.laststamp;
+ 706               		.loc 1 690 0
+ 707 0028 2784      		ldd r2,Z+15
+ 708 002a 3088      		ldd r3,Z+16
+ 709 002c 4188      		ldd r4,Z+17
+ 710 002e 5288      		ldd r5,Z+18
+ 711 0030 6388      		ldd r6,Z+19
+ 712 0032 7488      		ldd r7,Z+20
+ 713 0034 8588      		ldd r8,Z+21
+ 714 0036 9688      		ldd r9,Z+22
+ 715               	.LVL52:
+ 691:../../../os/rt/src/chvt.c **** 
+ 692:../../../os/rt/src/chvt.c ****   /* Interval between the last time stamp and current time used for a new
+ 693:../../../os/rt/src/chvt.c ****      time stamp. Note that this fails if the interval is larger than a
+ 694:../../../os/rt/src/chvt.c ****      systime_t type.*/
+ 695:../../../os/rt/src/chvt.c ****   stamp = last + (systimestamp_t)chTimeDiffX((systime_t)last, now);
+ 716               		.loc 1 695 0
+ 717 0038 4219      		sub r20,r2
+ 718 003a 5309      		sbc r21,r3
+ 719 003c 9A01      		movw r18,r20
+ 720 003e 40E0      		ldi r20,0
+ 721 0040 50E0      		ldi r21,0
+ 722 0042 60E0      		ldi r22,0
+ 723 0044 70E0      		ldi r23,0
+ 724 0046 80E0      		ldi r24,0
+ 725 0048 90E0      		ldi r25,0
+ 726 004a 5101      		movw r10,r2
+ 727 004c 6201      		movw r12,r4
+ 728 004e 7301      		movw r14,r6
+ 729 0050 8401      		movw r16,r8
+ 730 0052 0E94 0000 		call __adddi3
+ 731               	.LVL53:
+ 696:../../../os/rt/src/chvt.c **** 
+ 697:../../../os/rt/src/chvt.c ****   chDbgAssert(oip->vtlist.laststamp <= stamp, "wrapped");
+ 698:../../../os/rt/src/chvt.c **** 
+ 699:../../../os/rt/src/chvt.c ****   /* Storing the new stamp.*/
+ 700:../../../os/rt/src/chvt.c ****   oip->vtlist.laststamp = stamp;
+ 732               		.loc 1 700 0
+ 733 0056 2787      		std Z+15,r18
+ 734 0058 308B      		std Z+16,r19
+ 735 005a 418B      		std Z+17,r20
+ 736 005c 528B      		std Z+18,r21
+ 737 005e 638B      		std Z+19,r22
+ 738 0060 748B      		std Z+20,r23
+ 739 0062 858B      		std Z+21,r24
+ 740 0064 968B      		std Z+22,r25
+ 741               	/* epilogue start */
+ 701:../../../os/rt/src/chvt.c **** 
+ 702:../../../os/rt/src/chvt.c ****   return stamp;
+ 703:../../../os/rt/src/chvt.c **** }
+ 742               		.loc 1 703 0
+ 743 0066 1F91      		pop r17
+ 744 0068 0F91      		pop r16
+ 745 006a FF90      		pop r15
+ 746 006c EF90      		pop r14
+ 747 006e DF90      		pop r13
+ 748 0070 CF90      		pop r12
+ 749 0072 BF90      		pop r11
+ 750 0074 AF90      		pop r10
+ 751 0076 9F90      		pop r9
+ 752 0078 8F90      		pop r8
+ 753 007a 7F90      		pop r7
+ 754 007c 6F90      		pop r6
+ 755 007e 5F90      		pop r5
+ 756 0080 4F90      		pop r4
+ 757 0082 3F90      		pop r3
+ 758 0084 2F90      		pop r2
+ 759               	.LVL54:
+ 760 0086 0895      		ret
+ 761               		.cfi_endproc
+ 762               	.LFE201:
+ 764               		.section	.text.chVTResetTimeStampI,"ax",@progbits
+ 765               	.global	chVTResetTimeStampI
+ 767               	chVTResetTimeStampI:
+ 768               	.LFB202:
+ 704:../../../os/rt/src/chvt.c **** 
+ 705:../../../os/rt/src/chvt.c **** /**
+ 706:../../../os/rt/src/chvt.c ****  * @brief   Resets and re-synchronizes the time stamps monotonic counter.
+ 707:../../../os/rt/src/chvt.c ****  *
+ 708:../../../os/rt/src/chvt.c ****  * @iclass
+ 709:../../../os/rt/src/chvt.c ****  */
+ 710:../../../os/rt/src/chvt.c **** void chVTResetTimeStampI(void) {
+ 769               		.loc 1 710 0
+ 770               		.cfi_startproc
+ 771 0000 0F93      		push r16
+ 772               	.LCFI26:
+ 773               		.cfi_def_cfa_offset 3
+ 774               		.cfi_offset 16, -2
+ 775 0002 1F93      		push r17
+ 776               	.LCFI27:
+ 777               		.cfi_def_cfa_offset 4
+ 778               		.cfi_offset 17, -3
+ 779               	/* prologue: function */
+ 780               	/* frame size = 0 */
+ 781               	/* stack size = 2 */
+ 782               	.L__stack_usage = 2
+ 783               	.LBB76:
+ 784               	.LBB77:
+ 785               		.loc 3 138 0
+ 786 0004 E0E0      		ldi r30,lo8(ch0)
+ 787 0006 F0E0      		ldi r31,hi8(ch0)
+ 788 0008 0585      		ldd r16,Z+13
+ 789 000a 1685      		ldd r17,Z+14
+ 790               	.LBE77:
+ 791               	.LBE76:
+ 711:../../../os/rt/src/chvt.c **** 
+ 712:../../../os/rt/src/chvt.c ****   chDbgCheckClassI();
+ 713:../../../os/rt/src/chvt.c **** 
+ 714:../../../os/rt/src/chvt.c ****   currcore->vtlist.laststamp = (systimestamp_t)chVTGetSystemTimeX();
+ 792               		.loc 1 714 0
+ 793 000c 0787      		std Z+15,r16
+ 794 000e 108B      		std Z+16,r17
+ 795 0010 118A      		std Z+17,__zero_reg__
+ 796 0012 128A      		std Z+18,__zero_reg__
+ 797 0014 138A      		std Z+19,__zero_reg__
+ 798 0016 148A      		std Z+20,__zero_reg__
+ 799 0018 158A      		std Z+21,__zero_reg__
+ 800 001a 168A      		std Z+22,__zero_reg__
+ 801               	/* epilogue start */
+ 715:../../../os/rt/src/chvt.c **** }
+ 802               		.loc 1 715 0
+ 803 001c 1F91      		pop r17
+ 804 001e 0F91      		pop r16
+ 805 0020 0895      		ret
+ 806               		.cfi_endproc
+ 807               	.LFE202:
+ 809               		.text
+ 810               	.Letext0:
+ 811               		.file 4 "/usr/lib/avr/include/stdint.h"
+ 812               		.file 5 "../../../os/common/ports/AVR/compilers/GCC/chtypes.h"
+ 813               		.file 6 "../../../os/rt/include/chearly.h"
+ 814               		.file 7 "../../../os/rt/include/chobjects.h"
+ 815               		.file 8 "../../../os/rt/include/chrfcu.h"
+ 816               		.file 9 "../../../os/rt/include/chdebug.h"
+ 817               		.file 10 "../../../os/rt/include/chtime.h"
+ 818               		.file 11 "../../../os/common/ports/AVR/chcore.h"
+ 819               		.file 12 "../../../os/rt/include/chsem.h"
+ 820               		.file 13 "../../../os/rt/include/chmtx.h"
+ 821               		.file 14 "../../../os/rt/include/chsys.h"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 chvt.c
+     /tmp/ccMiAw3G.s:2      *ABS*:000000000000003e __SP_H__
+     /tmp/ccMiAw3G.s:3      *ABS*:000000000000003d __SP_L__
+     /tmp/ccMiAw3G.s:4      *ABS*:000000000000003f __SREG__
+     /tmp/ccMiAw3G.s:5      *ABS*:0000000000000000 __tmp_reg__
+     /tmp/ccMiAw3G.s:6      *ABS*:0000000000000001 __zero_reg__
+     /tmp/ccMiAw3G.s:13     .text.chVTObjectInit:0000000000000000 chVTObjectInit
+     /tmp/ccMiAw3G.s:34     .text.chVTObjectDispose:0000000000000000 chVTObjectDispose
+     /tmp/ccMiAw3G.s:50     .text.chVTDoSetI:0000000000000000 chVTDoSetI
+     /tmp/ccMiAw3G.s:176    .text.chVTDoSetContinuousI:0000000000000000 chVTDoSetContinuousI
+     /tmp/ccMiAw3G.s:300    .text.chVTDoResetI:0000000000000000 chVTDoResetI
+     /tmp/ccMiAw3G.s:372    .text.chVTGetRemainingIntervalI:0000000000000000 chVTGetRemainingIntervalI
+     /tmp/ccMiAw3G.s:431    .text.chVTDoTickI:0000000000000000 chVTDoTickI
+     /tmp/ccMiAw3G.s:623    .text.chVTGetTimeStampI:0000000000000000 chVTGetTimeStampI
+     /tmp/ccMiAw3G.s:767    .text.chVTResetTimeStampI:0000000000000000 chVTResetTimeStampI
+
+UNDEFINED SYMBOLS
+ch0
+__adddi3

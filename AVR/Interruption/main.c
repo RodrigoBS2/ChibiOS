@@ -1,64 +1,62 @@
-/*
-    ChibiOS - Copyright (C) 2006..2018 Giovanni Di Sirio
 
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
+#include <avr/io.h>
+#include <avr/cpufunc.h>
+#include <avr/interrupt.h>
 
-        http://www.apache.org/licenses/LICENSE-2.0
-
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
-*/
+#include <stdint.h>
 
 #include "ch.h"
 #include "hal.h"
 
-/*
- * LED blinker thread, times are in milliseconds.
- */
-static THD_WORKING_AREA(waThread1, 32);
-static THD_FUNCTION(Thread1, arg) {
+#define LED_PORT IOPORT4
+#define LED_PIN 7
 
-  (void)arg;
-  chRegSetThreadName("Blinker");
-  while (true) {
-    palTogglePad(IOPORT2, PORTB_LED1);
-    chThdSleepMilliseconds(1000);
-  }
+uint32_t n = 0;
+
+void config_interruption(){
+    EICRA |=  (1 << ISC01) | (1 << ISC00); // Ativando a interrupção INT0 para borda de subida.    
+    EIMSK |= (1 << INT0);                  // Habilitando a interrupção INT0
+    sei();                                 // HAbilitaa interrupção de maniera geral
+
+}
+
+
+ISR(INT0_vect) { 
+
+    if (EICRA & (1 << ISC00)) {             // Se configurado para borda de subida
+        EIMSK &= ~(1 << INT0);              // Desabilita a interrupção
+        palWritePad(LED_PORT, LED_PIN, 1);  // LED ON
+        while(n<5000){n++;}n=0;
+        EICRA &= ~(1 << ISC00);             // Configura para borda de descida
+        EIMSK |= (1 << INT0);               // Habilita a interrupção
+    } else {
+        EIMSK &= ~(1 << INT0);              // Desabilita a interrupção
+        palWritePad(LED_PORT, LED_PIN, 0);  // LED OFF
+        while(n<5000){n++;}n=0;        
+        EICRA |= (1 << ISC00);              // Configura para borda de subida
+        EIMSK |= (1 << INT0);               // Habilita a interrupção       
+    }
+  
+     
 }
 
 /*
- * Application entry point.
+ * Application main function.
  */
 int main(void) {
 
-  /*
-   * System initializations.
-   * - HAL initialization, this also initializes the configured device drivers
-   *   and performs the board-specific initializations.
-   * - Kernel initialization, the main() function becomes a thread and the
-   *   RTOS is active.
-   */
-  halInit();
-  chSysInit();
+    halInit();
+    chSysInit();
+    config_interruption();
+    palSetPadMode(LED_PORT, 2, PAL_MODE_INPUT_PULLUP);
+    palSetPadMode(LED_PORT, LED_PIN, PAL_MODE_OUTPUT_PUSHPULL);
+    palClearPad(LED_PORT, LED_PIN); 
+    
 
-  /*
-   * Activates the serial driver 1 using the driver default configuration.
-   */
-  sdStart(&SD1, NULL);
-
-  /*
-   * Starts the LED blinker thread.
-   */
-  chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO, Thread1, NULL);
-
-  chnWrite(&SD1, (const uint8_t *)"Hello World!\r\n", 14);
-
-  while (true) {
-    chThdSleepMilliseconds(1000);
-  }
+    while(1){
+        chThdSleepMilliseconds(500);
+    }
+ 
 }
+
+

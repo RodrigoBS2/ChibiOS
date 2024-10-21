@@ -3,6 +3,7 @@
 #include "pin.h"
 #include "signal.h"
 #include "state.h"
+#include "vtimer.h"
 
 /* Variáveis globais    */
     // Buffer - eventos
@@ -14,19 +15,7 @@
     // Estado atual  
     volatile state_t current_state = main_st_main_green_t;
 
-    // Temporizadores
-    virtual_timer_t vt_main_green_t;
 
-/* Callbacks - Temporizadores */
-
-    void vt_main_green_t_cb(void *arg)
-    {
-        chSysLockFromISR();
-        flag_tratar_evento = 1;
-        evento = tempo_motor;
-        chVTSetI(&vt_main_green_t, TIME_MS2I(MAIN_TIMEOUT), vt_main_green_t_cb, NULL);
-        chSysUnlockFromISR();
-    }
 
 event_t get_event(){
 

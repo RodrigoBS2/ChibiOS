@@ -1220,7 +1220,7 @@ END GROUP
 .rela.plt
  *(.rela.plt)
 
-.text           0x0000000000000000     0x12fe
+.text           0x0000000000000000     0x130a
  *(.vectors)
  .vectors       0x0000000000000000       0x68 /usr/lib/gcc/avr/5.4.0/../../../avr/lib/avr5/crtatmega328p.o
                 0x0000000000000000                __vectors
@@ -1426,47 +1426,47 @@ END GROUP
                 0x0000000000000a26                _port_thread_start
  .text.led_cb   0x0000000000000a30       0x34 build/obj/main.o
  .text.startup.main
-                0x0000000000000a64       0x72 build/obj/main.o
+                0x0000000000000a64       0x7e build/obj/main.o
                 0x0000000000000a64                main
  .text.avr-libc
-                0x0000000000000ad6      0x218 /usr/lib/gcc/avr/5.4.0/../../../avr/lib/avr5/libprintf_min.a(vfprintf_min.o)
-                0x0000000000000ad6                vfprintf
+                0x0000000000000ae2      0x218 /usr/lib/gcc/avr/5.4.0/../../../avr/lib/avr5/libprintf_min.a(vfprintf_min.o)
+                0x0000000000000ae2                vfprintf
  .text.avr-libc
-                0x0000000000000cee      0x390 /usr/lib/gcc/avr/5.4.0/../../../avr/lib/avr5/libscanf_min.a(vfscanf_min.o)
-                0x0000000000000e94                vfscanf
+                0x0000000000000cfa      0x390 /usr/lib/gcc/avr/5.4.0/../../../avr/lib/avr5/libscanf_min.a(vfscanf_min.o)
+                0x0000000000000ea0                vfscanf
  .text.libgcc.prologue
-                0x000000000000107e       0x38 /usr/lib/gcc/avr/5.4.0/avr5/libgcc.a(_prologue.o)
-                0x000000000000107e                __prologue_saves__
+                0x000000000000108a       0x38 /usr/lib/gcc/avr/5.4.0/avr5/libgcc.a(_prologue.o)
+                0x000000000000108a                __prologue_saves__
  .text.libgcc.prologue
-                0x00000000000010b6       0x36 /usr/lib/gcc/avr/5.4.0/avr5/libgcc.a(_epilogue.o)
-                0x00000000000010b6                __epilogue_restores__
+                0x00000000000010c2       0x36 /usr/lib/gcc/avr/5.4.0/avr5/libgcc.a(_epilogue.o)
+                0x00000000000010c2                __epilogue_restores__
  .text.avr-libc
-                0x00000000000010ec       0x10 /usr/lib/gcc/avr/5.4.0/../../../avr/lib/avr5/libc.a(isspace.o)
-                0x00000000000010ec                isspace
+                0x00000000000010f8       0x10 /usr/lib/gcc/avr/5.4.0/../../../avr/lib/avr5/libc.a(isspace.o)
+                0x00000000000010f8                isspace
  .text.avr-libc
-                0x00000000000010fc       0x16 /usr/lib/gcc/avr/5.4.0/../../../avr/lib/avr5/libc.a(strchr_P.o)
-                0x00000000000010fc                strchr_P
+                0x0000000000001108       0x16 /usr/lib/gcc/avr/5.4.0/../../../avr/lib/avr5/libc.a(strchr_P.o)
+                0x0000000000001108                strchr_P
  .text.avr-libc
-                0x0000000000001112       0x7c /usr/lib/gcc/avr/5.4.0/../../../avr/lib/avr5/libc.a(fgetc.o)
-                0x0000000000001112                fgetc
+                0x000000000000111e       0x7c /usr/lib/gcc/avr/5.4.0/../../../avr/lib/avr5/libc.a(fgetc.o)
+                0x000000000000111e                fgetc
  .text.avr-libc
-                0x000000000000118e       0x78 /usr/lib/gcc/avr/5.4.0/../../../avr/lib/avr5/libc.a(fputc.o)
-                0x000000000000118e                fputc
+                0x000000000000119a       0x78 /usr/lib/gcc/avr/5.4.0/../../../avr/lib/avr5/libc.a(fputc.o)
+                0x000000000000119a                fputc
  .text.avr-libc
-                0x0000000000001206       0x32 /usr/lib/gcc/avr/5.4.0/../../../avr/lib/avr5/libc.a(ungetc.o)
-                0x0000000000001206                ungetc
+                0x0000000000001212       0x32 /usr/lib/gcc/avr/5.4.0/../../../avr/lib/avr5/libc.a(ungetc.o)
+                0x0000000000001212                ungetc
  .text.avr-libc
-                0x0000000000001238       0xbc /usr/lib/gcc/avr/5.4.0/../../../avr/lib/avr5/libc.a(ultoa_invert.o)
-                0x0000000000001238                __ultoa_invert
+                0x0000000000001244       0xbc /usr/lib/gcc/avr/5.4.0/../../../avr/lib/avr5/libc.a(ultoa_invert.o)
+                0x0000000000001244                __ultoa_invert
  .text.avr-libc
-                0x00000000000012f4        0x6 /usr/lib/gcc/avr/5.4.0/../../../avr/lib/avr5/libc.a(cty_isfalse.o)
-                0x00000000000012f4                __ctype_isfalse
-                0x00000000000012f8                __ctype_istrue
-                0x00000000000012fa                . = ALIGN (0x2)
+                0x0000000000001300        0x6 /usr/lib/gcc/avr/5.4.0/../../../avr/lib/avr5/libc.a(cty_isfalse.o)
+                0x0000000000001300                __ctype_isfalse
+                0x0000000000001304                __ctype_istrue
+                0x0000000000001306                . = ALIGN (0x2)
  *(.fini9)
- .fini9         0x00000000000012fa        0x0 /usr/lib/gcc/avr/5.4.0/avr5/libgcc.a(_exit.o)
-                0x00000000000012fa                exit
-                0x00000000000012fa                _exit
+ .fini9         0x0000000000001306        0x0 /usr/lib/gcc/avr/5.4.0/avr5/libgcc.a(_exit.o)
+                0x0000000000001306                exit
+                0x0000000000001306                _exit
  *(.fini9)
  *(.fini8)
  *(.fini8)
@@ -1485,11 +1485,11 @@ END GROUP
  *(.fini1)
  *(.fini1)
  *(.fini0)
- .fini0         0x00000000000012fa        0x4 /usr/lib/gcc/avr/5.4.0/avr5/libgcc.a(_exit.o)
+ .fini0         0x0000000000001306        0x4 /usr/lib/gcc/avr/5.4.0/avr5/libgcc.a(_exit.o)
  *(.fini0)
-                0x00000000000012fe                _etext = .
+                0x000000000000130a                _etext = .
 
-.data           0x0000000000800100       0x40 load address 0x00000000000012fe
+.data           0x0000000000800100       0x40 load address 0x000000000000130a
                 0x0000000000800100                PROVIDE (__data_start, .)
  *(.data)
  *(.data*)
@@ -1539,8 +1539,8 @@ END GROUP
  COMMON         0x000000000080029e        0x1 build/obj/chcore.o
                 0x000000000080029e                __avr_in_isr
                 0x000000000080029f                PROVIDE (__bss_end, .)
-                0x00000000000012fe                __data_load_start = LOADADDR (.data)
-                0x000000000000133e                __data_load_end = (__data_load_start + SIZEOF (.data))
+                0x000000000000130a                __data_load_start = LOADADDR (.data)
+                0x000000000000134a                __data_load_end = (__data_load_start + SIZEOF (.data))
 
 .noinit         0x000000000080029f        0x0
                 [!provide]                        PROVIDE (__noinit_start, .)
@@ -1684,7 +1684,7 @@ END GROUP
 .debug_pubnames
  *(.debug_pubnames)
 
-.debug_info     0x0000000000000000    0x12860
+.debug_info     0x0000000000000000    0x12883
  *(.debug_info .gnu.linkonce.wi.*)
  .debug_info    0x0000000000000000      0x5f4 /usr/lib/gcc/avr/5.4.0/../../../avr/lib/avr5/crtatmega328p.o
  .debug_info    0x00000000000005f4      0x8ca build/obj/hal.o
@@ -1707,7 +1707,7 @@ END GROUP
  .debug_info    0x000000000000f7ab      0xc2d build/obj/chmemcore.o
  .debug_info    0x00000000000103d8      0xebe build/obj/chmemheaps.o
  .debug_info    0x0000000000011296      0x867 build/obj/chcore.o
- .debug_info    0x0000000000011afd      0xd63 build/obj/main.o
+ .debug_info    0x0000000000011afd      0xd86 build/obj/main.o
 
 .debug_abbrev   0x0000000000000000     0x3dc2
  *(.debug_abbrev)
@@ -1734,7 +1734,7 @@ END GROUP
  .debug_abbrev  0x0000000000003947      0x19d build/obj/chcore.o
  .debug_abbrev  0x0000000000003ae4      0x2de build/obj/main.o
 
-.debug_line     0x0000000000000000     0x4933
+.debug_line     0x0000000000000000     0x493f
  *(.debug_line .debug_line.* .debug_line_end)
  .debug_line    0x0000000000000000       0x1a /usr/lib/gcc/avr/5.4.0/../../../avr/lib/avr5/crtatmega328p.o
  .debug_line    0x000000000000001a      0x278 build/obj/hal.o
@@ -1757,7 +1757,7 @@ END GROUP
  .debug_line    0x0000000000003bf3      0x33e build/obj/chmemcore.o
  .debug_line    0x0000000000003f31      0x502 build/obj/chmemheaps.o
  .debug_line    0x0000000000004433      0x294 build/obj/chcore.o
- .debug_line    0x00000000000046c7      0x26c build/obj/main.o
+ .debug_line    0x00000000000046c7      0x278 build/obj/main.o
 
 .debug_frame    0x0000000000000000      0xfa4
  *(.debug_frame)

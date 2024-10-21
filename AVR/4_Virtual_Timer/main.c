@@ -24,7 +24,7 @@ static void led_cb(void *arg) {
     chVTSetI(&led_vt, TIME_MS2I(1000), led_cb, NULL);   // Redefine o temporizador para chamar a função led_cb após 1 segundo.
     chSysUnlockFromISR();                               // Reabilita interrupções
 }
- 
+
 /*
  * Application main function.
  */
@@ -34,6 +34,7 @@ int main(void) {
     chSysInit();
 
     palSetPadMode(LED_PORT, LED_PIN, PAL_MODE_OUTPUT_PUSHPULL);
+ 
     palClearPad(LED_PORT, LED_PIN);
 
      /* LED timer initialization.*/

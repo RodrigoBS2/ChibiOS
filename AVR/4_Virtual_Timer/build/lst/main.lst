@@ -18,7 +18,7 @@
    5:main.c        **** #define LED_PORT IOPORT4
    6:main.c        **** #define LED_PIN 7
    7:main.c        **** 
-   8:main.c        **** /*  O código a baixo mostra cum exemplo de usar o timer virtual para fazer o led piscar durante al
+   8:main.c        **** /*  O código a baixo mostra um exemplo de usar o timer virtual para fazer o led piscar durante alg
    9:main.c        **** 
   10:main.c        **** char n = 0;
   11:main.c        **** 
@@ -433,12 +433,12 @@
   69               	main:
   70               	.LFB242:
   21:main.c        ****     
-  22:main.c        ****     /**/
-  23:main.c        ****     chSysLockFromISR();
-  24:main.c        ****     chVTSetI(&led_vt, TIME_MS2I(1000), led_cb, NULL);
-  25:main.c        ****     chSysUnlockFromISR();
+  22:main.c        ****     /* Processo para redefinir o temporizador */
+  23:main.c        ****     chSysLockFromISR();                                 // Desabilita interrupções temporariament
+  24:main.c        ****     chVTSetI(&led_vt, TIME_MS2I(1000), led_cb, NULL);   // Redefine o temporizador para chamar a fu
+  25:main.c        ****     chSysUnlockFromISR();                               // Reabilita interrupções
   26:main.c        **** }
-  27:main.c        ****  
+  27:main.c        **** 
   28:main.c        **** /*
   29:main.c        ****  * Application main function.
   30:main.c        ****  */
@@ -467,22 +467,33 @@
   87 000e 90E0      		ldi r25,0
   88 0010 0E94 0000 		call _pal_lld_setgroupmode
   89               	.LVL7:
-  37:main.c        ****     palClearPad(LED_PORT, LED_PIN);
+  37:main.c        ****     palSetPadMode(IOPORT2, 0, PAL_MODE_OUTPUT_PUSHPULL);
   90               		.loc 1 37 0
-  91 0014 5F98      		cbi 0xb,7
-  38:main.c        **** 
-  39:main.c        ****      /* LED timer initialization.*/
-  40:main.c        ****     chVTObjectInit(&led_vt);
-  92               		.loc 1 40 0
-  93 0016 80E0      		ldi r24,lo8(led_vt)
-  94 0018 90E0      		ldi r25,hi8(led_vt)
-  95 001a 0E94 0000 		call chVTObjectInit
+  91 0014 46E0      		ldi r20,lo8(6)
+  92 0016 61E0      		ldi r22,lo8(1)
+  93 0018 83E2      		ldi r24,lo8(35)
+  94 001a 90E0      		ldi r25,0
+  95 001c 0E94 0000 		call _pal_lld_setgroupmode
   96               	.LVL8:
-  97               	.LBB89:
-  98               	.LBB90:
-  99               	.LBB91:
- 100               	.LBB92:
- 101               		.file 3 "../../../os/common/ports/AVR/chcore.h"
+  38:main.c        ****     palWritePad(IOPORT2, 0, 0);
+  97               		.loc 1 38 0
+  98 0020 2898      		cbi 0x5,0
+  39:main.c        ****     palClearPad(LED_PORT, LED_PIN);
+  99               		.loc 1 39 0
+ 100 0022 5F98      		cbi 0xb,7
+  40:main.c        **** 
+  41:main.c        ****      /* LED timer initialization.*/
+  42:main.c        ****     chVTObjectInit(&led_vt);    // Inicializa o temporizador virtual.
+ 101               		.loc 1 42 0
+ 102 0024 80E0      		ldi r24,lo8(led_vt)
+ 103 0026 90E0      		ldi r25,hi8(led_vt)
+ 104 0028 0E94 0000 		call chVTObjectInit
+ 105               	.LVL9:
+ 106               	.LBB89:
+ 107               	.LBB90:
+ 108               	.LBB91:
+ 109               	.LBB92:
+ 110               		.file 3 "../../../os/common/ports/AVR/chcore.h"
    1:../../../os/common/ports/AVR/chcore.h **** /*
    2:../../../os/common/ports/AVR/chcore.h ****     ChibiOS - Copyright (C) 2006,2007,2008,2009,2010,2011,2012,2013,2014,
    3:../../../os/common/ports/AVR/chcore.h ****               2015,2016,2017,2018,2019,2020,2021 Giovanni Di Sirio.
@@ -913,52 +924,52 @@
  428:../../../os/common/ports/AVR/chcore.h **** static inline void port_lock(void) {
  429:../../../os/common/ports/AVR/chcore.h **** 
  430:../../../os/common/ports/AVR/chcore.h ****   asm volatile ("cli" : : : "memory");
- 102               		.loc 3 430 0
- 103               	/* #APP */
- 104               	 ;  430 "../../../os/common/ports/AVR/chcore.h" 1
- 105 001e F894      		cli
- 106               	 ;  0 "" 2
- 107               	.LVL9:
- 108               	/* #NOAPP */
- 109               	.LBE92:
- 110               	.LBE91:
- 111               	.LBE90:
- 112               	.LBB93:
- 113               	.LBB94:
- 114               	.LBB95:
- 115               	.LBB96:
+ 111               		.loc 3 430 0
+ 112               	/* #APP */
+ 113               	 ;  430 "../../../os/common/ports/AVR/chcore.h" 1
+ 114 002c F894      		cli
+ 115               	 ;  0 "" 2
+ 116               	.LVL10:
+ 117               	/* #NOAPP */
+ 118               	.LBE92:
+ 119               	.LBE91:
+ 120               	.LBE90:
+ 121               	.LBB93:
+ 122               	.LBB94:
+ 123               	.LBB95:
+ 124               	.LBB96:
  300:../../../os/rt/include/chvt.h ****     chVTDoResetI(vtp);
- 116               		.loc 2 300 0
- 117 0020 8091 0000 		lds r24,led_vt
- 118 0024 9091 0000 		lds r25,led_vt+1
- 119 0028 892B      		or r24,r25
- 120 002a 01F0      		breq .L8
+ 125               		.loc 2 300 0
+ 126 002e 8091 0000 		lds r24,led_vt
+ 127 0032 9091 0000 		lds r25,led_vt+1
+ 128 0036 892B      		or r24,r25
+ 129 0038 01F0      		breq .L8
  301:../../../os/rt/include/chvt.h ****   }
- 121               		.loc 2 301 0
- 122 002c 80E0      		ldi r24,lo8(led_vt)
- 123 002e 90E0      		ldi r25,hi8(led_vt)
- 124 0030 0E94 0000 		call chVTDoResetI
- 125               	.LVL10:
- 126               	.L8:
- 127               	.LBE96:
- 128               	.LBE95:
- 129               		.loc 2 347 0
- 130 0034 20E0      		ldi r18,0
- 131 0036 30E0      		ldi r19,0
- 132 0038 40E0      		ldi r20,lo8(gs(led_cb))
- 133 003a 50E0      		ldi r21,hi8(gs(led_cb))
- 134 003c 68E0      		ldi r22,lo8(8)
- 135 003e 7DE3      		ldi r23,lo8(61)
- 136 0040 80E0      		ldi r24,lo8(led_vt)
- 137 0042 90E0      		ldi r25,hi8(led_vt)
- 138 0044 0E94 0000 		call chVTDoSetI
- 139               	.LVL11:
- 140               	.LBE94:
- 141               	.LBE93:
- 142               	.LBB97:
- 143               	.LBB98:
- 144               	.LBB99:
- 145               	.LBB100:
+ 130               		.loc 2 301 0
+ 131 003a 80E0      		ldi r24,lo8(led_vt)
+ 132 003c 90E0      		ldi r25,hi8(led_vt)
+ 133 003e 0E94 0000 		call chVTDoResetI
+ 134               	.LVL11:
+ 135               	.L8:
+ 136               	.LBE96:
+ 137               	.LBE95:
+ 138               		.loc 2 347 0
+ 139 0042 20E0      		ldi r18,0
+ 140 0044 30E0      		ldi r19,0
+ 141 0046 40E0      		ldi r20,lo8(gs(led_cb))
+ 142 0048 50E0      		ldi r21,hi8(gs(led_cb))
+ 143 004a 68E0      		ldi r22,lo8(8)
+ 144 004c 7DE3      		ldi r23,lo8(61)
+ 145 004e 80E0      		ldi r24,lo8(led_vt)
+ 146 0050 90E0      		ldi r25,hi8(led_vt)
+ 147 0052 0E94 0000 		call chVTDoSetI
+ 148               	.LVL12:
+ 149               	.LBE94:
+ 150               	.LBE93:
+ 151               	.LBB97:
+ 152               	.LBB98:
+ 153               	.LBB99:
+ 154               	.LBB100:
  431:../../../os/common/ports/AVR/chcore.h **** }
  432:../../../os/common/ports/AVR/chcore.h **** 
  433:../../../os/common/ports/AVR/chcore.h **** /**
@@ -969,145 +980,145 @@
  438:../../../os/common/ports/AVR/chcore.h **** static inline void port_unlock(void) {
  439:../../../os/common/ports/AVR/chcore.h **** 
  440:../../../os/common/ports/AVR/chcore.h ****   asm volatile ("sei" : : : "memory");
- 146               		.loc 3 440 0
- 147               	/* #APP */
- 148               	 ;  440 "../../../os/common/ports/AVR/chcore.h" 1
- 149 0048 7894      		sei
- 150               	 ;  0 "" 2
- 151               	/* #NOAPP */
- 152               	.LBE100:
- 153               	.LBE99:
- 154               	.LBE98:
- 155               	.LBE97:
- 156               	.LBE89:
-  41:main.c        ****  
-  42:main.c        ****     /* Starting blinker.*/
-  43:main.c        ****     chVTSet(&led_vt, TIME_MS2I(1000), led_cb, NULL);
-  44:main.c        ****     
-  45:main.c        ****     while(1){
-  46:main.c        ****         if(n>3){
- 157               		.loc 1 46 0
- 158 004a 8091 0000 		lds r24,n
- 159 004e 8430      		cpi r24,lo8(4)
- 160 0050 00F4      		brsh .L11
- 161               	.L16:
-  47:main.c        ****             /* Stopping blinker.*/
-  48:main.c        ****             chVTReset(&led_vt);
-  49:main.c        ****             palClearPad(LED_PORT, LED_PIN);
-  50:main.c        ****             break;
-  51:main.c        ****         }
-  52:main.c        ****     chThdSleepMilliseconds(500);
- 162               		.loc 1 52 0
- 163 0052 84E8      		ldi r24,lo8(-124)
- 164 0054 9EE1      		ldi r25,lo8(30)
- 165 0056 0E94 0000 		call chThdSleep
- 166               	.LVL12:
-  46:main.c        ****             /* Stopping blinker.*/
- 167               		.loc 1 46 0
- 168 005a 8091 0000 		lds r24,n
- 169 005e 8430      		cpi r24,lo8(4)
- 170 0060 00F0      		brlo .L16
- 171               	.L11:
- 172               	.LVL13:
- 173               	.LBB101:
- 174               	.LBB102:
- 175               	.LBB103:
- 176               	.LBB104:
+ 155               		.loc 3 440 0
+ 156               	/* #APP */
+ 157               	 ;  440 "../../../os/common/ports/AVR/chcore.h" 1
+ 158 0056 7894      		sei
+ 159               	 ;  0 "" 2
+ 160               	/* #NOAPP */
+ 161               	.LBE100:
+ 162               	.LBE99:
+ 163               	.LBE98:
+ 164               	.LBE97:
+ 165               	.LBE89:
+  43:main.c        ****  
+  44:main.c        ****     /* Starting blinker.*/
+  45:main.c        ****     chVTSet(&led_vt, TIME_MS2I(1000), led_cb, NULL);    // Define o temporizador para chamar a fun�
+  46:main.c        ****     
+  47:main.c        ****     while(1){
+  48:main.c        ****         if(n>3){
+ 166               		.loc 1 48 0
+ 167 0058 8091 0000 		lds r24,n
+ 168 005c 8430      		cpi r24,lo8(4)
+ 169 005e 00F4      		brsh .L11
+ 170               	.L16:
+  49:main.c        ****             /* Stopping blinker.*/
+  50:main.c        ****             chVTReset(&led_vt);
+  51:main.c        ****             palClearPad(LED_PORT, LED_PIN);
+  52:main.c        ****             break;
+  53:main.c        ****         }
+  54:main.c        ****     chThdSleepMilliseconds(500);
+ 171               		.loc 1 54 0
+ 172 0060 84E8      		ldi r24,lo8(-124)
+ 173 0062 9EE1      		ldi r25,lo8(30)
+ 174 0064 0E94 0000 		call chThdSleep
+ 175               	.LVL13:
+  48:main.c        ****             /* Stopping blinker.*/
+ 176               		.loc 1 48 0
+ 177 0068 8091 0000 		lds r24,n
+ 178 006c 8430      		cpi r24,lo8(4)
+ 179 006e 00F0      		brlo .L16
+ 180               	.L11:
+ 181               	.LVL14:
+ 182               	.LBB101:
+ 183               	.LBB102:
+ 184               	.LBB103:
+ 185               	.LBB104:
  430:../../../os/common/ports/AVR/chcore.h **** }
- 177               		.loc 3 430 0
- 178               	/* #APP */
- 179               	 ;  430 "../../../os/common/ports/AVR/chcore.h" 1
- 180 0062 F894      		cli
- 181               	 ;  0 "" 2
- 182               	.LVL14:
- 183               	/* #NOAPP */
- 184               	.LBE104:
- 185               	.LBE103:
- 186               	.LBE102:
- 187               	.LBB105:
- 188               	.LBB106:
+ 186               		.loc 3 430 0
+ 187               	/* #APP */
+ 188               	 ;  430 "../../../os/common/ports/AVR/chcore.h" 1
+ 189 0070 F894      		cli
+ 190               	 ;  0 "" 2
+ 191               	.LVL15:
+ 192               	/* #NOAPP */
+ 193               	.LBE104:
+ 194               	.LBE103:
+ 195               	.LBE102:
+ 196               	.LBB105:
+ 197               	.LBB106:
  300:../../../os/rt/include/chvt.h ****     chVTDoResetI(vtp);
- 189               		.loc 2 300 0
- 190 0064 8091 0000 		lds r24,led_vt
- 191 0068 9091 0000 		lds r25,led_vt+1
- 192 006c 892B      		or r24,r25
- 193 006e 01F0      		breq .L10
+ 198               		.loc 2 300 0
+ 199 0072 8091 0000 		lds r24,led_vt
+ 200 0076 9091 0000 		lds r25,led_vt+1
+ 201 007a 892B      		or r24,r25
+ 202 007c 01F0      		breq .L10
  301:../../../os/rt/include/chvt.h ****   }
- 194               		.loc 2 301 0
- 195 0070 80E0      		ldi r24,lo8(led_vt)
- 196 0072 90E0      		ldi r25,hi8(led_vt)
- 197 0074 0E94 0000 		call chVTDoResetI
- 198               	.LVL15:
- 199               	.L10:
- 200               	.LBE106:
- 201               	.LBE105:
- 202               	.LBB107:
- 203               	.LBB108:
- 204               	.LBB109:
- 205               	.LBB110:
- 206               		.loc 3 440 0
- 207               	/* #APP */
- 208               	 ;  440 "../../../os/common/ports/AVR/chcore.h" 1
- 209 0078 7894      		sei
- 210               	 ;  0 "" 2
- 211               	.LVL16:
- 212               	/* #NOAPP */
- 213               	.LBE110:
- 214               	.LBE109:
- 215               	.LBE108:
- 216               	.LBE107:
- 217               	.LBE101:
-  49:main.c        ****             break;
- 218               		.loc 1 49 0
- 219 007a 5F98      		cbi 0xb,7
-  53:main.c        ****     
-  54:main.c        ****     }
-  55:main.c        **** 
-  56:main.c        ****     
-  57:main.c        ****  
-  58:main.c        **** }
- 220               		.loc 1 58 0
- 221 007c 80E0      		ldi r24,0
- 222 007e 90E0      		ldi r25,0
- 223 0080 0895      		ret
- 224               		.cfi_endproc
- 225               	.LFE242:
- 227               		.section	.bss.led_vt,"aw",@nobits
- 230               	led_vt:
- 231 0000 0000 0000 		.zero	12
- 231      0000 0000 
- 231      0000 0000 
- 232               	.global	n
- 233               		.section	.bss.n,"aw",@nobits
- 236               	n:
- 237 0000 00        		.zero	1
- 238               		.text
- 239               	.Letext0:
- 240               		.file 4 "/usr/lib/avr/include/stdint.h"
- 241               		.file 5 "../../../os/common/ports/AVR/compilers/GCC/chtypes.h"
- 242               		.file 6 "../../../os/rt/include/chearly.h"
- 243               		.file 7 "../../../os/rt/include/chobjects.h"
- 244               		.file 8 "../../../os/rt/include/chrfcu.h"
- 245               		.file 9 "../../../os/rt/include/chdebug.h"
- 246               		.file 10 "../../../os/rt/include/chtime.h"
- 247               		.file 11 "../../../os/rt/include/chlists.h"
- 248               		.file 12 "../../../os/rt/include/chsem.h"
- 249               		.file 13 "../../../os/rt/include/chmtx.h"
- 250               		.file 14 "../../../os/hal/ports/AVR/MEGA/LLD/GPIOv1/hal_pal_lld.h"
- 251               		.file 15 "../../../os/rt/include/chsys.h"
- 252               		.file 16 "../../../os/hal/include/hal.h"
- 253               		.file 17 "../../../os/rt/include/chthreads.h"
+ 203               		.loc 2 301 0
+ 204 007e 80E0      		ldi r24,lo8(led_vt)
+ 205 0080 90E0      		ldi r25,hi8(led_vt)
+ 206 0082 0E94 0000 		call chVTDoResetI
+ 207               	.LVL16:
+ 208               	.L10:
+ 209               	.LBE106:
+ 210               	.LBE105:
+ 211               	.LBB107:
+ 212               	.LBB108:
+ 213               	.LBB109:
+ 214               	.LBB110:
+ 215               		.loc 3 440 0
+ 216               	/* #APP */
+ 217               	 ;  440 "../../../os/common/ports/AVR/chcore.h" 1
+ 218 0086 7894      		sei
+ 219               	 ;  0 "" 2
+ 220               	.LVL17:
+ 221               	/* #NOAPP */
+ 222               	.LBE110:
+ 223               	.LBE109:
+ 224               	.LBE108:
+ 225               	.LBE107:
+ 226               	.LBE101:
+  51:main.c        ****             break;
+ 227               		.loc 1 51 0
+ 228 0088 5F98      		cbi 0xb,7
+  55:main.c        ****     
+  56:main.c        ****     }
+  57:main.c        **** 
+  58:main.c        ****     
+  59:main.c        ****  
+  60:main.c        **** }
+ 229               		.loc 1 60 0
+ 230 008a 80E0      		ldi r24,0
+ 231 008c 90E0      		ldi r25,0
+ 232 008e 0895      		ret
+ 233               		.cfi_endproc
+ 234               	.LFE242:
+ 236               		.section	.bss.led_vt,"aw",@nobits
+ 239               	led_vt:
+ 240 0000 0000 0000 		.zero	12
+ 240      0000 0000 
+ 240      0000 0000 
+ 241               	.global	n
+ 242               		.section	.bss.n,"aw",@nobits
+ 245               	n:
+ 246 0000 00        		.zero	1
+ 247               		.text
+ 248               	.Letext0:
+ 249               		.file 4 "/usr/lib/avr/include/stdint.h"
+ 250               		.file 5 "../../../os/common/ports/AVR/compilers/GCC/chtypes.h"
+ 251               		.file 6 "../../../os/rt/include/chearly.h"
+ 252               		.file 7 "../../../os/rt/include/chobjects.h"
+ 253               		.file 8 "../../../os/rt/include/chrfcu.h"
+ 254               		.file 9 "../../../os/rt/include/chdebug.h"
+ 255               		.file 10 "../../../os/rt/include/chtime.h"
+ 256               		.file 11 "../../../os/rt/include/chlists.h"
+ 257               		.file 12 "../../../os/rt/include/chsem.h"
+ 258               		.file 13 "../../../os/rt/include/chmtx.h"
+ 259               		.file 14 "../../../os/hal/ports/AVR/MEGA/LLD/GPIOv1/hal_pal_lld.h"
+ 260               		.file 15 "../../../os/rt/include/chsys.h"
+ 261               		.file 16 "../../../os/hal/include/hal.h"
+ 262               		.file 17 "../../../os/rt/include/chthreads.h"
 DEFINED SYMBOLS
                             *ABS*:0000000000000000 main.c
-     /tmp/cckxQyCJ.s:2      *ABS*:000000000000003e __SP_H__
-     /tmp/cckxQyCJ.s:3      *ABS*:000000000000003d __SP_L__
-     /tmp/cckxQyCJ.s:4      *ABS*:000000000000003f __SREG__
-     /tmp/cckxQyCJ.s:5      *ABS*:0000000000000000 __tmp_reg__
-     /tmp/cckxQyCJ.s:6      *ABS*:0000000000000001 __zero_reg__
-     /tmp/cckxQyCJ.s:12     .text.led_cb:0000000000000000 led_cb
-     /tmp/cckxQyCJ.s:236    .bss.n:0000000000000000 n
-     /tmp/cckxQyCJ.s:230    .bss.led_vt:0000000000000000 led_vt
-     /tmp/cckxQyCJ.s:69     .text.startup.main:0000000000000000 main
+     /tmp/ccJZrMhR.s:2      *ABS*:000000000000003e __SP_H__
+     /tmp/ccJZrMhR.s:3      *ABS*:000000000000003d __SP_L__
+     /tmp/ccJZrMhR.s:4      *ABS*:000000000000003f __SREG__
+     /tmp/ccJZrMhR.s:5      *ABS*:0000000000000000 __tmp_reg__
+     /tmp/ccJZrMhR.s:6      *ABS*:0000000000000001 __zero_reg__
+     /tmp/ccJZrMhR.s:12     .text.led_cb:0000000000000000 led_cb
+     /tmp/ccJZrMhR.s:245    .bss.n:0000000000000000 n
+     /tmp/ccJZrMhR.s:239    .bss.led_vt:0000000000000000 led_vt
+     /tmp/ccJZrMhR.s:69     .text.startup.main:0000000000000000 main
 
 UNDEFINED SYMBOLS
 chVTDoResetI

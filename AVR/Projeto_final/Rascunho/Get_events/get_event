@@ -1,0 +1,54 @@
+#include <avr/io.h>
+#include <avr/interrupt.h>
+#include <stdint.h>
+
+volatile uint8_t button_states = 0x00;  // Variável de 8 bits para armazenar o estado dos botões
+
+void config_pcint(){
+    // Habilitar as interrupções de mudança de estado nos pinos PCINT18 a PCINT21 (PB2, PB3, PB4, PB5)
+    PCICR |= (1 << PCIE2);   // Habilitar interrupção de PCINT para o grupo PCINT2 (PCINT16 a PCINT23)
+    PCMSK2 |= (1 << PCINT21) | (1 << PCINT20) | (1 << PCINT19) | (1 << PCINT18); // Habilitar interrupções para PCINT18 a PCINT21
+
+    // Configurar os pinos PCINT18 a PCINT21 como entrada (PB2 a PB5)
+    DDRB &= ~( (1 << PB2) | (1 << PB3) | (1 << PB4) | (1 << PB5) );
+
+    // Habilitar resistores de pull-up internos para os pinos de pushbutton
+    PORTB |= (1 << PB2) | (1 << PB3) | (1 << PB4) | (1 << PB5);
+    
+    // Habilitar interrupções globais
+    sei();
+}
+
+// Função que captura o estado dos botões pressionados
+void capture_button_states(){
+    // Os botões estão conectados aos pinos PB2, PB3, PB4, PB5 (PCINT18 a PCINT21)
+    // Captura o estado dos botões e armazena na variável button_states
+    button_states = PINB & ((1 << PB2) | (1 << PB3) | (1 << PB4) | (1 << PB5));
+
+    // A variável button_states vai conter 0 nas posições dos botões pressionados (porque há pull-up)
+}
+
+// ISR para tratar interrupções de mudança de estado nos pinos PCINT18 a PCINT21
+ISR(PCINT2_vect) {
+    // Função chamada sempre que qualquer um dos pinos de PCINT18 a PCINT21 mudar de estado
+    capture_button_states();
+}
+
+int main(void) {
+    // Configurar interrupções
+    config_pcint();
+
+    // Loop principal
+    while (1) {
+        // Aqui você pode fazer algo com os estados dos botões
+        // Por exemplo, verificar se algum botão foi pressionado e fazer algo
+        if (button_states != 0x00) {
+            // Um ou mais botões foram pressionados
+            // Faça alguma coisa aqui
+        }
+
+        // Adicione um pequeno delay para evitar sobrecarga
+        _delay_ms(100);
+    }
+}
+
