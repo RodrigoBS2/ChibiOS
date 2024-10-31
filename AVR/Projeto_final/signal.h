@@ -1,7 +1,7 @@
 #ifndef SIGNAL_H
 #define SIGNAL_H
 
-#include "AVRincludes.h"
+
 #include "pin.h"
 
 #define ON true

@@ -11,7 +11,7 @@ void config_interruption(){
     PCMSK2 |= (1 << PCINT20) | (1 << PCINT17); // Habilitar interrupções para PCINT20 a PCINT17 (pedestre e secundária)
 
 
-    sei();                                                                  // Habilita interrupção global;
+    sei();  // Habilita interrupção global;
 }
 
 

@@ -36,7 +36,7 @@ static THD_FUNCTION(Producer, arg) {
 
         // Adiciona o dado ao buffer
         *write_ptr = data++;
-        if (++write_ptr >= buffer + BUFFER_SIZE) {
+        if (++write_ptr >= buffer + BUFFER_SIZE){
             write_ptr = buffer;  // Volta para o início do buffer
         }
         buffer_count++;

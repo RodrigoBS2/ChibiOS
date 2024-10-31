@@ -7,6 +7,7 @@
 #include "signal.h"
 #include "state.h"
 #include "vtimer.h"
+#include "circular_buffer.h"
 
 /* Variáveis globais    */
     // Buffer - eventos
