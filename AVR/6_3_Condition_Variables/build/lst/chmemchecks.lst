@@ -1,0 +1,1052 @@
+   1               		.file	"chmemchecks.c"
+   2               	__SP_H__ = 0x3e
+   3               	__SP_L__ = 0x3d
+   4               	__SREG__ = 0x3f
+   5               	__tmp_reg__ = 0
+   6               	__zero_reg__ = 1
+   7               		.text
+   8               	.Ltext0:
+   9               		.cfi_sections	.debug_frame
+  10               		.section	.text.chMemIsStringWithinX,"ax",@progbits
+  11               	.global	chMemIsStringWithinX
+  13               	chMemIsStringWithinX:
+  14               	.LFB193:
+  15               		.file 1 "../../../os/oslib/src/chmemchecks.c"
+   1:../../../os/oslib/src/chmemchecks.c **** /*
+   2:../../../os/oslib/src/chmemchecks.c ****     ChibiOS - Copyright (C) 2006,2007,2008,2009,2010,2011,2012,2013,2014,
+   3:../../../os/oslib/src/chmemchecks.c ****               2015,2016,2017,2018,2019,2020,2021 Giovanni Di Sirio.
+   4:../../../os/oslib/src/chmemchecks.c **** 
+   5:../../../os/oslib/src/chmemchecks.c ****     This file is part of ChibiOS.
+   6:../../../os/oslib/src/chmemchecks.c **** 
+   7:../../../os/oslib/src/chmemchecks.c ****     ChibiOS is free software; you can redistribute it and/or modify
+   8:../../../os/oslib/src/chmemchecks.c ****     it under the terms of the GNU General Public License as published by
+   9:../../../os/oslib/src/chmemchecks.c ****     the Free Software Foundation version 3 of the License.
+  10:../../../os/oslib/src/chmemchecks.c **** 
+  11:../../../os/oslib/src/chmemchecks.c ****     ChibiOS is distributed in the hope that it will be useful,
+  12:../../../os/oslib/src/chmemchecks.c ****     but WITHOUT ANY WARRANTY; without even the implied warranty of
+  13:../../../os/oslib/src/chmemchecks.c ****     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  14:../../../os/oslib/src/chmemchecks.c ****     GNU General Public License for more details.
+  15:../../../os/oslib/src/chmemchecks.c **** 
+  16:../../../os/oslib/src/chmemchecks.c ****     You should have received a copy of the GNU General Public License
+  17:../../../os/oslib/src/chmemchecks.c ****     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  18:../../../os/oslib/src/chmemchecks.c **** */
+  19:../../../os/oslib/src/chmemchecks.c **** 
+  20:../../../os/oslib/src/chmemchecks.c **** /**
+  21:../../../os/oslib/src/chmemchecks.c ****  * @file    oslib/src/chmemchecks.c
+  22:../../../os/oslib/src/chmemchecks.c ****  * @brief   Memory areas and pointers validation code.
+  23:../../../os/oslib/src/chmemchecks.c ****  *
+  24:../../../os/oslib/src/chmemchecks.c ****  * @addtogroup oslib_memareas
+  25:../../../os/oslib/src/chmemchecks.c ****  * @details Memory areas and pointers validation utilities.
+  26:../../../os/oslib/src/chmemchecks.c ****  * @note    Always available.
+  27:../../../os/oslib/src/chmemchecks.c ****  * @note    Compatible with RT and NIL.
+  28:../../../os/oslib/src/chmemchecks.c ****  * @{
+  29:../../../os/oslib/src/chmemchecks.c ****  */
+  30:../../../os/oslib/src/chmemchecks.c **** 
+  31:../../../os/oslib/src/chmemchecks.c **** #include "ch.h"
+  32:../../../os/oslib/src/chmemchecks.c **** 
+  33:../../../os/oslib/src/chmemchecks.c **** /*===========================================================================*/
+  34:../../../os/oslib/src/chmemchecks.c **** /* Module exported variables.                                                */
+  35:../../../os/oslib/src/chmemchecks.c **** /*===========================================================================*/
+  36:../../../os/oslib/src/chmemchecks.c **** 
+  37:../../../os/oslib/src/chmemchecks.c **** #if (CH_CFG_USE_MEMCHECKS == TRUE) || defined(__DOXYGEN__)
+  38:../../../os/oslib/src/chmemchecks.c **** 
+  39:../../../os/oslib/src/chmemchecks.c **** /**
+  40:../../../os/oslib/src/chmemchecks.c ****  * @brief   Default writable memory areas.
+  41:../../../os/oslib/src/chmemchecks.c ****  * @details By default all memory is writable, user must provide its own
+  42:../../../os/oslib/src/chmemchecks.c ****  *          writable areas array for the device in use.
+  43:../../../os/oslib/src/chmemchecks.c ****  * @note    The array is terminated by an end marker (base=-1).
+  44:../../../os/oslib/src/chmemchecks.c ****  */
+  45:../../../os/oslib/src/chmemchecks.c **** CC_WEAK const memory_area_t __ch_mem_writable_areas[] = {
+  46:../../../os/oslib/src/chmemchecks.c ****   {(uint8_t *)0,  0U},      /* Whole space is writable.*/
+  47:../../../os/oslib/src/chmemchecks.c ****   {(uint8_t *)-1, 0U},
+  48:../../../os/oslib/src/chmemchecks.c **** };
+  49:../../../os/oslib/src/chmemchecks.c **** 
+  50:../../../os/oslib/src/chmemchecks.c **** /**
+  51:../../../os/oslib/src/chmemchecks.c ****  * @brief   Default readable memory areas.
+  52:../../../os/oslib/src/chmemchecks.c ****  * @details By default all memory is readable, user must provide its own
+  53:../../../os/oslib/src/chmemchecks.c ****  *          readable areas array for the device in use.
+  54:../../../os/oslib/src/chmemchecks.c ****  * @note    The array is terminated by an end marker (base=-1).
+  55:../../../os/oslib/src/chmemchecks.c ****  */
+  56:../../../os/oslib/src/chmemchecks.c **** CC_WEAK const memory_area_t __ch_mem_readable_areas[] = {
+  57:../../../os/oslib/src/chmemchecks.c ****   {(uint8_t *)0,  0U},      /* Whole space is readable.*/
+  58:../../../os/oslib/src/chmemchecks.c ****   {(uint8_t *)-1, 0U},
+  59:../../../os/oslib/src/chmemchecks.c **** };
+  60:../../../os/oslib/src/chmemchecks.c **** 
+  61:../../../os/oslib/src/chmemchecks.c **** /**
+  62:../../../os/oslib/src/chmemchecks.c ****  * @brief   Default executable memory areas.
+  63:../../../os/oslib/src/chmemchecks.c ****  * @details By default all memory is executable, user must provide its own
+  64:../../../os/oslib/src/chmemchecks.c ****  *          executable areas array for the device in use.
+  65:../../../os/oslib/src/chmemchecks.c ****  * @note    The array is terminated by an end marker (base=-1).
+  66:../../../os/oslib/src/chmemchecks.c ****  */
+  67:../../../os/oslib/src/chmemchecks.c **** CC_WEAK const memory_area_t __ch_mem_executable_areas[] = {
+  68:../../../os/oslib/src/chmemchecks.c ****   {(uint8_t *)0,  0U},      /* Whole space is readable.*/
+  69:../../../os/oslib/src/chmemchecks.c ****   {(uint8_t *)-1, 0U},
+  70:../../../os/oslib/src/chmemchecks.c **** };
+  71:../../../os/oslib/src/chmemchecks.c **** 
+  72:../../../os/oslib/src/chmemchecks.c **** #endif /* CH_CFG_USE_MEMCHECKS == TRUE */
+  73:../../../os/oslib/src/chmemchecks.c **** 
+  74:../../../os/oslib/src/chmemchecks.c **** /*===========================================================================*/
+  75:../../../os/oslib/src/chmemchecks.c **** /* Module local types.                                                       */
+  76:../../../os/oslib/src/chmemchecks.c **** /*===========================================================================*/
+  77:../../../os/oslib/src/chmemchecks.c **** 
+  78:../../../os/oslib/src/chmemchecks.c **** /*===========================================================================*/
+  79:../../../os/oslib/src/chmemchecks.c **** /* Module local variables.                                                   */
+  80:../../../os/oslib/src/chmemchecks.c **** /*===========================================================================*/
+  81:../../../os/oslib/src/chmemchecks.c **** 
+  82:../../../os/oslib/src/chmemchecks.c **** /*===========================================================================*/
+  83:../../../os/oslib/src/chmemchecks.c **** /* Module local functions.                                                   */
+  84:../../../os/oslib/src/chmemchecks.c **** /*===========================================================================*/
+  85:../../../os/oslib/src/chmemchecks.c **** 
+  86:../../../os/oslib/src/chmemchecks.c **** /*===========================================================================*/
+  87:../../../os/oslib/src/chmemchecks.c **** /* Module exported functions.                                                */
+  88:../../../os/oslib/src/chmemchecks.c **** /*===========================================================================*/
+  89:../../../os/oslib/src/chmemchecks.c **** 
+  90:../../../os/oslib/src/chmemchecks.c **** /**
+  91:../../../os/oslib/src/chmemchecks.c ****  * @brief   String check.
+  92:../../../os/oslib/src/chmemchecks.c ****  * @details Checks if specified string is entirely contained in the specified
+  93:../../../os/oslib/src/chmemchecks.c ****  *          memory area.
+  94:../../../os/oslib/src/chmemchecks.c ****  *
+  95:../../../os/oslib/src/chmemchecks.c ****  * @param[in] map       pointer to a @p memory_area_t structure
+  96:../../../os/oslib/src/chmemchecks.c ****  * @param[in] s         pointer to the string to be checked
+  97:../../../os/oslib/src/chmemchecks.c ****  * @param[in] max       maximum expected size of the string inclusive of the
+  98:../../../os/oslib/src/chmemchecks.c ****  *                      final zero
+  99:../../../os/oslib/src/chmemchecks.c ****  * @return              The string size inclusive of the final zero.
+ 100:../../../os/oslib/src/chmemchecks.c ****  * @retval 0            if the string check failed.
+ 101:../../../os/oslib/src/chmemchecks.c ****  *
+ 102:../../../os/oslib/src/chmemchecks.c ****  * @xclass
+ 103:../../../os/oslib/src/chmemchecks.c ****  */
+ 104:../../../os/oslib/src/chmemchecks.c **** size_t chMemIsStringWithinX(const memory_area_t *map,
+ 105:../../../os/oslib/src/chmemchecks.c ****                             const char *s,
+ 106:../../../os/oslib/src/chmemchecks.c ****                             size_t max) {
+  16               		.loc 1 106 0
+  17               		.cfi_startproc
+  18               	.LVL0:
+  19 0000 CF93      		push r28
+  20               	.LCFI0:
+  21               		.cfi_def_cfa_offset 3
+  22               		.cfi_offset 28, -2
+  23 0002 DF93      		push r29
+  24               	.LCFI1:
+  25               		.cfi_def_cfa_offset 4
+  26               		.cfi_offset 29, -3
+  27               	/* prologue: function */
+  28               	/* frame size = 0 */
+  29               	/* stack size = 2 */
+  30               	.L__stack_usage = 2
+  31 0004 EA01      		movw r28,r20
+ 107:../../../os/oslib/src/chmemchecks.c ****   const char *base = (const char *)map->base;
+  32               		.loc 1 107 0
+  33 0006 FC01      		movw r30,r24
+  34 0008 2081      		ld r18,Z
+  35 000a 3181      		ldd r19,Z+1
+  36               	.LVL1:
+ 108:../../../os/oslib/src/chmemchecks.c ****   const char *end  = (const char *)base + map->size - (size_t)1;
+ 109:../../../os/oslib/src/chmemchecks.c **** 
+ 110:../../../os/oslib/src/chmemchecks.c ****   if (s >= base) {
+  37               		.loc 1 110 0
+  38 000c 6217      		cp r22,r18
+  39 000e 7307      		cpc r23,r19
+  40 0010 00F0      		brlo .L9
+ 108:../../../os/oslib/src/chmemchecks.c ****   const char *end  = (const char *)base + map->size - (size_t)1;
+  41               		.loc 1 108 0
+  42 0012 FC01      		movw r30,r24
+  43 0014 A281      		ldd r26,Z+2
+  44 0016 B381      		ldd r27,Z+3
+  45 0018 1197      		sbiw r26,1
+  46 001a A20F      		add r26,r18
+  47 001c B31F      		adc r27,r19
+  48               	.LVL2:
+  49               	.LBB16:
+ 111:../../../os/oslib/src/chmemchecks.c ****     size_t n;
+ 112:../../../os/oslib/src/chmemchecks.c **** 
+ 113:../../../os/oslib/src/chmemchecks.c ****     n = (size_t)0;
+ 114:../../../os/oslib/src/chmemchecks.c ****     while ((s <= end) && (n < max)) {
+  50               		.loc 1 114 0
+  51 001e A617      		cp r26,r22
+  52 0020 B707      		cpc r27,r23
+  53 0022 00F0      		brlo .L9
+  54 0024 2097      		sbiw r28,0
+  55 0026 01F0      		breq .L9
+  56               	.LVL3:
+ 115:../../../os/oslib/src/chmemchecks.c ****       n++;
+ 116:../../../os/oslib/src/chmemchecks.c ****       if (*s++ == '\0') {
+  57               		.loc 1 116 0
+  58 0028 CB01      		movw r24,r22
+  59               	.LVL4:
+  60 002a 0196      		adiw r24,1
+  61               	.LVL5:
+  62 002c FB01      		movw r30,r22
+  63               	.LVL6:
+  64 002e 2081      		ld r18,Z
+  65               	.LVL7:
+  66 0030 2223      		tst r18
+  67 0032 01F0      		breq .L10
+  68 0034 21E0      		ldi r18,lo8(1)
+  69 0036 30E0      		ldi r19,0
+  70 0038 00C0      		rjmp .L5
+  71               	.LVL8:
+  72               	.L4:
+ 114:../../../os/oslib/src/chmemchecks.c ****       n++;
+  73               		.loc 1 114 0 discriminator 1
+  74 003a C217      		cp r28,r18
+  75 003c D307      		cpc r29,r19
+  76 003e 01F0      		breq .L9
+ 115:../../../os/oslib/src/chmemchecks.c ****       n++;
+  77               		.loc 1 115 0
+  78 0040 2F5F      		subi r18,-1
+  79 0042 3F4F      		sbci r19,-1
+  80               	.LVL9:
+  81 0044 0196      		adiw r24,1
+  82               		.loc 1 116 0
+  83 0046 5081      		ld r21,Z
+  84 0048 5523      		tst r21
+  85 004a 01F0      		breq .L7
+  86               	.LVL10:
+  87               	.L5:
+  88 004c FC01      		movw r30,r24
+ 114:../../../os/oslib/src/chmemchecks.c ****       n++;
+  89               		.loc 1 114 0
+  90 004e A817      		cp r26,r24
+  91 0050 B907      		cpc r27,r25
+  92 0052 00F4      		brsh .L4
+  93               	.LVL11:
+  94               	.L9:
+  95               	.LBE16:
+ 117:../../../os/oslib/src/chmemchecks.c ****         return n;
+ 118:../../../os/oslib/src/chmemchecks.c ****       }
+ 119:../../../os/oslib/src/chmemchecks.c ****     }
+ 120:../../../os/oslib/src/chmemchecks.c ****   }
+ 121:../../../os/oslib/src/chmemchecks.c **** 
+ 122:../../../os/oslib/src/chmemchecks.c ****   return (size_t)0;
+  96               		.loc 1 122 0
+  97 0054 80E0      		ldi r24,0
+  98 0056 90E0      		ldi r25,0
+  99               	.L3:
+ 100               	/* epilogue start */
+ 123:../../../os/oslib/src/chmemchecks.c **** }
+ 101               		.loc 1 123 0
+ 102 0058 DF91      		pop r29
+ 103 005a CF91      		pop r28
+ 104 005c 0895      		ret
+ 105               	.LVL12:
+ 106               	.L7:
+ 107               	.LBB17:
+ 115:../../../os/oslib/src/chmemchecks.c ****       if (*s++ == '\0') {
+ 108               		.loc 1 115 0
+ 109 005e C901      		movw r24,r18
+ 110               	/* epilogue start */
+ 111               	.LBE17:
+ 112               		.loc 1 123 0
+ 113 0060 DF91      		pop r29
+ 114 0062 CF91      		pop r28
+ 115 0064 0895      		ret
+ 116               	.LVL13:
+ 117               	.L10:
+ 118               	.LBB18:
+ 115:../../../os/oslib/src/chmemchecks.c ****       if (*s++ == '\0') {
+ 119               		.loc 1 115 0
+ 120 0066 81E0      		ldi r24,lo8(1)
+ 121               	.LVL14:
+ 122 0068 90E0      		ldi r25,0
+ 123 006a 00C0      		rjmp .L3
+ 124               	.LBE18:
+ 125               		.cfi_endproc
+ 126               	.LFE193:
+ 128               		.section	.text.chMemIsPointersArrayWithinX,"ax",@progbits
+ 129               	.global	chMemIsPointersArrayWithinX
+ 131               	chMemIsPointersArrayWithinX:
+ 132               	.LFB194:
+ 124:../../../os/oslib/src/chmemchecks.c **** 
+ 125:../../../os/oslib/src/chmemchecks.c **** /**
+ 126:../../../os/oslib/src/chmemchecks.c ****  * @brief   Pointers array check.
+ 127:../../../os/oslib/src/chmemchecks.c ****  * @details Checks if specified pointers array is entirely contained in the
+ 128:../../../os/oslib/src/chmemchecks.c ****  *          specified memory area.
+ 129:../../../os/oslib/src/chmemchecks.c ****  *
+ 130:../../../os/oslib/src/chmemchecks.c ****  * @param[in] map       pointer to a @p memory_area_t structure
+ 131:../../../os/oslib/src/chmemchecks.c ****  * @param[in] pp        zero-terminated pointers array to be checked
+ 132:../../../os/oslib/src/chmemchecks.c ****  * @param[in] max       maximum expected size of the pointers array inclusive
+ 133:../../../os/oslib/src/chmemchecks.c ****  *                      of the final zero
+ 134:../../../os/oslib/src/chmemchecks.c ****  * @return              The pointers array size inclusive of the final zero.
+ 135:../../../os/oslib/src/chmemchecks.c ****  * @retval 0            if the pointers array check failed.
+ 136:../../../os/oslib/src/chmemchecks.c ****  *
+ 137:../../../os/oslib/src/chmemchecks.c ****  * @xclass
+ 138:../../../os/oslib/src/chmemchecks.c ****  */
+ 139:../../../os/oslib/src/chmemchecks.c **** size_t chMemIsPointersArrayWithinX(const memory_area_t *map,
+ 140:../../../os/oslib/src/chmemchecks.c ****                                    const void *pp[],
+ 141:../../../os/oslib/src/chmemchecks.c ****                                    size_t max) {
+ 133               		.loc 1 141 0
+ 134               		.cfi_startproc
+ 135               	.LVL15:
+ 136               	/* prologue: function */
+ 137               	/* frame size = 0 */
+ 138               	/* stack size = 0 */
+ 139               	.L__stack_usage = 0
+ 142:../../../os/oslib/src/chmemchecks.c ****   const void **base = (const void **)(void *)map->base;
+ 140               		.loc 1 142 0
+ 141 0000 FC01      		movw r30,r24
+ 142 0002 2081      		ld r18,Z
+ 143 0004 3181      		ldd r19,Z+1
+ 144               	.LVL16:
+ 143:../../../os/oslib/src/chmemchecks.c ****   const void **end  = (const void **)(void *)(map->base + map->size - sizeof (void *));
+ 144:../../../os/oslib/src/chmemchecks.c **** 
+ 145:../../../os/oslib/src/chmemchecks.c ****   if (pp >= base) {
+ 145               		.loc 1 145 0
+ 146 0006 6217      		cp r22,r18
+ 147 0008 7307      		cpc r23,r19
+ 148 000a 00F0      		brlo .L20
+ 143:../../../os/oslib/src/chmemchecks.c ****   const void **end  = (const void **)(void *)(map->base + map->size - sizeof (void *));
+ 149               		.loc 1 143 0
+ 150 000c FC01      		movw r30,r24
+ 151 000e A281      		ldd r26,Z+2
+ 152 0010 B381      		ldd r27,Z+3
+ 153 0012 1297      		sbiw r26,2
+ 154 0014 A20F      		add r26,r18
+ 155 0016 B31F      		adc r27,r19
+ 156               	.LVL17:
+ 157               	.LBB19:
+ 146:../../../os/oslib/src/chmemchecks.c ****     size_t n;
+ 147:../../../os/oslib/src/chmemchecks.c **** 
+ 148:../../../os/oslib/src/chmemchecks.c ****     n = (size_t)0;
+ 149:../../../os/oslib/src/chmemchecks.c ****     while ((pp <= end) && (n < max)) {
+ 158               		.loc 1 149 0
+ 159 0018 A617      		cp r26,r22
+ 160 001a B707      		cpc r27,r23
+ 161 001c 00F0      		brlo .L20
+ 162 001e 4115      		cp r20,__zero_reg__
+ 163 0020 5105      		cpc r21,__zero_reg__
+ 164 0022 01F0      		breq .L20
+ 165               	.LVL18:
+ 150:../../../os/oslib/src/chmemchecks.c ****       n += sizeof (void *);
+ 151:../../../os/oslib/src/chmemchecks.c ****       if (*pp++ == NULL) {
+ 166               		.loc 1 151 0
+ 167 0024 CB01      		movw r24,r22
+ 168               	.LVL19:
+ 169 0026 0296      		adiw r24,2
+ 170               	.LVL20:
+ 171 0028 FB01      		movw r30,r22
+ 172               	.LVL21:
+ 173 002a 2081      		ld r18,Z
+ 174 002c 3181      		ldd r19,Z+1
+ 175               	.LVL22:
+ 176 002e 232B      		or r18,r19
+ 177 0030 01F0      		breq .L21
+ 178 0032 22E0      		ldi r18,lo8(2)
+ 179 0034 30E0      		ldi r19,0
+ 180 0036 00C0      		rjmp .L16
+ 181               	.LVL23:
+ 182               	.L15:
+ 149:../../../os/oslib/src/chmemchecks.c ****       n += sizeof (void *);
+ 183               		.loc 1 149 0 discriminator 1
+ 184 0038 2417      		cp r18,r20
+ 185 003a 3507      		cpc r19,r21
+ 186 003c 00F4      		brsh .L20
+ 150:../../../os/oslib/src/chmemchecks.c ****       n += sizeof (void *);
+ 187               		.loc 1 150 0
+ 188 003e 2E5F      		subi r18,-2
+ 189 0040 3F4F      		sbci r19,-1
+ 190               	.LVL24:
+ 191 0042 0296      		adiw r24,2
+ 192               		.loc 1 151 0
+ 193 0044 6081      		ld r22,Z
+ 194 0046 7181      		ldd r23,Z+1
+ 195 0048 672B      		or r22,r23
+ 196 004a 01F0      		breq .L18
+ 197               	.LVL25:
+ 198               	.L16:
+ 199 004c FC01      		movw r30,r24
+ 149:../../../os/oslib/src/chmemchecks.c ****       n += sizeof (void *);
+ 200               		.loc 1 149 0
+ 201 004e A817      		cp r26,r24
+ 202 0050 B907      		cpc r27,r25
+ 203 0052 00F4      		brsh .L15
+ 204               	.LVL26:
+ 205               	.L20:
+ 206               	.LBE19:
+ 152:../../../os/oslib/src/chmemchecks.c ****         return n;
+ 153:../../../os/oslib/src/chmemchecks.c ****       }
+ 154:../../../os/oslib/src/chmemchecks.c ****     }
+ 155:../../../os/oslib/src/chmemchecks.c ****   }
+ 156:../../../os/oslib/src/chmemchecks.c **** 
+ 157:../../../os/oslib/src/chmemchecks.c ****   return (size_t)0;
+ 207               		.loc 1 157 0
+ 208 0054 80E0      		ldi r24,0
+ 209 0056 90E0      		ldi r25,0
+ 210 0058 0895      		ret
+ 211               	.LVL27:
+ 212               	.L18:
+ 213               	.LBB20:
+ 150:../../../os/oslib/src/chmemchecks.c ****       if (*pp++ == NULL) {
+ 214               		.loc 1 150 0
+ 215 005a C901      		movw r24,r18
+ 216 005c 0895      		ret
+ 217               	.LVL28:
+ 218               	.L21:
+ 219 005e 82E0      		ldi r24,lo8(2)
+ 220               	.LVL29:
+ 221 0060 90E0      		ldi r25,0
+ 222               	.LBE20:
+ 158:../../../os/oslib/src/chmemchecks.c **** }
+ 223               		.loc 1 158 0
+ 224 0062 0895      		ret
+ 225               		.cfi_endproc
+ 226               	.LFE194:
+ 228               		.section	.text.chMemIsSpaceContainedX,"ax",@progbits
+ 229               	.global	chMemIsSpaceContainedX
+ 231               	chMemIsSpaceContainedX:
+ 232               	.LFB195:
+ 159:../../../os/oslib/src/chmemchecks.c **** 
+ 160:../../../os/oslib/src/chmemchecks.c **** /**
+ 161:../../../os/oslib/src/chmemchecks.c ****  * @brief   Memory space check.
+ 162:../../../os/oslib/src/chmemchecks.c ****  * @details Checks if specified memory space belongs to one of the specified
+ 163:../../../os/oslib/src/chmemchecks.c ****  *          areas.
+ 164:../../../os/oslib/src/chmemchecks.c ****  *
+ 165:../../../os/oslib/src/chmemchecks.c ****  * @param[in] areas     array of valid areas terminated with an end
+ 166:../../../os/oslib/src/chmemchecks.c ****  *                      marker (base=-1)
+ 167:../../../os/oslib/src/chmemchecks.c ****  * @param[in] p         pointer to the memory space to be checked
+ 168:../../../os/oslib/src/chmemchecks.c ****  * @param[in] size      size of the memory space to be checked, zero is
+ 169:../../../os/oslib/src/chmemchecks.c ****  *                      considered the whole address space
+ 170:../../../os/oslib/src/chmemchecks.c ****  * @return              The test result.
+ 171:../../../os/oslib/src/chmemchecks.c ****  * @retval true         if the memory space is entirely contained within one
+ 172:../../../os/oslib/src/chmemchecks.c ****  *                      of the specified areas.
+ 173:../../../os/oslib/src/chmemchecks.c ****  * @retval false        if the memory space check failed.
+ 174:../../../os/oslib/src/chmemchecks.c ****  *
+ 175:../../../os/oslib/src/chmemchecks.c ****  * @xclass
+ 176:../../../os/oslib/src/chmemchecks.c ****  */
+ 177:../../../os/oslib/src/chmemchecks.c **** bool chMemIsSpaceContainedX(const memory_area_t areas[],
+ 178:../../../os/oslib/src/chmemchecks.c ****                             const void *p,
+ 179:../../../os/oslib/src/chmemchecks.c ****                             size_t size) {
+ 233               		.loc 1 179 0
+ 234               		.cfi_startproc
+ 235               	.LVL30:
+ 236               	/* prologue: function */
+ 237               	/* frame size = 0 */
+ 238               	/* stack size = 0 */
+ 239               	.L__stack_usage = 0
+ 240 0000 FC01      		movw r30,r24
+ 241               	.LVL31:
+ 180:../../../os/oslib/src/chmemchecks.c ****   const memory_area_t *map = &areas[0];
+ 181:../../../os/oslib/src/chmemchecks.c **** 
+ 182:../../../os/oslib/src/chmemchecks.c ****   chDbgCheck(p != NULL);
+ 183:../../../os/oslib/src/chmemchecks.c **** 
+ 184:../../../os/oslib/src/chmemchecks.c ****   /* Scanning the array of the valid areas for a mismatch.*/
+ 185:../../../os/oslib/src/chmemchecks.c ****   while (map->base != (uint8_t *)-1) {
+ 242               		.loc 1 185 0
+ 243 0002 8081      		ld r24,Z
+ 244 0004 9181      		ldd r25,Z+1
+ 245               	.LVL32:
+ 246 0006 8F3F      		cpi r24,-1
+ 247 0008 2FEF      		ldi r18,-1
+ 248 000a 9207      		cpc r25,r18
+ 249 000c 01F0      		breq .L29
+ 250 000e 4150      		subi r20,1
+ 251 0010 5109      		sbc r21,__zero_reg__
+ 252               	.LVL33:
+ 253 0012 460F      		add r20,r22
+ 254 0014 571F      		adc r21,r23
+ 255               	.LVL34:
+ 256               	.L25:
+ 257               	.LBB21:
+ 258               	.LBB22:
+ 259               		.file 2 "../../../os/oslib/include/chmemchecks.h"
+   1:../../../os/oslib/include/chmemchecks.h **** /*
+   2:../../../os/oslib/include/chmemchecks.h ****     ChibiOS - Copyright (C) 2006,2007,2008,2009,2010,2011,2012,2013,2014,
+   3:../../../os/oslib/include/chmemchecks.h ****               2015,2016,2017,2018,2019,2020,2021 Giovanni Di Sirio.
+   4:../../../os/oslib/include/chmemchecks.h **** 
+   5:../../../os/oslib/include/chmemchecks.h ****     This file is part of ChibiOS.
+   6:../../../os/oslib/include/chmemchecks.h **** 
+   7:../../../os/oslib/include/chmemchecks.h ****     ChibiOS is free software; you can redistribute it and/or modify
+   8:../../../os/oslib/include/chmemchecks.h ****     it under the terms of the GNU General Public License as published by
+   9:../../../os/oslib/include/chmemchecks.h ****     the Free Software Foundation version 3 of the License.
+  10:../../../os/oslib/include/chmemchecks.h **** 
+  11:../../../os/oslib/include/chmemchecks.h ****     ChibiOS is distributed in the hope that it will be useful,
+  12:../../../os/oslib/include/chmemchecks.h ****     but WITHOUT ANY WARRANTY; without even the implied warranty of
+  13:../../../os/oslib/include/chmemchecks.h ****     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  14:../../../os/oslib/include/chmemchecks.h ****     GNU General Public License for more details.
+  15:../../../os/oslib/include/chmemchecks.h **** 
+  16:../../../os/oslib/include/chmemchecks.h ****     You should have received a copy of the GNU General Public License
+  17:../../../os/oslib/include/chmemchecks.h ****     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  18:../../../os/oslib/include/chmemchecks.h **** */
+  19:../../../os/oslib/include/chmemchecks.h **** 
+  20:../../../os/oslib/include/chmemchecks.h **** /**
+  21:../../../os/oslib/include/chmemchecks.h ****  * @file    oslib/include/chmemchecks.h
+  22:../../../os/oslib/include/chmemchecks.h ****  * @brief   Memory areas and pointers validation macros and structures.
+  23:../../../os/oslib/include/chmemchecks.h ****  *
+  24:../../../os/oslib/include/chmemchecks.h ****  * @addtogroup oslib_memareas
+  25:../../../os/oslib/include/chmemchecks.h ****  * @{
+  26:../../../os/oslib/include/chmemchecks.h ****  */
+  27:../../../os/oslib/include/chmemchecks.h **** 
+  28:../../../os/oslib/include/chmemchecks.h **** #ifndef CHMEMCHECKS_H
+  29:../../../os/oslib/include/chmemchecks.h **** #define CHMEMCHECKS_H
+  30:../../../os/oslib/include/chmemchecks.h **** 
+  31:../../../os/oslib/include/chmemchecks.h **** /*===========================================================================*/
+  32:../../../os/oslib/include/chmemchecks.h **** /* Module constants.                                                         */
+  33:../../../os/oslib/include/chmemchecks.h **** /*===========================================================================*/
+  34:../../../os/oslib/include/chmemchecks.h **** 
+  35:../../../os/oslib/include/chmemchecks.h **** /*===========================================================================*/
+  36:../../../os/oslib/include/chmemchecks.h **** /* Module pre-compile time settings.                                         */
+  37:../../../os/oslib/include/chmemchecks.h **** /*===========================================================================*/
+  38:../../../os/oslib/include/chmemchecks.h **** 
+  39:../../../os/oslib/include/chmemchecks.h **** /*===========================================================================*/
+  40:../../../os/oslib/include/chmemchecks.h **** /* Derived constants and error checks.                                       */
+  41:../../../os/oslib/include/chmemchecks.h **** /*===========================================================================*/
+  42:../../../os/oslib/include/chmemchecks.h **** 
+  43:../../../os/oslib/include/chmemchecks.h **** /*===========================================================================*/
+  44:../../../os/oslib/include/chmemchecks.h **** /* Module data structures and types.                                         */
+  45:../../../os/oslib/include/chmemchecks.h **** /*===========================================================================*/
+  46:../../../os/oslib/include/chmemchecks.h **** 
+  47:../../../os/oslib/include/chmemchecks.h **** /**
+  48:../../../os/oslib/include/chmemchecks.h ****  * @brief   Type of a memory area.
+  49:../../../os/oslib/include/chmemchecks.h ****  */
+  50:../../../os/oslib/include/chmemchecks.h **** typedef struct {
+  51:../../../os/oslib/include/chmemchecks.h ****   /**
+  52:../../../os/oslib/include/chmemchecks.h ****    * @brief   Memory area base.
+  53:../../../os/oslib/include/chmemchecks.h ****    * @note    Value -1 is reserved as end-on-array marker.
+  54:../../../os/oslib/include/chmemchecks.h ****    */
+  55:../../../os/oslib/include/chmemchecks.h ****   uint8_t                       *base;
+  56:../../../os/oslib/include/chmemchecks.h ****   /**
+  57:../../../os/oslib/include/chmemchecks.h ****    * @brief   Memory area size.
+  58:../../../os/oslib/include/chmemchecks.h ****    * @note    Value 0 represents the whole address space and is only valid
+  59:../../../os/oslib/include/chmemchecks.h ****    *          when @p base is also zero.
+  60:../../../os/oslib/include/chmemchecks.h ****    */
+  61:../../../os/oslib/include/chmemchecks.h ****   size_t                        size;
+  62:../../../os/oslib/include/chmemchecks.h **** } memory_area_t;
+  63:../../../os/oslib/include/chmemchecks.h **** 
+  64:../../../os/oslib/include/chmemchecks.h **** /*===========================================================================*/
+  65:../../../os/oslib/include/chmemchecks.h **** /* Module macros.                                                            */
+  66:../../../os/oslib/include/chmemchecks.h **** /*===========================================================================*/
+  67:../../../os/oslib/include/chmemchecks.h **** 
+  68:../../../os/oslib/include/chmemchecks.h **** /*===========================================================================*/
+  69:../../../os/oslib/include/chmemchecks.h **** /* External declarations.                                                    */
+  70:../../../os/oslib/include/chmemchecks.h **** /*===========================================================================*/
+  71:../../../os/oslib/include/chmemchecks.h **** 
+  72:../../../os/oslib/include/chmemchecks.h **** #if !defined(__DOXYGEN__)
+  73:../../../os/oslib/include/chmemchecks.h **** extern const memory_area_t __ch_mem_writable_areas[];
+  74:../../../os/oslib/include/chmemchecks.h **** extern const memory_area_t __ch_mem_readable_areas[];
+  75:../../../os/oslib/include/chmemchecks.h **** extern const memory_area_t __ch_mem_executable_areas[];
+  76:../../../os/oslib/include/chmemchecks.h **** #endif
+  77:../../../os/oslib/include/chmemchecks.h **** 
+  78:../../../os/oslib/include/chmemchecks.h **** #ifdef __cplusplus
+  79:../../../os/oslib/include/chmemchecks.h **** extern "C" {
+  80:../../../os/oslib/include/chmemchecks.h **** #endif
+  81:../../../os/oslib/include/chmemchecks.h **** #if CH_CFG_USE_MEMCHECKS == TRUE
+  82:../../../os/oslib/include/chmemchecks.h ****   size_t chMemIsStringWithinX(const memory_area_t *map,
+  83:../../../os/oslib/include/chmemchecks.h ****                               const char *s,
+  84:../../../os/oslib/include/chmemchecks.h ****                               size_t max);
+  85:../../../os/oslib/include/chmemchecks.h ****   size_t chMemIsPointersArrayWithinX(const memory_area_t *map,
+  86:../../../os/oslib/include/chmemchecks.h ****                                      const void *pp[],
+  87:../../../os/oslib/include/chmemchecks.h ****                                      size_t max);
+  88:../../../os/oslib/include/chmemchecks.h ****   bool chMemIsSpaceContainedX(const memory_area_t areas[],
+  89:../../../os/oslib/include/chmemchecks.h ****                               const void *p,
+  90:../../../os/oslib/include/chmemchecks.h ****                               size_t size);
+  91:../../../os/oslib/include/chmemchecks.h ****   bool chMemIsSpaceWritableX(void *p,
+  92:../../../os/oslib/include/chmemchecks.h ****                              size_t size,
+  93:../../../os/oslib/include/chmemchecks.h ****                              unsigned align);
+  94:../../../os/oslib/include/chmemchecks.h ****   bool chMemIsSpaceReadableX(const void *p,
+  95:../../../os/oslib/include/chmemchecks.h ****                              size_t size,
+  96:../../../os/oslib/include/chmemchecks.h ****                              unsigned align);
+  97:../../../os/oslib/include/chmemchecks.h ****   bool chMemIsAddressExecutableX(const void *p);
+  98:../../../os/oslib/include/chmemchecks.h **** #endif
+  99:../../../os/oslib/include/chmemchecks.h **** #ifdef __cplusplus
+ 100:../../../os/oslib/include/chmemchecks.h **** }
+ 101:../../../os/oslib/include/chmemchecks.h **** #endif
+ 102:../../../os/oslib/include/chmemchecks.h **** 
+ 103:../../../os/oslib/include/chmemchecks.h **** /*===========================================================================*/
+ 104:../../../os/oslib/include/chmemchecks.h **** /* Module inline functions.                                                  */
+ 105:../../../os/oslib/include/chmemchecks.h **** /*===========================================================================*/
+ 106:../../../os/oslib/include/chmemchecks.h **** 
+ 107:../../../os/oslib/include/chmemchecks.h **** /**
+ 108:../../../os/oslib/include/chmemchecks.h ****  * @brief   Memory space inclusion check.
+ 109:../../../os/oslib/include/chmemchecks.h ****  * @details Checks if specified space belongs to the specified memory area.
+ 110:../../../os/oslib/include/chmemchecks.h ****  *
+ 111:../../../os/oslib/include/chmemchecks.h ****  * @param[in] map       pointer to a @p memory_area_t structure
+ 112:../../../os/oslib/include/chmemchecks.h ****  * @param[in] p         pointer to the memory space to be checked
+ 113:../../../os/oslib/include/chmemchecks.h ****  * @param[in] size      size of the memory space to be checked, zero is
+ 114:../../../os/oslib/include/chmemchecks.h ****  *                      considered the whole address space
+ 115:../../../os/oslib/include/chmemchecks.h ****  * @return              The test result.
+ 116:../../../os/oslib/include/chmemchecks.h ****  * @retval true         if the memory space is entirely contained.
+ 117:../../../os/oslib/include/chmemchecks.h ****  * @retval false        if the memory space is not entirely contained.
+ 118:../../../os/oslib/include/chmemchecks.h ****  *
+ 119:../../../os/oslib/include/chmemchecks.h ****  * @xclass
+ 120:../../../os/oslib/include/chmemchecks.h ****  */
+ 121:../../../os/oslib/include/chmemchecks.h **** static inline bool chMemIsSpaceWithinX(const memory_area_t *map,
+ 122:../../../os/oslib/include/chmemchecks.h ****                                        const void *p,
+ 123:../../../os/oslib/include/chmemchecks.h ****                                        size_t size) {
+ 124:../../../os/oslib/include/chmemchecks.h ****   const uint8_t *mem_base = (const uint8_t *)map->base;
+ 125:../../../os/oslib/include/chmemchecks.h ****   const uint8_t *mem_end  = mem_base + map->size - (size_t)1;
+ 260               		.loc 2 125 0
+ 261 0016 2281      		ldd r18,Z+2
+ 262 0018 3381      		ldd r19,Z+3
+ 263               	.LVL35:
+ 126:../../../os/oslib/include/chmemchecks.h ****   const uint8_t *base     = (const uint8_t *)p;
+ 127:../../../os/oslib/include/chmemchecks.h ****   const uint8_t *end      = base + size - (size_t)1;
+ 128:../../../os/oslib/include/chmemchecks.h **** 
+ 129:../../../os/oslib/include/chmemchecks.h ****   chDbgAssert((mem_base <= mem_end) && (base <= end), "invalid memory area");
+ 130:../../../os/oslib/include/chmemchecks.h **** 
+ 131:../../../os/oslib/include/chmemchecks.h ****   return (bool)((base <= end) && (base >= mem_base) && (end <= mem_end));
+ 264               		.loc 2 131 0
+ 265 001a 4617      		cp r20,r22
+ 266 001c 5707      		cpc r21,r23
+ 267 001e 00F0      		brlo .L24
+ 268 0020 6817      		cp r22,r24
+ 269 0022 7907      		cpc r23,r25
+ 270 0024 00F0      		brlo .L24
+ 271 0026 2150      		subi r18,1
+ 272 0028 3109      		sbc r19,__zero_reg__
+ 273               	.LVL36:
+ 274 002a 820F      		add r24,r18
+ 275 002c 931F      		adc r25,r19
+ 276               	.LVL37:
+ 277 002e 8417      		cp r24,r20
+ 278 0030 9507      		cpc r25,r21
+ 279 0032 00F0      		brlo .L24
+ 280               	.LBE22:
+ 281               	.LBE21:
+ 186:../../../os/oslib/src/chmemchecks.c ****     if (chMemIsSpaceWithinX(map, p, size)) {
+ 187:../../../os/oslib/src/chmemchecks.c ****       return true;
+ 282               		.loc 1 187 0
+ 283 0034 81E0      		ldi r24,lo8(1)
+ 284 0036 0895      		ret
+ 285               	.L24:
+ 286               	.LVL38:
+ 188:../../../os/oslib/src/chmemchecks.c ****     }
+ 189:../../../os/oslib/src/chmemchecks.c ****     map++;
+ 287               		.loc 1 189 0
+ 288 0038 3496      		adiw r30,4
+ 289               	.LVL39:
+ 185:../../../os/oslib/src/chmemchecks.c ****     if (chMemIsSpaceWithinX(map, p, size)) {
+ 290               		.loc 1 185 0
+ 291 003a 8081      		ld r24,Z
+ 292 003c 9181      		ldd r25,Z+1
+ 293 003e 8F3F      		cpi r24,-1
+ 294 0040 2FEF      		ldi r18,-1
+ 295 0042 9207      		cpc r25,r18
+ 296 0044 01F4      		brne .L25
+ 297               	.LVL40:
+ 298               	.L29:
+ 190:../../../os/oslib/src/chmemchecks.c ****   }
+ 191:../../../os/oslib/src/chmemchecks.c **** 
+ 192:../../../os/oslib/src/chmemchecks.c ****   return false;
+ 299               		.loc 1 192 0
+ 300 0046 80E0      		ldi r24,0
+ 193:../../../os/oslib/src/chmemchecks.c **** }
+ 301               		.loc 1 193 0
+ 302 0048 0895      		ret
+ 303               		.cfi_endproc
+ 304               	.LFE195:
+ 306               		.section	.text.chMemIsSpaceWritableX,"ax",@progbits
+ 307               	.global	chMemIsSpaceWritableX
+ 309               	chMemIsSpaceWritableX:
+ 310               	.LFB196:
+ 194:../../../os/oslib/src/chmemchecks.c **** 
+ 195:../../../os/oslib/src/chmemchecks.c **** #if (CH_CFG_USE_MEMCHECKS == TRUE) || defined(__DOXYGEN__)
+ 196:../../../os/oslib/src/chmemchecks.c **** 
+ 197:../../../os/oslib/src/chmemchecks.c **** /**
+ 198:../../../os/oslib/src/chmemchecks.c ****  * @brief   Writable memory space check.
+ 199:../../../os/oslib/src/chmemchecks.c ****  * @details Checks if the specified memory space belongs to one of the
+ 200:../../../os/oslib/src/chmemchecks.c ****  *          system-defined writable areas and is aligned as specified.
+ 201:../../../os/oslib/src/chmemchecks.c ****  * @note    @p __ch_mem_writable_areas must be the name of a global
+ 202:../../../os/oslib/src/chmemchecks.c ****  *          @p memory_area_t array terminated with an end marker (-1, 0).
+ 203:../../../os/oslib/src/chmemchecks.c ****  *
+ 204:../../../os/oslib/src/chmemchecks.c ****  * @param[in] p         pointer to the memory space to be checked
+ 205:../../../os/oslib/src/chmemchecks.c ****  * @param[in] size      size of the memory space to be checked, zero is
+ 206:../../../os/oslib/src/chmemchecks.c ****  *                      considered the whole address space
+ 207:../../../os/oslib/src/chmemchecks.c ****  * @param[in] align     required pointer alignment to be checked, must be
+ 208:../../../os/oslib/src/chmemchecks.c ****  *                      a power of two
+ 209:../../../os/oslib/src/chmemchecks.c ****  * @return              The test result.
+ 210:../../../os/oslib/src/chmemchecks.c ****  * @retval true         if the memory space is entirely contained within one
+ 211:../../../os/oslib/src/chmemchecks.c ****  *                      memory space system-defined writable areas.
+ 212:../../../os/oslib/src/chmemchecks.c ****  * @retval false        if the memory space check failed.
+ 213:../../../os/oslib/src/chmemchecks.c ****  *
+ 214:../../../os/oslib/src/chmemchecks.c ****  * @xclass
+ 215:../../../os/oslib/src/chmemchecks.c ****  */
+ 216:../../../os/oslib/src/chmemchecks.c **** bool chMemIsSpaceWritableX(void *p,
+ 217:../../../os/oslib/src/chmemchecks.c ****                            size_t size,
+ 218:../../../os/oslib/src/chmemchecks.c ****                            unsigned align) {
+ 311               		.loc 1 218 0
+ 312               		.cfi_startproc
+ 313               	.LVL41:
+ 314               	/* prologue: function */
+ 315               	/* frame size = 0 */
+ 316               	/* stack size = 0 */
+ 317               	.L__stack_usage = 0
+ 219:../../../os/oslib/src/chmemchecks.c **** 
+ 220:../../../os/oslib/src/chmemchecks.c ****   chDbgCheck((align & (align - 1U)) == 0U);
+ 221:../../../os/oslib/src/chmemchecks.c **** 
+ 222:../../../os/oslib/src/chmemchecks.c ****   if (!MEM_IS_ALIGNED(p, align)) {
+ 318               		.loc 1 222 0
+ 319 0000 4150      		subi r20,1
+ 320 0002 5109      		sbc r21,__zero_reg__
+ 321               	.LVL42:
+ 322 0004 4823      		and r20,r24
+ 323 0006 5923      		and r21,r25
+ 324               	.LVL43:
+ 325 0008 452B      		or r20,r21
+ 326 000a 01F4      		brne .L38
+ 327               	.LVL44:
+ 328               	.LBB23:
+ 329               	.LBB24:
+ 185:../../../os/oslib/src/chmemchecks.c ****     if (chMemIsSpaceWithinX(map, p, size)) {
+ 330               		.loc 1 185 0
+ 331 000c 2091 0000 		lds r18,__ch_mem_writable_areas
+ 332 0010 3091 0000 		lds r19,__ch_mem_writable_areas+1
+ 333 0014 2F3F      		cpi r18,-1
+ 334 0016 4FEF      		ldi r20,-1
+ 335 0018 3407      		cpc r19,r20
+ 336 001a 01F0      		breq .L38
+ 337 001c 6150      		subi r22,1
+ 338 001e 7109      		sbc r23,__zero_reg__
+ 339               	.LVL45:
+ 340 0020 680F      		add r22,r24
+ 341 0022 791F      		adc r23,r25
+ 342               	.LVL46:
+ 343 0024 E0E0      		ldi r30,lo8(__ch_mem_writable_areas)
+ 344 0026 F0E0      		ldi r31,hi8(__ch_mem_writable_areas)
+ 345               	.LVL47:
+ 346               	.L33:
+ 347               	.LBB25:
+ 348               	.LBB26:
+ 125:../../../os/oslib/include/chmemchecks.h ****   const uint8_t *base     = (const uint8_t *)p;
+ 349               		.loc 2 125 0
+ 350 0028 4281      		ldd r20,Z+2
+ 351 002a 5381      		ldd r21,Z+3
+ 352               	.LVL48:
+ 353               		.loc 2 131 0
+ 354 002c 6817      		cp r22,r24
+ 355 002e 7907      		cpc r23,r25
+ 356 0030 00F0      		brlo .L32
+ 357 0032 8217      		cp r24,r18
+ 358 0034 9307      		cpc r25,r19
+ 359 0036 00F0      		brlo .L32
+ 360 0038 4150      		subi r20,1
+ 361 003a 5109      		sbc r21,__zero_reg__
+ 362               	.LVL49:
+ 363 003c 240F      		add r18,r20
+ 364 003e 351F      		adc r19,r21
+ 365               	.LVL50:
+ 366 0040 2617      		cp r18,r22
+ 367 0042 3707      		cpc r19,r23
+ 368 0044 00F0      		brlo .L32
+ 369               	.LBE26:
+ 370               	.LBE25:
+ 187:../../../os/oslib/src/chmemchecks.c ****     }
+ 371               		.loc 1 187 0
+ 372 0046 81E0      		ldi r24,lo8(1)
+ 373               	.LVL51:
+ 374 0048 0895      		ret
+ 375               	.LVL52:
+ 376               	.L32:
+ 189:../../../os/oslib/src/chmemchecks.c ****   }
+ 377               		.loc 1 189 0
+ 378 004a 3496      		adiw r30,4
+ 379               	.LVL53:
+ 185:../../../os/oslib/src/chmemchecks.c ****     if (chMemIsSpaceWithinX(map, p, size)) {
+ 380               		.loc 1 185 0
+ 381 004c 2081      		ld r18,Z
+ 382 004e 3181      		ldd r19,Z+1
+ 383 0050 2F3F      		cpi r18,-1
+ 384 0052 4FEF      		ldi r20,-1
+ 385 0054 3407      		cpc r19,r20
+ 386 0056 01F4      		brne .L33
+ 387               	.LVL54:
+ 388               	.L38:
+ 389               	.LBE24:
+ 390               	.LBE23:
+ 223:../../../os/oslib/src/chmemchecks.c ****     return false;
+ 391               		.loc 1 223 0
+ 392 0058 80E0      		ldi r24,0
+ 393               	.LVL55:
+ 224:../../../os/oslib/src/chmemchecks.c ****   }
+ 225:../../../os/oslib/src/chmemchecks.c **** 
+ 226:../../../os/oslib/src/chmemchecks.c ****   return chMemIsSpaceContainedX(__ch_mem_writable_areas, p, size);
+ 227:../../../os/oslib/src/chmemchecks.c **** }
+ 394               		.loc 1 227 0
+ 395 005a 0895      		ret
+ 396               		.cfi_endproc
+ 397               	.LFE196:
+ 399               		.section	.text.chMemIsSpaceReadableX,"ax",@progbits
+ 400               	.global	chMemIsSpaceReadableX
+ 402               	chMemIsSpaceReadableX:
+ 403               	.LFB197:
+ 228:../../../os/oslib/src/chmemchecks.c **** 
+ 229:../../../os/oslib/src/chmemchecks.c **** /**
+ 230:../../../os/oslib/src/chmemchecks.c ****  * @brief   Readable memory space check.
+ 231:../../../os/oslib/src/chmemchecks.c ****  * @details Checks if specified memory space belongs to one of the
+ 232:../../../os/oslib/src/chmemchecks.c ****  *          system-defined readable areas and is aligned as specified.
+ 233:../../../os/oslib/src/chmemchecks.c ****  * @note    @p __ch_mem_readable_areas must be the name of a global
+ 234:../../../os/oslib/src/chmemchecks.c ****  *          @p memory_area_t array terminated with an end marker (-1, 0).
+ 235:../../../os/oslib/src/chmemchecks.c ****  *
+ 236:../../../os/oslib/src/chmemchecks.c ****  * @param[in] p         pointer to the memory space to be checked
+ 237:../../../os/oslib/src/chmemchecks.c ****  * @param[in] size      size of the memory space to be checked, zero is
+ 238:../../../os/oslib/src/chmemchecks.c ****  *                      considered the whole address space
+ 239:../../../os/oslib/src/chmemchecks.c ****  * @param[in] align     required pointer alignment to be checked, must be
+ 240:../../../os/oslib/src/chmemchecks.c ****  *                      a power of two
+ 241:../../../os/oslib/src/chmemchecks.c ****  * @return              The test result.
+ 242:../../../os/oslib/src/chmemchecks.c ****  * @retval true         if the memory space is entirely contained within one
+ 243:../../../os/oslib/src/chmemchecks.c ****  *                      of the system-defined readable areas.
+ 244:../../../os/oslib/src/chmemchecks.c ****  * @retval false        if the memory space check failed.
+ 245:../../../os/oslib/src/chmemchecks.c ****  *
+ 246:../../../os/oslib/src/chmemchecks.c ****  * @xclass
+ 247:../../../os/oslib/src/chmemchecks.c ****  */
+ 248:../../../os/oslib/src/chmemchecks.c **** bool chMemIsSpaceReadableX(const void *p,
+ 249:../../../os/oslib/src/chmemchecks.c ****                            size_t size,
+ 250:../../../os/oslib/src/chmemchecks.c ****                            unsigned align) {
+ 404               		.loc 1 250 0
+ 405               		.cfi_startproc
+ 406               	.LVL56:
+ 407               	/* prologue: function */
+ 408               	/* frame size = 0 */
+ 409               	/* stack size = 0 */
+ 410               	.L__stack_usage = 0
+ 251:../../../os/oslib/src/chmemchecks.c **** 
+ 252:../../../os/oslib/src/chmemchecks.c ****   chDbgCheck((align & (align - 1U)) == 0U);
+ 253:../../../os/oslib/src/chmemchecks.c **** 
+ 254:../../../os/oslib/src/chmemchecks.c ****   if (!MEM_IS_ALIGNED(p, align)) {
+ 411               		.loc 1 254 0
+ 412 0000 4150      		subi r20,1
+ 413 0002 5109      		sbc r21,__zero_reg__
+ 414               	.LVL57:
+ 415 0004 4823      		and r20,r24
+ 416 0006 5923      		and r21,r25
+ 417               	.LVL58:
+ 418 0008 452B      		or r20,r21
+ 419 000a 01F4      		brne .L47
+ 420               	.LVL59:
+ 421               	.LBB27:
+ 422               	.LBB28:
+ 185:../../../os/oslib/src/chmemchecks.c ****     if (chMemIsSpaceWithinX(map, p, size)) {
+ 423               		.loc 1 185 0
+ 424 000c 2091 0000 		lds r18,__ch_mem_readable_areas
+ 425 0010 3091 0000 		lds r19,__ch_mem_readable_areas+1
+ 426 0014 2F3F      		cpi r18,-1
+ 427 0016 4FEF      		ldi r20,-1
+ 428 0018 3407      		cpc r19,r20
+ 429 001a 01F0      		breq .L47
+ 430 001c 6150      		subi r22,1
+ 431 001e 7109      		sbc r23,__zero_reg__
+ 432               	.LVL60:
+ 433 0020 680F      		add r22,r24
+ 434 0022 791F      		adc r23,r25
+ 435               	.LVL61:
+ 436 0024 E0E0      		ldi r30,lo8(__ch_mem_readable_areas)
+ 437 0026 F0E0      		ldi r31,hi8(__ch_mem_readable_areas)
+ 438               	.LVL62:
+ 439               	.L42:
+ 440               	.LBB29:
+ 441               	.LBB30:
+ 125:../../../os/oslib/include/chmemchecks.h ****   const uint8_t *base     = (const uint8_t *)p;
+ 442               		.loc 2 125 0
+ 443 0028 4281      		ldd r20,Z+2
+ 444 002a 5381      		ldd r21,Z+3
+ 445               	.LVL63:
+ 446               		.loc 2 131 0
+ 447 002c 6817      		cp r22,r24
+ 448 002e 7907      		cpc r23,r25
+ 449 0030 00F0      		brlo .L41
+ 450 0032 8217      		cp r24,r18
+ 451 0034 9307      		cpc r25,r19
+ 452 0036 00F0      		brlo .L41
+ 453 0038 4150      		subi r20,1
+ 454 003a 5109      		sbc r21,__zero_reg__
+ 455               	.LVL64:
+ 456 003c 240F      		add r18,r20
+ 457 003e 351F      		adc r19,r21
+ 458               	.LVL65:
+ 459 0040 2617      		cp r18,r22
+ 460 0042 3707      		cpc r19,r23
+ 461 0044 00F0      		brlo .L41
+ 462               	.LBE30:
+ 463               	.LBE29:
+ 187:../../../os/oslib/src/chmemchecks.c ****     }
+ 464               		.loc 1 187 0
+ 465 0046 81E0      		ldi r24,lo8(1)
+ 466               	.LVL66:
+ 467 0048 0895      		ret
+ 468               	.LVL67:
+ 469               	.L41:
+ 189:../../../os/oslib/src/chmemchecks.c ****   }
+ 470               		.loc 1 189 0
+ 471 004a 3496      		adiw r30,4
+ 472               	.LVL68:
+ 185:../../../os/oslib/src/chmemchecks.c ****     if (chMemIsSpaceWithinX(map, p, size)) {
+ 473               		.loc 1 185 0
+ 474 004c 2081      		ld r18,Z
+ 475 004e 3181      		ldd r19,Z+1
+ 476 0050 2F3F      		cpi r18,-1
+ 477 0052 4FEF      		ldi r20,-1
+ 478 0054 3407      		cpc r19,r20
+ 479 0056 01F4      		brne .L42
+ 480               	.LVL69:
+ 481               	.L47:
+ 482               	.LBE28:
+ 483               	.LBE27:
+ 255:../../../os/oslib/src/chmemchecks.c ****     return false;
+ 484               		.loc 1 255 0
+ 485 0058 80E0      		ldi r24,0
+ 486               	.LVL70:
+ 256:../../../os/oslib/src/chmemchecks.c ****   }
+ 257:../../../os/oslib/src/chmemchecks.c **** 
+ 258:../../../os/oslib/src/chmemchecks.c ****   return chMemIsSpaceContainedX(__ch_mem_readable_areas, p, size);
+ 259:../../../os/oslib/src/chmemchecks.c **** }
+ 487               		.loc 1 259 0
+ 488 005a 0895      		ret
+ 489               		.cfi_endproc
+ 490               	.LFE197:
+ 492               		.section	.text.chMemIsAddressExecutableX,"ax",@progbits
+ 493               	.global	chMemIsAddressExecutableX
+ 495               	chMemIsAddressExecutableX:
+ 496               	.LFB198:
+ 260:../../../os/oslib/src/chmemchecks.c **** 
+ 261:../../../os/oslib/src/chmemchecks.c **** /**
+ 262:../../../os/oslib/src/chmemchecks.c ****  * @brief   Memory executable area check.
+ 263:../../../os/oslib/src/chmemchecks.c ****  * @details Checks if specified pointer belongs to one of the system-defined
+ 264:../../../os/oslib/src/chmemchecks.c ****  *          executable areas and is aligned properly.
+ 265:../../../os/oslib/src/chmemchecks.c ****  * @note    @p __ch_mem_executable_areas must be the name of a global
+ 266:../../../os/oslib/src/chmemchecks.c ****  *          @p memory_area_t array terminated with an end marker (-1, 0).
+ 267:../../../os/oslib/src/chmemchecks.c ****  *
+ 268:../../../os/oslib/src/chmemchecks.c ****  * @param[in] p         pointer to the area to be checked
+ 269:../../../os/oslib/src/chmemchecks.c ****  * @return              The test result.
+ 270:../../../os/oslib/src/chmemchecks.c ****  * @retval true         if the address belongs to one of the
+ 271:../../../os/oslib/src/chmemchecks.c ****  *                      system-defined executable areas.
+ 272:../../../os/oslib/src/chmemchecks.c ****  * @retval false        if the address check failed.
+ 273:../../../os/oslib/src/chmemchecks.c ****  *
+ 274:../../../os/oslib/src/chmemchecks.c ****  * @xclass
+ 275:../../../os/oslib/src/chmemchecks.c ****  */
+ 276:../../../os/oslib/src/chmemchecks.c **** bool chMemIsAddressExecutableX(const void *p) {
+ 497               		.loc 1 276 0
+ 498               		.cfi_startproc
+ 499               	.LVL71:
+ 500               	/* prologue: function */
+ 501               	/* frame size = 0 */
+ 502               	/* stack size = 0 */
+ 503               	.L__stack_usage = 0
+ 504               	.LBB31:
+ 505               	.LBB32:
+ 185:../../../os/oslib/src/chmemchecks.c ****     if (chMemIsSpaceWithinX(map, p, size)) {
+ 506               		.loc 1 185 0
+ 507 0000 2091 0000 		lds r18,__ch_mem_executable_areas
+ 508 0004 3091 0000 		lds r19,__ch_mem_executable_areas+1
+ 509 0008 2F3F      		cpi r18,-1
+ 510 000a 4FEF      		ldi r20,-1
+ 511 000c 3407      		cpc r19,r20
+ 512 000e 01F0      		breq .L55
+ 513 0010 E0E0      		ldi r30,lo8(__ch_mem_executable_areas)
+ 514 0012 F0E0      		ldi r31,hi8(__ch_mem_executable_areas)
+ 515               	.LVL72:
+ 516               	.L51:
+ 517               	.LBB33:
+ 518               	.LBB34:
+ 125:../../../os/oslib/include/chmemchecks.h ****   const uint8_t *base     = (const uint8_t *)p;
+ 519               		.loc 2 125 0
+ 520 0014 4281      		ldd r20,Z+2
+ 521 0016 5381      		ldd r21,Z+3
+ 522               	.LVL73:
+ 523               		.loc 2 131 0
+ 524 0018 8217      		cp r24,r18
+ 525 001a 9307      		cpc r25,r19
+ 526 001c 00F0      		brlo .L50
+ 527 001e 4150      		subi r20,1
+ 528 0020 5109      		sbc r21,__zero_reg__
+ 529               	.LVL74:
+ 530 0022 240F      		add r18,r20
+ 531 0024 351F      		adc r19,r21
+ 532               	.LVL75:
+ 533 0026 2817      		cp r18,r24
+ 534 0028 3907      		cpc r19,r25
+ 535 002a 00F0      		brlo .L50
+ 536               	.LBE34:
+ 537               	.LBE33:
+ 187:../../../os/oslib/src/chmemchecks.c ****     }
+ 538               		.loc 1 187 0
+ 539 002c 81E0      		ldi r24,lo8(1)
+ 540               	.LVL76:
+ 541 002e 0895      		ret
+ 542               	.LVL77:
+ 543               	.L50:
+ 189:../../../os/oslib/src/chmemchecks.c ****   }
+ 544               		.loc 1 189 0
+ 545 0030 3496      		adiw r30,4
+ 546               	.LVL78:
+ 185:../../../os/oslib/src/chmemchecks.c ****     if (chMemIsSpaceWithinX(map, p, size)) {
+ 547               		.loc 1 185 0
+ 548 0032 2081      		ld r18,Z
+ 549 0034 3181      		ldd r19,Z+1
+ 550 0036 2F3F      		cpi r18,-1
+ 551 0038 4FEF      		ldi r20,-1
+ 552 003a 3407      		cpc r19,r20
+ 553 003c 01F4      		brne .L51
+ 554               	.LVL79:
+ 555               	.L55:
+ 192:../../../os/oslib/src/chmemchecks.c **** }
+ 556               		.loc 1 192 0
+ 557 003e 80E0      		ldi r24,0
+ 558               	.LVL80:
+ 559               	.LBE32:
+ 560               	.LBE31:
+ 277:../../../os/oslib/src/chmemchecks.c **** 
+ 278:../../../os/oslib/src/chmemchecks.c ****   /*lint -save -e506 -e774 [2.1, 14.3] It can be a constant by design.*/
+ 279:../../../os/oslib/src/chmemchecks.c ****   if (!MEM_IS_VALID_FUNCTION(p)) {
+ 280:../../../os/oslib/src/chmemchecks.c ****   /*lint -restore*/
+ 281:../../../os/oslib/src/chmemchecks.c ****     return false;
+ 282:../../../os/oslib/src/chmemchecks.c ****   }
+ 283:../../../os/oslib/src/chmemchecks.c **** 
+ 284:../../../os/oslib/src/chmemchecks.c ****   return chMemIsSpaceContainedX(__ch_mem_executable_areas, p, 1);
+ 285:../../../os/oslib/src/chmemchecks.c **** }
+ 561               		.loc 1 285 0
+ 562 0040 0895      		ret
+ 563               		.cfi_endproc
+ 564               	.LFE198:
+ 566               		.weak	__ch_mem_executable_areas
+ 567               		.section	.rodata.__ch_mem_executable_areas,"a",@progbits
+ 570               	__ch_mem_executable_areas:
+ 571 0000 0000      		.word	0
+ 572 0002 0000      		.word	0
+ 573 0004 FFFF      		.word	-1
+ 574 0006 0000      		.word	0
+ 575               		.weak	__ch_mem_readable_areas
+ 576               		.section	.rodata.__ch_mem_readable_areas,"a",@progbits
+ 579               	__ch_mem_readable_areas:
+ 580 0000 0000      		.word	0
+ 581 0002 0000      		.word	0
+ 582 0004 FFFF      		.word	-1
+ 583 0006 0000      		.word	0
+ 584               		.weak	__ch_mem_writable_areas
+ 585               		.section	.rodata.__ch_mem_writable_areas,"a",@progbits
+ 588               	__ch_mem_writable_areas:
+ 589 0000 0000      		.word	0
+ 590 0002 0000      		.word	0
+ 591 0004 FFFF      		.word	-1
+ 592 0006 0000      		.word	0
+ 593               		.text
+ 594               	.Letext0:
+ 595               		.file 3 "/usr/lib/gcc/avr/5.4.0/include/stddef.h"
+ 596               		.file 4 "/usr/lib/avr/include/stdint.h"
+ 597               		.file 5 "../../../os/common/ports/AVR/compilers/GCC/chtypes.h"
+ 598               		.file 6 "../../../os/rt/include/chearly.h"
+ 599               		.file 7 "../../../os/rt/include/chobjects.h"
+ 600               		.file 8 "../../../os/rt/include/chrfcu.h"
+ 601               		.file 9 "../../../os/rt/include/chdebug.h"
+ 602               		.file 10 "../../../os/rt/include/chtime.h"
+ 603               		.file 11 "../../../os/rt/include/chlists.h"
+ 604               		.file 12 "../../../os/common/ports/AVR/chcore.h"
+ 605               		.file 13 "../../../os/rt/include/chsem.h"
+ 606               		.file 14 "../../../os/rt/include/chmtx.h"
+ 607               		.file 15 "../../../os/rt/include/chsys.h"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 chmemchecks.c
+     /tmp/ccNWrtSY.s:2      *ABS*:000000000000003e __SP_H__
+     /tmp/ccNWrtSY.s:3      *ABS*:000000000000003d __SP_L__
+     /tmp/ccNWrtSY.s:4      *ABS*:000000000000003f __SREG__
+     /tmp/ccNWrtSY.s:5      *ABS*:0000000000000000 __tmp_reg__
+     /tmp/ccNWrtSY.s:6      *ABS*:0000000000000001 __zero_reg__
+     /tmp/ccNWrtSY.s:13     .text.chMemIsStringWithinX:0000000000000000 chMemIsStringWithinX
+     /tmp/ccNWrtSY.s:131    .text.chMemIsPointersArrayWithinX:0000000000000000 chMemIsPointersArrayWithinX
+     /tmp/ccNWrtSY.s:231    .text.chMemIsSpaceContainedX:0000000000000000 chMemIsSpaceContainedX
+     /tmp/ccNWrtSY.s:309    .text.chMemIsSpaceWritableX:0000000000000000 chMemIsSpaceWritableX
+     /tmp/ccNWrtSY.s:588    .rodata.__ch_mem_writable_areas:0000000000000000 __ch_mem_writable_areas
+     /tmp/ccNWrtSY.s:402    .text.chMemIsSpaceReadableX:0000000000000000 chMemIsSpaceReadableX
+     /tmp/ccNWrtSY.s:579    .rodata.__ch_mem_readable_areas:0000000000000000 __ch_mem_readable_areas
+     /tmp/ccNWrtSY.s:495    .text.chMemIsAddressExecutableX:0000000000000000 chMemIsAddressExecutableX
+     /tmp/ccNWrtSY.s:570    .rodata.__ch_mem_executable_areas:0000000000000000 __ch_mem_executable_areas
+
+UNDEFINED SYMBOLS
+__do_copy_data

@@ -1,0 +1,494 @@
+   1               		.file	"main.c"
+   2               	__SP_H__ = 0x3e
+   3               	__SP_L__ = 0x3d
+   4               	__SREG__ = 0x3f
+   5               	__tmp_reg__ = 0
+   6               	__zero_reg__ = 1
+   7               		.text
+   8               	.Ltext0:
+   9               		.cfi_sections	.debug_frame
+  10               		.section	.text.Consumer,"ax",@progbits
+  12               	Consumer:
+  13               	.LFB242:
+  14               		.file 1 "main.c"
+   1:main.c        **** #include "ch.h"
+   2:main.c        **** #include "hal.h"
+   3:main.c        **** 
+   4:main.c        **** #define BUFFER_SIZE 5  // Tamanho do buffer circular
+   5:main.c        **** 
+   6:main.c        **** // Buffer circular e variáveis de controle
+   7:main.c        **** static uint8_t buffer[BUFFER_SIZE];
+   8:main.c        **** static uint8_t *write_ptr = buffer;  // Ponteiro de escrita
+   9:main.c        **** static uint8_t *read_ptr = buffer;   // Ponteiro de leitura
+  10:main.c        **** static uint8_t buffer_count = 0;     // Contador de elementos no buffer
+  11:main.c        **** 
+  12:main.c        **** // Mutex e variáveis de condição
+  13:main.c        **** static mutex_t buffer_mutex;
+  14:main.c        **** static condition_variable_t buffer_not_empty;
+  15:main.c        **** static condition_variable_t buffer_not_full;
+  16:main.c        **** 
+  17:main.c        **** // Função da thread Produtora
+  18:main.c        **** static THD_WORKING_AREA(waProducer, 128);
+  19:main.c        **** static THD_FUNCTION(Producer, arg) {
+  20:main.c        ****     (void)arg;
+  21:main.c        ****     uint8_t data = 0;  // Dados a serem produzidos
+  22:main.c        ****     msg_t result;      // Variável para armazenar o retorno de chCondWait
+  23:main.c        **** 
+  24:main.c        ****     while (true) {
+  25:main.c        ****         chMtxLock(&buffer_mutex);  // Trava o mutex
+  26:main.c        **** 
+  27:main.c        ****         // Espera enquanto o buffer está cheio
+  28:main.c        ****         while (buffer_count == BUFFER_SIZE) {
+  29:main.c        ****             result = chCondWait(&buffer_not_full);  // Aguarda espaço disponível
+  30:main.c        ****             if (result != MSG_OK) {
+  31:main.c        ****                 // Tratar erros se necessário (por exemplo, interrupção)
+  32:main.c        ****                 chMtxUnlock(&buffer_mutex);  // Libera o mutex em caso de erro
+  33:main.c        ****                 continue;
+  34:main.c        ****             }
+  35:main.c        ****         }
+  36:main.c        **** 
+  37:main.c        ****         // Adiciona o dado ao buffer
+  38:main.c        ****         *write_ptr = data++;
+  39:main.c        ****         if (++write_ptr >= buffer + BUFFER_SIZE) {
+  40:main.c        ****             write_ptr = buffer;  // Volta para o início do buffer
+  41:main.c        ****         }
+  42:main.c        ****         buffer_count++;
+  43:main.c        **** 
+  44:main.c        ****         // Sinaliza que o buffer não está mais vazio
+  45:main.c        ****         chCondSignal(&buffer_not_empty);
+  46:main.c        **** 
+  47:main.c        ****         chMtxUnlock(&buffer_mutex);  // Libera o mutex
+  48:main.c        **** 
+  49:main.c        ****         // Simula algum tempo de produção
+  50:main.c        ****         chThdSleepMilliseconds(500);
+  51:main.c        ****     }
+  52:main.c        **** }
+  53:main.c        **** 
+  54:main.c        **** // Função da thread Consumidora
+  55:main.c        **** static THD_WORKING_AREA(waConsumer, 128);
+  56:main.c        **** static THD_FUNCTION(Consumer, arg) {
+  15               		.loc 1 56 0
+  16               		.cfi_startproc
+  17               	.LVL0:
+  18               	/* prologue: function */
+  19               	/* frame size = 0 */
+  20               	/* stack size = 0 */
+  21               	.L__stack_usage = 0
+  22 0000 C0E0      		ldi r28,lo8(buffer)
+  23 0002 D0E0      		ldi r29,hi8(buffer)
+  57:main.c        ****     (void)arg;
+  58:main.c        ****     uint8_t received_data;
+  59:main.c        ****     msg_t result;  // Variável para armazenar o retorno de chCondWait
+  60:main.c        **** 
+  61:main.c        ****     while (true) {
+  62:main.c        ****         chMtxLock(&buffer_mutex);  // Trava o mutex
+  63:main.c        **** 
+  64:main.c        ****         // Espera enquanto o buffer está vazio
+  65:main.c        ****         while (buffer_count == 0) {
+  66:main.c        ****             result = chCondWait(&buffer_not_empty);  // Aguarda até haver dados
+  67:main.c        ****             if (result != MSG_OK) {
+  68:main.c        ****                 // Tratar erros se necessário (por exemplo, interrupção)
+  69:main.c        ****                 chMtxUnlock(&buffer_mutex);  // Libera o mutex em caso de erro
+  70:main.c        ****                 continue;
+  71:main.c        ****             }
+  72:main.c        ****         }
+  73:main.c        **** 
+  74:main.c        ****         // Lê o dado do buffer
+  75:main.c        ****         received_data = *read_ptr;
+  76:main.c        ****         if (++read_ptr >= buffer + BUFFER_SIZE) {
+  77:main.c        ****             read_ptr = buffer;  // Volta para o início do buffer
+  78:main.c        ****         }
+  79:main.c        ****         buffer_count--;
+  80:main.c        **** 
+  81:main.c        ****         // Sinaliza que o buffer não está mais cheio
+  82:main.c        ****         chCondSignal(&buffer_not_full);
+  83:main.c        **** 
+  84:main.c        ****         chMtxUnlock(&buffer_mutex);  // Libera o mutex
+  85:main.c        **** 
+  86:main.c        ****         // Simula o processamento do dado recebido
+  87:main.c        ****         palTogglePad(IOPORT2, 5);  // Alterna o LED (PB5)
+  24               		.loc 1 87 0
+  25 0004 10E2      		ldi r17,lo8(32)
+  26               	.LVL1:
+  27               	.L7:
+  62:main.c        **** 
+  28               		.loc 1 62 0
+  29 0006 80E0      		ldi r24,lo8(buffer_mutex)
+  30 0008 90E0      		ldi r25,hi8(buffer_mutex)
+  31 000a 0E94 0000 		call chMtxLock
+  32               	.LVL2:
+  33               	.L3:
+  65:main.c        ****             result = chCondWait(&buffer_not_empty);  // Aguarda até haver dados
+  34               		.loc 1 65 0
+  35 000e 8091 0000 		lds r24,buffer_count
+  36 0012 8111      		cpse r24,__zero_reg__
+  37 0014 00C0      		rjmp .L11
+  38               	.L4:
+  66:main.c        ****             if (result != MSG_OK) {
+  39               		.loc 1 66 0
+  40 0016 80E0      		ldi r24,lo8(buffer_not_empty)
+  41 0018 90E0      		ldi r25,hi8(buffer_not_empty)
+  42 001a 0E94 0000 		call chCondWait
+  43               	.LVL3:
+  67:main.c        ****                 // Tratar erros se necessário (por exemplo, interrupção)
+  44               		.loc 1 67 0
+  45 001e 892B      		or r24,r25
+  46 0020 01F0      		breq .L3
+  69:main.c        ****                 continue;
+  47               		.loc 1 69 0
+  48 0022 80E0      		ldi r24,lo8(buffer_mutex)
+  49 0024 90E0      		ldi r25,hi8(buffer_mutex)
+  50               	.LVL4:
+  51 0026 0E94 0000 		call chMtxUnlock
+  52               	.LVL5:
+  65:main.c        ****             result = chCondWait(&buffer_not_empty);  // Aguarda até haver dados
+  53               		.loc 1 65 0
+  54 002a 8091 0000 		lds r24,buffer_count
+  55 002e 8823      		tst r24
+  56 0030 01F0      		breq .L4
+  57               	.L11:
+  58               	.LVL6:
+  76:main.c        ****             read_ptr = buffer;  // Volta para o início do buffer
+  59               		.loc 1 76 0
+  60 0032 2091 0000 		lds r18,read_ptr
+  61 0036 3091 0000 		lds r19,read_ptr+1
+  62 003a 2F5F      		subi r18,-1
+  63 003c 3F4F      		sbci r19,-1
+  64 003e 90E0      		ldi r25,hi8(buffer+5)
+  65 0040 2030      		cpi r18,lo8(buffer+5)
+  66 0042 3907      		cpc r19,r25
+  67 0044 00F4      		brsh .L5
+  68 0046 3093 0000 		sts read_ptr+1,r19
+  69 004a 2093 0000 		sts read_ptr,r18
+  70               	.LVL7:
+  71               	.L6:
+  79:main.c        **** 
+  72               		.loc 1 79 0
+  73 004e 8150      		subi r24,lo8(-(-1))
+  74 0050 8093 0000 		sts buffer_count,r24
+  82:main.c        **** 
+  75               		.loc 1 82 0
+  76 0054 80E0      		ldi r24,lo8(buffer_not_full)
+  77 0056 90E0      		ldi r25,hi8(buffer_not_full)
+  78 0058 0E94 0000 		call chCondSignal
+  79               	.LVL8:
+  84:main.c        **** 
+  80               		.loc 1 84 0
+  81 005c 80E0      		ldi r24,lo8(buffer_mutex)
+  82 005e 90E0      		ldi r25,hi8(buffer_mutex)
+  83 0060 0E94 0000 		call chMtxUnlock
+  84               	.LVL9:
+  85               		.loc 1 87 0
+  86 0064 85B1      		in r24,0x5
+  87 0066 8127      		eor r24,r17
+  88 0068 85B9      		out 0x5,r24
+  88:main.c        ****         chThdSleepMilliseconds(300);
+  89               		.loc 1 88 0
+  90 006a 80E5      		ldi r24,lo8(80)
+  91 006c 92E1      		ldi r25,lo8(18)
+  92 006e 0E94 0000 		call chThdSleep
+  93               	.LVL10:
+  89:main.c        ****     }
+  94               		.loc 1 89 0
+  95 0072 00C0      		rjmp .L7
+  96               	.LVL11:
+  97               	.L5:
+  77:main.c        ****         }
+  98               		.loc 1 77 0
+  99 0074 D093 0000 		sts read_ptr+1,r29
+ 100 0078 C093 0000 		sts read_ptr,r28
+ 101               	.LVL12:
+ 102 007c 00C0      		rjmp .L6
+ 103               		.cfi_endproc
+ 104               	.LFE242:
+ 106               		.section	.text.Producer,"ax",@progbits
+ 108               	Producer:
+ 109               	.LFB241:
+  19:main.c        ****     (void)arg;
+ 110               		.loc 1 19 0
+ 111               		.cfi_startproc
+ 112               	.LVL13:
+ 113               	/* prologue: function */
+ 114               	/* frame size = 0 */
+ 115               	/* stack size = 0 */
+ 116               	.L__stack_usage = 0
+  21:main.c        ****     msg_t result;      // Variável para armazenar o retorno de chCondWait
+ 117               		.loc 1 21 0
+ 118 0000 C0E0      		ldi r28,0
+ 119 0002 00E0      		ldi r16,lo8(buffer)
+ 120 0004 10E0      		ldi r17,hi8(buffer)
+ 121               	.LVL14:
+ 122               	.L18:
+  25:main.c        **** 
+ 123               		.loc 1 25 0
+ 124 0006 80E0      		ldi r24,lo8(buffer_mutex)
+ 125 0008 90E0      		ldi r25,hi8(buffer_mutex)
+ 126 000a 0E94 0000 		call chMtxLock
+ 127               	.LVL15:
+ 128               	.L14:
+  28:main.c        ****             result = chCondWait(&buffer_not_full);  // Aguarda espaço disponível
+ 129               		.loc 1 28 0
+ 130 000e 8091 0000 		lds r24,buffer_count
+ 131 0012 8530      		cpi r24,lo8(5)
+ 132 0014 01F4      		brne .L21
+ 133               	.L15:
+  29:main.c        ****             if (result != MSG_OK) {
+ 134               		.loc 1 29 0
+ 135 0016 80E0      		ldi r24,lo8(buffer_not_full)
+ 136 0018 90E0      		ldi r25,hi8(buffer_not_full)
+ 137 001a 0E94 0000 		call chCondWait
+ 138               	.LVL16:
+  30:main.c        ****                 // Tratar erros se necessário (por exemplo, interrupção)
+ 139               		.loc 1 30 0
+ 140 001e 892B      		or r24,r25
+ 141 0020 01F0      		breq .L14
+  32:main.c        ****                 continue;
+ 142               		.loc 1 32 0
+ 143 0022 80E0      		ldi r24,lo8(buffer_mutex)
+ 144 0024 90E0      		ldi r25,hi8(buffer_mutex)
+ 145               	.LVL17:
+ 146 0026 0E94 0000 		call chMtxUnlock
+ 147               	.LVL18:
+  28:main.c        ****             result = chCondWait(&buffer_not_full);  // Aguarda espaço disponível
+ 148               		.loc 1 28 0
+ 149 002a 8091 0000 		lds r24,buffer_count
+ 150 002e 8530      		cpi r24,lo8(5)
+ 151 0030 01F0      		breq .L15
+ 152               	.L21:
+  38:main.c        ****         if (++write_ptr >= buffer + BUFFER_SIZE) {
+ 153               		.loc 1 38 0
+ 154 0032 D1E0      		ldi r29,lo8(1)
+ 155 0034 DC0F      		add r29,r28
+ 156               	.LVL19:
+ 157 0036 E091 0000 		lds r30,write_ptr
+ 158 003a F091 0000 		lds r31,write_ptr+1
+ 159 003e C193      		st Z+,r28
+  39:main.c        ****             write_ptr = buffer;  // Volta para o início do buffer
+ 160               		.loc 1 39 0
+ 161 0040 90E0      		ldi r25,hi8(buffer+5)
+ 162 0042 E030      		cpi r30,lo8(buffer+5)
+ 163 0044 F907      		cpc r31,r25
+ 164 0046 00F4      		brsh .L16
+ 165 0048 F093 0000 		sts write_ptr+1,r31
+ 166 004c E093 0000 		sts write_ptr,r30
+ 167               	.L17:
+  42:main.c        **** 
+ 168               		.loc 1 42 0
+ 169 0050 8F5F      		subi r24,lo8(-(1))
+ 170 0052 8093 0000 		sts buffer_count,r24
+  45:main.c        **** 
+ 171               		.loc 1 45 0
+ 172 0056 80E0      		ldi r24,lo8(buffer_not_empty)
+ 173 0058 90E0      		ldi r25,hi8(buffer_not_empty)
+ 174 005a 0E94 0000 		call chCondSignal
+ 175               	.LVL20:
+  47:main.c        **** 
+ 176               		.loc 1 47 0
+ 177 005e 80E0      		ldi r24,lo8(buffer_mutex)
+ 178 0060 90E0      		ldi r25,hi8(buffer_mutex)
+ 179 0062 0E94 0000 		call chMtxUnlock
+ 180               	.LVL21:
+  50:main.c        ****     }
+ 181               		.loc 1 50 0
+ 182 0066 84E8      		ldi r24,lo8(-124)
+ 183 0068 9EE1      		ldi r25,lo8(30)
+ 184 006a 0E94 0000 		call chThdSleep
+ 185               	.LVL22:
+  38:main.c        ****         if (++write_ptr >= buffer + BUFFER_SIZE) {
+ 186               		.loc 1 38 0
+ 187 006e CD2F      		mov r28,r29
+  51:main.c        **** }
+ 188               		.loc 1 51 0
+ 189 0070 00C0      		rjmp .L18
+ 190               	.L16:
+  40:main.c        ****         }
+ 191               		.loc 1 40 0
+ 192 0072 1093 0000 		sts write_ptr+1,r17
+ 193 0076 0093 0000 		sts write_ptr,r16
+ 194 007a 00C0      		rjmp .L17
+ 195               		.cfi_endproc
+ 196               	.LFE241:
+ 198               		.section	.text.startup.main,"ax",@progbits
+ 199               	.global	main
+ 201               	main:
+ 202               	.LFB243:
+  90:main.c        **** }
+  91:main.c        **** 
+  92:main.c        **** // Função principal (main)
+  93:main.c        **** int main(void) {
+ 203               		.loc 1 93 0
+ 204               		.cfi_startproc
+ 205               	/* prologue: function */
+ 206               	/* frame size = 0 */
+ 207               	/* stack size = 0 */
+ 208               	.L__stack_usage = 0
+  94:main.c        ****     halInit();    // Inicializa o HAL (Hardware Abstraction Layer)
+ 209               		.loc 1 94 0
+ 210 0000 0E94 0000 		call halInit
+ 211               	.LVL23:
+  95:main.c        ****     chSysInit();  // Inicializa o sistema ChibiOS
+ 212               		.loc 1 95 0
+ 213 0004 0E94 0000 		call chSysInit
+ 214               	.LVL24:
+  96:main.c        **** 
+  97:main.c        ****     // Configuração dos pinos
+  98:main.c        ****     palSetPadMode(IOPORT2, 5, PAL_MODE_OUTPUT_PUSHPULL);
+ 215               		.loc 1 98 0
+ 216 0008 46E0      		ldi r20,lo8(6)
+ 217 000a 60E2      		ldi r22,lo8(32)
+ 218 000c 83E2      		ldi r24,lo8(35)
+ 219 000e 90E0      		ldi r25,0
+ 220 0010 0E94 0000 		call _pal_lld_setgroupmode
+ 221               	.LVL25:
+  99:main.c        ****     palClearPad(IOPORT2, 5);
+ 222               		.loc 1 99 0
+ 223 0014 2D98      		cbi 0x5,5
+ 100:main.c        **** 
+ 101:main.c        ****     // Inicializa o mutex e as variáveis de condição
+ 102:main.c        ****     chMtxObjectInit(&buffer_mutex);
+ 224               		.loc 1 102 0
+ 225 0016 80E0      		ldi r24,lo8(buffer_mutex)
+ 226 0018 90E0      		ldi r25,hi8(buffer_mutex)
+ 227 001a 0E94 0000 		call chMtxObjectInit
+ 228               	.LVL26:
+ 103:main.c        ****     chCondObjectInit(&buffer_not_empty);
+ 229               		.loc 1 103 0
+ 230 001e 80E0      		ldi r24,lo8(buffer_not_empty)
+ 231 0020 90E0      		ldi r25,hi8(buffer_not_empty)
+ 232 0022 0E94 0000 		call chCondObjectInit
+ 233               	.LVL27:
+ 104:main.c        ****     chCondObjectInit(&buffer_not_full);
+ 234               		.loc 1 104 0
+ 235 0026 80E0      		ldi r24,lo8(buffer_not_full)
+ 236 0028 90E0      		ldi r25,hi8(buffer_not_full)
+ 237 002a 0E94 0000 		call chCondObjectInit
+ 238               	.LVL28:
+ 105:main.c        **** 
+ 106:main.c        ****     // Cria as threads produtora e consumidora
+ 107:main.c        ****     chThdCreateStatic(waProducer, sizeof(waProducer), NORMALPRIO, Producer, NULL);
+ 239               		.loc 1 107 0
+ 240 002e 00E0      		ldi r16,0
+ 241 0030 10E0      		ldi r17,0
+ 242 0032 20E0      		ldi r18,lo8(gs(Producer))
+ 243 0034 30E0      		ldi r19,hi8(gs(Producer))
+ 244 0036 40E8      		ldi r20,lo8(-128)
+ 245 0038 63EE      		ldi r22,lo8(-29)
+ 246 003a 70E0      		ldi r23,0
+ 247 003c 80E0      		ldi r24,lo8(waProducer)
+ 248 003e 90E0      		ldi r25,hi8(waProducer)
+ 249 0040 0E94 0000 		call chThdCreateStatic
+ 250               	.LVL29:
+ 108:main.c        ****     chThdCreateStatic(waConsumer, sizeof(waConsumer), NORMALPRIO, Consumer, NULL);
+ 251               		.loc 1 108 0
+ 252 0044 20E0      		ldi r18,lo8(gs(Consumer))
+ 253 0046 30E0      		ldi r19,hi8(gs(Consumer))
+ 254 0048 40E8      		ldi r20,lo8(-128)
+ 255 004a 63EE      		ldi r22,lo8(-29)
+ 256 004c 70E0      		ldi r23,0
+ 257 004e 80E0      		ldi r24,lo8(waConsumer)
+ 258 0050 90E0      		ldi r25,hi8(waConsumer)
+ 259 0052 0E94 0000 		call chThdCreateStatic
+ 260               	.LVL30:
+ 261               	.L23:
+ 109:main.c        **** 
+ 110:main.c        ****     // Loop infinito para manter o sistema rodando
+ 111:main.c        ****     while (true) {
+ 112:main.c        ****         chThdSleepMilliseconds(1000);
+ 262               		.loc 1 112 0 discriminator 1
+ 263 0056 88E0      		ldi r24,lo8(8)
+ 264 0058 9DE3      		ldi r25,lo8(61)
+ 265 005a 0E94 0000 		call chThdSleep
+ 266               	.LVL31:
+ 267 005e 00C0      		rjmp .L23
+ 268               		.cfi_endproc
+ 269               	.LFE243:
+ 271               		.section	.bss.waConsumer,"aw",@nobits
+ 274               	waConsumer:
+ 275 0000 0000 0000 		.zero	227
+ 275      0000 0000 
+ 275      0000 0000 
+ 275      0000 0000 
+ 275      0000 0000 
+ 276               		.section	.bss.waProducer,"aw",@nobits
+ 279               	waProducer:
+ 280 0000 0000 0000 		.zero	227
+ 280      0000 0000 
+ 280      0000 0000 
+ 280      0000 0000 
+ 280      0000 0000 
+ 281               		.section	.bss.buffer_not_full,"aw",@nobits
+ 284               	buffer_not_full:
+ 285 0000 0000 0000 		.zero	4
+ 286               		.section	.bss.buffer_not_empty,"aw",@nobits
+ 289               	buffer_not_empty:
+ 290 0000 0000 0000 		.zero	4
+ 291               		.section	.bss.buffer_mutex,"aw",@nobits
+ 294               	buffer_mutex:
+ 295 0000 0000 0000 		.zero	8
+ 295      0000 0000 
+ 296               		.section	.bss.buffer_count,"aw",@nobits
+ 299               	buffer_count:
+ 300 0000 00        		.zero	1
+ 301               		.section	.data.read_ptr,"aw",@progbits
+ 304               	read_ptr:
+ 305 0000 0000      		.word	buffer
+ 306               		.section	.data.write_ptr,"aw",@progbits
+ 309               	write_ptr:
+ 310 0000 0000      		.word	buffer
+ 311               		.section	.bss.buffer,"aw",@nobits
+ 314               	buffer:
+ 315 0000 0000 0000 		.zero	5
+ 315      00
+ 316               		.text
+ 317               	.Letext0:
+ 318               		.file 2 "/usr/lib/gcc/avr/5.4.0/include/stddef.h"
+ 319               		.file 3 "/usr/lib/avr/include/stdint.h"
+ 320               		.file 4 "../../../os/common/ports/AVR/compilers/GCC/chtypes.h"
+ 321               		.file 5 "../../../os/rt/include/chearly.h"
+ 322               		.file 6 "../../../os/rt/include/chobjects.h"
+ 323               		.file 7 "../../../os/rt/include/chrfcu.h"
+ 324               		.file 8 "../../../os/rt/include/chdebug.h"
+ 325               		.file 9 "../../../os/rt/include/chtime.h"
+ 326               		.file 10 "../../../os/rt/include/chlists.h"
+ 327               		.file 11 "../../../os/common/ports/AVR/chcore.h"
+ 328               		.file 12 "../../../os/rt/include/chsem.h"
+ 329               		.file 13 "../../../os/rt/include/chmtx.h"
+ 330               		.file 14 "../../../os/rt/include/chcond.h"
+ 331               		.file 15 "../../../os/hal/ports/AVR/MEGA/LLD/GPIOv1/hal_pal_lld.h"
+ 332               		.file 16 "../../../os/rt/include/chthreads.h"
+ 333               		.file 17 "../../../os/hal/include/hal.h"
+ 334               		.file 18 "../../../os/rt/include/chsys.h"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 main.c
+     /tmp/ccyISsBX.s:2      *ABS*:000000000000003e __SP_H__
+     /tmp/ccyISsBX.s:3      *ABS*:000000000000003d __SP_L__
+     /tmp/ccyISsBX.s:4      *ABS*:000000000000003f __SREG__
+     /tmp/ccyISsBX.s:5      *ABS*:0000000000000000 __tmp_reg__
+     /tmp/ccyISsBX.s:6      *ABS*:0000000000000001 __zero_reg__
+     /tmp/ccyISsBX.s:12     .text.Consumer:0000000000000000 Consumer
+     /tmp/ccyISsBX.s:314    .bss.buffer:0000000000000000 buffer
+     /tmp/ccyISsBX.s:294    .bss.buffer_mutex:0000000000000000 buffer_mutex
+     /tmp/ccyISsBX.s:299    .bss.buffer_count:0000000000000000 buffer_count
+     /tmp/ccyISsBX.s:289    .bss.buffer_not_empty:0000000000000000 buffer_not_empty
+     /tmp/ccyISsBX.s:304    .data.read_ptr:0000000000000000 read_ptr
+     /tmp/ccyISsBX.s:284    .bss.buffer_not_full:0000000000000000 buffer_not_full
+     /tmp/ccyISsBX.s:108    .text.Producer:0000000000000000 Producer
+     /tmp/ccyISsBX.s:309    .data.write_ptr:0000000000000000 write_ptr
+     /tmp/ccyISsBX.s:201    .text.startup.main:0000000000000000 main
+     /tmp/ccyISsBX.s:279    .bss.waProducer:0000000000000000 waProducer
+     /tmp/ccyISsBX.s:274    .bss.waConsumer:0000000000000000 waConsumer
+
+UNDEFINED SYMBOLS
+chMtxLock
+chCondWait
+chMtxUnlock
+chCondSignal
+chThdSleep
+halInit
+chSysInit
+_pal_lld_setgroupmode
+chMtxObjectInit
+chCondObjectInit
+chThdCreateStatic
+__do_copy_data
+__do_clear_bss

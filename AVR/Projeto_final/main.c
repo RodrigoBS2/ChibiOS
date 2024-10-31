@@ -1,39 +1,19 @@
-
-#include "AVRincludes.h"
-#include "pin.h"
-#include "signal.h"
-#include "state.h"
-#include "vtimer.h"
-
-/* Variáveis globais    */
-    // Buffer - eventos
-    volatile bool walker = false;
-    volatile bool secondary = false;
-    volatile bool amb_secondary = false;
-    volatile bool amb_main = false;
-
-    // Estado atual  
-    volatile state_t current_state = main_st_main_green_t;
-
-
-
-event_t get_event(){
-
-}
-
+#include "main.h"
 
 int main(void) {
   
   halInit();    //  Inicialização do HAL
   chSysInit();  //  Inicialização do Kernel
-
   
-  //Configuração inicial dos sinais de transito
-  void config_signals();
-  void Led_Green_Main(ON);
-  
-  // Eventos
+// Eventos
   event_t ev;
+  
+/* Configuração inicial dos sinais de transito */
+  config_signals();
+  Led_Green_Main(ON);
+  
+/* Configurando as interrupções */  
+  config_interruption();
 
   while (true) {
         ev = get_event();

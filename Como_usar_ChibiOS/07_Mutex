@@ -1,0 +1,56 @@
+-----
+Mutex
+-----
+Local: ChibiOS/os/rt/include/chmtx.h
+
+1 - Introdução
+
+    - Mutexes são um tipo de mecanismo de sincronismo usado para “proteger” uma determinada região de código.
+
+    - Ele garante o acesso exclusivo à região de código sob sua guarda
+        * Se duas threads tentarem obter acesso ao mesmo tempo, o mutex garante que apenas uma é bem sucedida.
+
+
+2 - Operação
+
+    - No ChibiOS, o procedimento para usar um mutex é:
+        * Criar uma variável do tipo apropriado e inicializá-la.
+        * Travar o mutex antes de entrar na região crítica.
+        * Destravá-lo ao final da região crítica.
+
+    - Para criarmos um mutex, usamos a macro MUTEX_DECL(name)
+        * Isto cria a variável name do tipo mutex_t inicializada de modo apropriado
+        * A função chMtxObjectInit(mutex_t *mp) também pode ser usada para inicializar um mutex
+
+    - Para obter e liberar um mutex usamos as funções chMtxLock(mutex_t *mp) e chMtxUnlock(mutex_t *mp).
+
+    - A função chMtxLock() só retorna quando a thread for bem sucedida em obter o mutex
+        * Se pelo menos uma thread estiver tentando obter o mutex, exatamente uma será bem sucedida.
+
+    - Uma outra função para se obter o mutex é chMtxTryLock(mutex_t *mp).
+        * Essa função retorna de imediato um valor booleano para indicar o sucesso ou não em obter o mutex.
+
+    - As assinaturas das funções estão abaixo (chtmx.h):
+        * void chMtxObjectInit(mutex_t *mp);
+        * void chMtxObjectDispose(mutex_t *mp);
+
+        * void chMtxLock(mutex_t *mp);
+        * void chMtxUnlock(mutex_t *mp);
+        * bool chMtxTryLock(mutex_t *mp);
+        
+        * void chMtxLockS(mutex_t *mp);
+        * void chMtxUnlockS(mutex_t *mp);
+        * bool chMtxTryLockS(mutex_t *mp);
+
+        * void chMtxUnlockAll(void);
+        * void chMtxUnlockAllS(void);
+
+
+3 - Observações:
+    - Nenhuma dessas funções deve ser usada no contexto de uma interrupção.
+        * Isso significa que não devemos usar mutexes em callbacks do ChibiOS.
+
+    - Para o desempenho, é importante que a região crítica seja o mais curta possível
+
+
+

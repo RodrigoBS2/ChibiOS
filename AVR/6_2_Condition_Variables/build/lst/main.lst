@@ -1,0 +1,533 @@
+   1               		.file	"main.c"
+   2               	__SP_H__ = 0x3e
+   3               	__SP_L__ = 0x3d
+   4               	__SREG__ = 0x3f
+   5               	__tmp_reg__ = 0
+   6               	__zero_reg__ = 1
+   7               		.text
+   8               	.Ltext0:
+   9               		.cfi_sections	.debug_frame
+  10               		.section	.text.Thread3,"ax",@progbits
+  12               	Thread3:
+  13               	.LFB243:
+  14               		.file 1 "main.c"
+   1:main.c        **** #include "ch.h"
+   2:main.c        **** #include "hal.h"
+   3:main.c        **** 
+   4:main.c        **** // Mutex e variáveis de condição
+   5:main.c        **** static mutex_t mutex;
+   6:main.c        **** static condition_variable_t cond1;
+   7:main.c        **** static condition_variable_t cond2;
+   8:main.c        **** static condition_variable_t cond3;
+   9:main.c        **** static bool b = true;
+  10:main.c        **** 
+  11:main.c        **** // Thread 1: Alterna o LED1 e sinaliza a Thread 2
+  12:main.c        **** static THD_WORKING_AREA(waThread1, 128);
+  13:main.c        **** static THD_FUNCTION(Thread1, arg) {
+  14:main.c        ****     (void)arg;
+  15:main.c        **** 
+  16:main.c        ****     while (true) {
+  17:main.c        ****         chMtxLock(&mutex);
+  18:main.c        **** 
+  19:main.c        ****         msg_t result = chCondWait(&cond1);  // Espera sinal de Thread 3
+  20:main.c        ****         if (result == MSG_OK) {
+  21:main.c        ****             palTogglePad(IOPORT2, 5);  // Alterna LED1 (PORTB5)
+  22:main.c        ****             chThdSleepMilliseconds(500);  // Pequeno atraso para evitar bloqueio rápido
+  23:main.c        ****         }
+  24:main.c        **** 
+  25:main.c        ****         chCondSignal(&cond2);  // Sinaliza a Thread 2
+  26:main.c        ****         chMtxUnlock(&mutex);
+  27:main.c        **** 
+  28:main.c        ****         
+  29:main.c        ****     }
+  30:main.c        **** }
+  31:main.c        **** 
+  32:main.c        **** // Thread 2: Alterna o LED2 e sinaliza a Thread 3
+  33:main.c        **** static THD_WORKING_AREA(waThread2, 128);
+  34:main.c        **** static THD_FUNCTION(Thread2, arg) {
+  35:main.c        ****     (void)arg;
+  36:main.c        **** 
+  37:main.c        ****     while (true) {
+  38:main.c        ****         chMtxLock(&mutex);
+  39:main.c        **** 
+  40:main.c        ****         msg_t result = chCondWait(&cond2);  // Espera sinal de Thread 1
+  41:main.c        ****         if (result == MSG_OK) {
+  42:main.c        ****             palTogglePad(IOPORT2, 4);  // Alterna LED2 (PORTB4)
+  43:main.c        ****             chThdSleepMilliseconds(500);  // Atraso para teste
+  44:main.c        ****         }
+  45:main.c        **** 
+  46:main.c        ****         chCondSignal(&cond3);  // Sinaliza a Thread 3
+  47:main.c        ****         chMtxUnlock(&mutex);
+  48:main.c        **** 
+  49:main.c        ****         
+  50:main.c        ****     }
+  51:main.c        **** }
+  52:main.c        **** 
+  53:main.c        **** // Thread 3: Alterna o LED3 e sinaliza a Thread 1
+  54:main.c        **** static THD_WORKING_AREA(waThread3, 128);
+  55:main.c        **** static THD_FUNCTION(Thread3, arg) {
+  15               		.loc 1 55 0
+  16               		.cfi_startproc
+  17               	/* prologue: function */
+  18               	/* frame size = 0 */
+  19               	/* stack size = 0 */
+  20               	.L__stack_usage = 0
+  21               	.LVL0:
+  22               	.L2:
+  23               	.LBB2:
+  56:main.c        ****     (void)arg;
+  57:main.c        **** 
+  58:main.c        ****     while (true) {
+  59:main.c        ****         if(b){
+  24               		.loc 1 59 0
+  25 0000 8091 0000 		lds r24,b
+  26 0004 8823      		tst r24
+  27 0006 01F0      		breq .L3
+  28               	.L7:
+  60:main.c        ****             b=false;
+  29               		.loc 1 60 0
+  30 0008 1092 0000 		sts b,__zero_reg__
+  61:main.c        ****             // Inicia o ciclo sinalizando a Thread 1
+  62:main.c        ****             chMtxLock(&mutex);
+  31               		.loc 1 62 0
+  32 000c 80E0      		ldi r24,lo8(mutex)
+  33 000e 90E0      		ldi r25,hi8(mutex)
+  34 0010 0E94 0000 		call chMtxLock
+  35               	.LVL1:
+  63:main.c        ****             chCondSignal(&cond1);  // Sinaliza a Thread 1 para começar o ciclo
+  36               		.loc 1 63 0
+  37 0014 80E0      		ldi r24,lo8(cond1)
+  38 0016 90E0      		ldi r25,hi8(cond1)
+  39 0018 0E94 0000 		call chCondSignal
+  40               	.LVL2:
+  64:main.c        ****             chMtxUnlock(&mutex);   
+  41               		.loc 1 64 0
+  42 001c 80E0      		ldi r24,lo8(mutex)
+  43 001e 90E0      		ldi r25,hi8(mutex)
+  44 0020 0E94 0000 		call chMtxUnlock
+  45               	.LVL3:
+  59:main.c        ****             b=false;
+  46               		.loc 1 59 0
+  47 0024 8091 0000 		lds r24,b
+  48 0028 8111      		cpse r24,__zero_reg__
+  49 002a 00C0      		rjmp .L7
+  50               	.L3:
+  65:main.c        ****              
+  66:main.c        ****             continue;  
+  67:main.c        ****         }
+  68:main.c        ****         chMtxLock(&mutex);
+  51               		.loc 1 68 0
+  52 002c 80E0      		ldi r24,lo8(mutex)
+  53 002e 90E0      		ldi r25,hi8(mutex)
+  54 0030 0E94 0000 		call chMtxLock
+  55               	.LVL4:
+  69:main.c        **** 
+  70:main.c        ****         msg_t result = chCondWait(&cond3);  // Espera sinal de Thread 2
+  56               		.loc 1 70 0
+  57 0034 80E0      		ldi r24,lo8(cond3)
+  58 0036 90E0      		ldi r25,hi8(cond3)
+  59 0038 0E94 0000 		call chCondWait
+  60               	.LVL5:
+  71:main.c        ****         if (result == MSG_OK) {
+  61               		.loc 1 71 0
+  62 003c 892B      		or r24,r25
+  63 003e 01F0      		breq .L8
+  72:main.c        ****             palTogglePad(IOPORT4, 7);  // Alterna LED3 (PORTD7)
+  73:main.c        ****             chThdSleepMilliseconds(500);  // Atraso para teste
+  74:main.c        ****         }
+  75:main.c        **** 
+  76:main.c        ****         chCondSignal(&cond1);  // Sinaliza a Thread 1 para reiniciar ciclo
+  64               		.loc 1 76 0
+  65 0040 80E0      		ldi r24,lo8(cond1)
+  66 0042 90E0      		ldi r25,hi8(cond1)
+  67               	.LVL6:
+  68 0044 0E94 0000 		call chCondSignal
+  69               	.LVL7:
+  77:main.c        ****         chMtxUnlock(&mutex);
+  70               		.loc 1 77 0
+  71 0048 80E0      		ldi r24,lo8(mutex)
+  72 004a 90E0      		ldi r25,hi8(mutex)
+  73 004c 0E94 0000 		call chMtxUnlock
+  74               	.LVL8:
+  75 0050 00C0      		rjmp .L2
+  76               	.LVL9:
+  77               	.L8:
+  72:main.c        ****             palTogglePad(IOPORT4, 7);  // Alterna LED3 (PORTD7)
+  78               		.loc 1 72 0
+  79 0052 8BB1      		in r24,0xb
+  80               	.LVL10:
+  81 0054 8058      		subi r24,lo8(-(-128))
+  82 0056 8BB9      		out 0xb,r24
+  73:main.c        ****         }
+  83               		.loc 1 73 0
+  84 0058 84E8      		ldi r24,lo8(-124)
+  85 005a 9EE1      		ldi r25,lo8(30)
+  86 005c 0E94 0000 		call chThdSleep
+  87               	.LVL11:
+  76:main.c        ****         chMtxUnlock(&mutex);
+  88               		.loc 1 76 0
+  89 0060 80E0      		ldi r24,lo8(cond1)
+  90 0062 90E0      		ldi r25,hi8(cond1)
+  91 0064 0E94 0000 		call chCondSignal
+  92               	.LVL12:
+  93               		.loc 1 77 0
+  94 0068 80E0      		ldi r24,lo8(mutex)
+  95 006a 90E0      		ldi r25,hi8(mutex)
+  96 006c 0E94 0000 		call chMtxUnlock
+  97               	.LVL13:
+  98 0070 00C0      		rjmp .L2
+  99               	.LBE2:
+ 100               		.cfi_endproc
+ 101               	.LFE243:
+ 103               		.section	.text.Thread2,"ax",@progbits
+ 105               	Thread2:
+ 106               	.LFB242:
+  34:main.c        ****     (void)arg;
+ 107               		.loc 1 34 0
+ 108               		.cfi_startproc
+ 109               	.LVL14:
+ 110               	/* prologue: function */
+ 111               	/* frame size = 0 */
+ 112               	/* stack size = 0 */
+ 113               	.L__stack_usage = 0
+ 114               	.LBB3:
+  42:main.c        ****             chThdSleepMilliseconds(500);  // Atraso para teste
+ 115               		.loc 1 42 0
+ 116 0000 C0E1      		ldi r28,lo8(16)
+ 117 0002 00C0      		rjmp .L11
+ 118               	.LVL15:
+ 119               	.L10:
+  46:main.c        ****         chMtxUnlock(&mutex);
+ 120               		.loc 1 46 0
+ 121 0004 80E0      		ldi r24,lo8(cond3)
+ 122 0006 90E0      		ldi r25,hi8(cond3)
+ 123 0008 0E94 0000 		call chCondSignal
+ 124               	.LVL16:
+  47:main.c        **** 
+ 125               		.loc 1 47 0
+ 126 000c 80E0      		ldi r24,lo8(mutex)
+ 127 000e 90E0      		ldi r25,hi8(mutex)
+ 128 0010 0E94 0000 		call chMtxUnlock
+ 129               	.LVL17:
+ 130               	.L11:
+  38:main.c        **** 
+ 131               		.loc 1 38 0
+ 132 0014 80E0      		ldi r24,lo8(mutex)
+ 133 0016 90E0      		ldi r25,hi8(mutex)
+ 134 0018 0E94 0000 		call chMtxLock
+ 135               	.LVL18:
+  40:main.c        ****         if (result == MSG_OK) {
+ 136               		.loc 1 40 0
+ 137 001c 80E0      		ldi r24,lo8(cond2)
+ 138 001e 90E0      		ldi r25,hi8(cond2)
+ 139 0020 0E94 0000 		call chCondWait
+ 140               	.LVL19:
+  41:main.c        ****             palTogglePad(IOPORT2, 4);  // Alterna LED2 (PORTB4)
+ 141               		.loc 1 41 0
+ 142 0024 892B      		or r24,r25
+ 143 0026 01F4      		brne .L10
+  42:main.c        ****             chThdSleepMilliseconds(500);  // Atraso para teste
+ 144               		.loc 1 42 0
+ 145 0028 85B1      		in r24,0x5
+ 146               	.LVL20:
+ 147 002a 8C27      		eor r24,r28
+ 148 002c 85B9      		out 0x5,r24
+  43:main.c        ****         }
+ 149               		.loc 1 43 0
+ 150 002e 84E8      		ldi r24,lo8(-124)
+ 151 0030 9EE1      		ldi r25,lo8(30)
+ 152 0032 0E94 0000 		call chThdSleep
+ 153               	.LVL21:
+ 154 0036 00C0      		rjmp .L10
+ 155               	.LBE3:
+ 156               		.cfi_endproc
+ 157               	.LFE242:
+ 159               		.section	.text.Thread1,"ax",@progbits
+ 161               	Thread1:
+ 162               	.LFB241:
+  13:main.c        ****     (void)arg;
+ 163               		.loc 1 13 0
+ 164               		.cfi_startproc
+ 165               	.LVL22:
+ 166               	/* prologue: function */
+ 167               	/* frame size = 0 */
+ 168               	/* stack size = 0 */
+ 169               	.L__stack_usage = 0
+ 170               	.LBB4:
+  21:main.c        ****             chThdSleepMilliseconds(500);  // Pequeno atraso para evitar bloqueio rápido
+ 171               		.loc 1 21 0
+ 172 0000 C0E2      		ldi r28,lo8(32)
+ 173 0002 00C0      		rjmp .L14
+ 174               	.LVL23:
+ 175               	.L13:
+  25:main.c        ****         chMtxUnlock(&mutex);
+ 176               		.loc 1 25 0
+ 177 0004 80E0      		ldi r24,lo8(cond2)
+ 178 0006 90E0      		ldi r25,hi8(cond2)
+ 179 0008 0E94 0000 		call chCondSignal
+ 180               	.LVL24:
+  26:main.c        **** 
+ 181               		.loc 1 26 0
+ 182 000c 80E0      		ldi r24,lo8(mutex)
+ 183 000e 90E0      		ldi r25,hi8(mutex)
+ 184 0010 0E94 0000 		call chMtxUnlock
+ 185               	.LVL25:
+ 186               	.L14:
+  17:main.c        **** 
+ 187               		.loc 1 17 0
+ 188 0014 80E0      		ldi r24,lo8(mutex)
+ 189 0016 90E0      		ldi r25,hi8(mutex)
+ 190 0018 0E94 0000 		call chMtxLock
+ 191               	.LVL26:
+  19:main.c        ****         if (result == MSG_OK) {
+ 192               		.loc 1 19 0
+ 193 001c 80E0      		ldi r24,lo8(cond1)
+ 194 001e 90E0      		ldi r25,hi8(cond1)
+ 195 0020 0E94 0000 		call chCondWait
+ 196               	.LVL27:
+  20:main.c        ****             palTogglePad(IOPORT2, 5);  // Alterna LED1 (PORTB5)
+ 197               		.loc 1 20 0
+ 198 0024 892B      		or r24,r25
+ 199 0026 01F4      		brne .L13
+  21:main.c        ****             chThdSleepMilliseconds(500);  // Pequeno atraso para evitar bloqueio rápido
+ 200               		.loc 1 21 0
+ 201 0028 85B1      		in r24,0x5
+ 202               	.LVL28:
+ 203 002a 8C27      		eor r24,r28
+ 204 002c 85B9      		out 0x5,r24
+  22:main.c        ****         }
+ 205               		.loc 1 22 0
+ 206 002e 84E8      		ldi r24,lo8(-124)
+ 207 0030 9EE1      		ldi r25,lo8(30)
+ 208 0032 0E94 0000 		call chThdSleep
+ 209               	.LVL29:
+ 210 0036 00C0      		rjmp .L13
+ 211               	.LBE4:
+ 212               		.cfi_endproc
+ 213               	.LFE241:
+ 215               		.section	.text.startup.main,"ax",@progbits
+ 216               	.global	main
+ 218               	main:
+ 219               	.LFB244:
+  78:main.c        **** 
+  79:main.c        ****         
+  80:main.c        ****     }
+  81:main.c        **** }
+  82:main.c        **** 
+  83:main.c        **** // Função principal (main)
+  84:main.c        **** int main(void) {
+ 220               		.loc 1 84 0
+ 221               		.cfi_startproc
+ 222               	/* prologue: function */
+ 223               	/* frame size = 0 */
+ 224               	/* stack size = 0 */
+ 225               	.L__stack_usage = 0
+  85:main.c        ****     halInit();
+ 226               		.loc 1 85 0
+ 227 0000 0E94 0000 		call halInit
+ 228               	.LVL30:
+  86:main.c        ****     chSysInit();
+ 229               		.loc 1 86 0
+ 230 0004 0E94 0000 		call chSysInit
+ 231               	.LVL31:
+  87:main.c        **** 
+  88:main.c        ****     // Configuração dos pinos como saída e inicialização em nível baixo
+  89:main.c        ****     palSetPadMode(IOPORT2, 5, PAL_MODE_OUTPUT_PUSHPULL);
+ 232               		.loc 1 89 0
+ 233 0008 46E0      		ldi r20,lo8(6)
+ 234 000a 60E2      		ldi r22,lo8(32)
+ 235 000c 83E2      		ldi r24,lo8(35)
+ 236 000e 90E0      		ldi r25,0
+ 237 0010 0E94 0000 		call _pal_lld_setgroupmode
+ 238               	.LVL32:
+  90:main.c        ****     palSetPadMode(IOPORT2, 4, PAL_MODE_OUTPUT_PUSHPULL);
+ 239               		.loc 1 90 0
+ 240 0014 46E0      		ldi r20,lo8(6)
+ 241 0016 60E1      		ldi r22,lo8(16)
+ 242 0018 83E2      		ldi r24,lo8(35)
+ 243 001a 90E0      		ldi r25,0
+ 244 001c 0E94 0000 		call _pal_lld_setgroupmode
+ 245               	.LVL33:
+  91:main.c        ****     palSetPadMode(IOPORT4, 7, PAL_MODE_OUTPUT_PUSHPULL);
+ 246               		.loc 1 91 0
+ 247 0020 46E0      		ldi r20,lo8(6)
+ 248 0022 60E8      		ldi r22,lo8(-128)
+ 249 0024 89E2      		ldi r24,lo8(41)
+ 250 0026 90E0      		ldi r25,0
+ 251 0028 0E94 0000 		call _pal_lld_setgroupmode
+ 252               	.LVL34:
+  92:main.c        ****     palClearPad(IOPORT2, 5);  // PORTB5 em nível baixo
+ 253               		.loc 1 92 0
+ 254 002c 2D98      		cbi 0x5,5
+  93:main.c        ****     palClearPad(IOPORT2, 4);  // PORTB4 em nível baixo
+ 255               		.loc 1 93 0
+ 256 002e 2C98      		cbi 0x5,4
+  94:main.c        ****     palClearPad(IOPORT4, 7);  // PORTD7 em nível baixo
+ 257               		.loc 1 94 0
+ 258 0030 5F98      		cbi 0xb,7
+  95:main.c        **** 
+  96:main.c        ****     // Inicializa o mutex e as variáveis de condição
+  97:main.c        ****     chMtxObjectInit(&mutex);
+ 259               		.loc 1 97 0
+ 260 0032 80E0      		ldi r24,lo8(mutex)
+ 261 0034 90E0      		ldi r25,hi8(mutex)
+ 262 0036 0E94 0000 		call chMtxObjectInit
+ 263               	.LVL35:
+  98:main.c        ****     chCondObjectInit(&cond1);
+ 264               		.loc 1 98 0
+ 265 003a 80E0      		ldi r24,lo8(cond1)
+ 266 003c 90E0      		ldi r25,hi8(cond1)
+ 267 003e 0E94 0000 		call chCondObjectInit
+ 268               	.LVL36:
+  99:main.c        ****     chCondObjectInit(&cond2);
+ 269               		.loc 1 99 0
+ 270 0042 80E0      		ldi r24,lo8(cond2)
+ 271 0044 90E0      		ldi r25,hi8(cond2)
+ 272 0046 0E94 0000 		call chCondObjectInit
+ 273               	.LVL37:
+ 100:main.c        ****     chCondObjectInit(&cond3);
+ 274               		.loc 1 100 0
+ 275 004a 80E0      		ldi r24,lo8(cond3)
+ 276 004c 90E0      		ldi r25,hi8(cond3)
+ 277 004e 0E94 0000 		call chCondObjectInit
+ 278               	.LVL38:
+ 101:main.c        **** 
+ 102:main.c        ****     // Cria as threads
+ 103:main.c        ****     chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO, Thread1, NULL);
+ 279               		.loc 1 103 0
+ 280 0052 00E0      		ldi r16,0
+ 281 0054 10E0      		ldi r17,0
+ 282 0056 20E0      		ldi r18,lo8(gs(Thread1))
+ 283 0058 30E0      		ldi r19,hi8(gs(Thread1))
+ 284 005a 40E8      		ldi r20,lo8(-128)
+ 285 005c 63EE      		ldi r22,lo8(-29)
+ 286 005e 70E0      		ldi r23,0
+ 287 0060 80E0      		ldi r24,lo8(waThread1)
+ 288 0062 90E0      		ldi r25,hi8(waThread1)
+ 289 0064 0E94 0000 		call chThdCreateStatic
+ 290               	.LVL39:
+ 104:main.c        ****     chThdCreateStatic(waThread2, sizeof(waThread2), NORMALPRIO, Thread2, NULL);
+ 291               		.loc 1 104 0
+ 292 0068 20E0      		ldi r18,lo8(gs(Thread2))
+ 293 006a 30E0      		ldi r19,hi8(gs(Thread2))
+ 294 006c 40E8      		ldi r20,lo8(-128)
+ 295 006e 63EE      		ldi r22,lo8(-29)
+ 296 0070 70E0      		ldi r23,0
+ 297 0072 80E0      		ldi r24,lo8(waThread2)
+ 298 0074 90E0      		ldi r25,hi8(waThread2)
+ 299 0076 0E94 0000 		call chThdCreateStatic
+ 300               	.LVL40:
+ 105:main.c        ****     chThdCreateStatic(waThread3, sizeof(waThread3), NORMALPRIO, Thread3, NULL);
+ 301               		.loc 1 105 0
+ 302 007a 20E0      		ldi r18,lo8(gs(Thread3))
+ 303 007c 30E0      		ldi r19,hi8(gs(Thread3))
+ 304 007e 40E8      		ldi r20,lo8(-128)
+ 305 0080 63EE      		ldi r22,lo8(-29)
+ 306 0082 70E0      		ldi r23,0
+ 307 0084 80E0      		ldi r24,lo8(waThread3)
+ 308 0086 90E0      		ldi r25,hi8(waThread3)
+ 309 0088 0E94 0000 		call chThdCreateStatic
+ 310               	.LVL41:
+ 311               	.L16:
+ 106:main.c        **** 
+ 107:main.c        **** 
+ 108:main.c        ****     while (true) {
+ 109:main.c        ****         chThdSleepMilliseconds(1000);  // Mantém o sistema ativo
+ 312               		.loc 1 109 0 discriminator 1
+ 313 008c 88E0      		ldi r24,lo8(8)
+ 314 008e 9DE3      		ldi r25,lo8(61)
+ 315 0090 0E94 0000 		call chThdSleep
+ 316               	.LVL42:
+ 317 0094 00C0      		rjmp .L16
+ 318               		.cfi_endproc
+ 319               	.LFE244:
+ 321               		.section	.bss.waThread3,"aw",@nobits
+ 324               	waThread3:
+ 325 0000 0000 0000 		.zero	227
+ 325      0000 0000 
+ 325      0000 0000 
+ 325      0000 0000 
+ 325      0000 0000 
+ 326               		.section	.bss.waThread2,"aw",@nobits
+ 329               	waThread2:
+ 330 0000 0000 0000 		.zero	227
+ 330      0000 0000 
+ 330      0000 0000 
+ 330      0000 0000 
+ 330      0000 0000 
+ 331               		.section	.bss.waThread1,"aw",@nobits
+ 334               	waThread1:
+ 335 0000 0000 0000 		.zero	227
+ 335      0000 0000 
+ 335      0000 0000 
+ 335      0000 0000 
+ 335      0000 0000 
+ 336               		.section	.data.b,"aw",@progbits
+ 339               	b:
+ 340 0000 01        		.byte	1
+ 341               		.section	.bss.cond3,"aw",@nobits
+ 344               	cond3:
+ 345 0000 0000 0000 		.zero	4
+ 346               		.section	.bss.cond2,"aw",@nobits
+ 349               	cond2:
+ 350 0000 0000 0000 		.zero	4
+ 351               		.section	.bss.cond1,"aw",@nobits
+ 354               	cond1:
+ 355 0000 0000 0000 		.zero	4
+ 356               		.section	.bss.mutex,"aw",@nobits
+ 359               	mutex:
+ 360 0000 0000 0000 		.zero	8
+ 360      0000 0000 
+ 361               		.text
+ 362               	.Letext0:
+ 363               		.file 2 "/usr/lib/gcc/avr/5.4.0/include/stddef.h"
+ 364               		.file 3 "/usr/lib/avr/include/stdint.h"
+ 365               		.file 4 "../../../os/common/ports/AVR/compilers/GCC/chtypes.h"
+ 366               		.file 5 "../../../os/rt/include/chearly.h"
+ 367               		.file 6 "../../../os/rt/include/chobjects.h"
+ 368               		.file 7 "../../../os/rt/include/chrfcu.h"
+ 369               		.file 8 "../../../os/rt/include/chdebug.h"
+ 370               		.file 9 "../../../os/rt/include/chtime.h"
+ 371               		.file 10 "../../../os/rt/include/chlists.h"
+ 372               		.file 11 "../../../os/common/ports/AVR/chcore.h"
+ 373               		.file 12 "../../../os/rt/include/chsem.h"
+ 374               		.file 13 "../../../os/rt/include/chmtx.h"
+ 375               		.file 14 "../../../os/rt/include/chcond.h"
+ 376               		.file 15 "../../../os/hal/ports/AVR/MEGA/LLD/GPIOv1/hal_pal_lld.h"
+ 377               		.file 16 "../../../os/rt/include/chthreads.h"
+ 378               		.file 17 "../../../os/hal/include/hal.h"
+ 379               		.file 18 "../../../os/rt/include/chsys.h"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 main.c
+     /tmp/ccLgyIvW.s:2      *ABS*:000000000000003e __SP_H__
+     /tmp/ccLgyIvW.s:3      *ABS*:000000000000003d __SP_L__
+     /tmp/ccLgyIvW.s:4      *ABS*:000000000000003f __SREG__
+     /tmp/ccLgyIvW.s:5      *ABS*:0000000000000000 __tmp_reg__
+     /tmp/ccLgyIvW.s:6      *ABS*:0000000000000001 __zero_reg__
+     /tmp/ccLgyIvW.s:12     .text.Thread3:0000000000000000 Thread3
+     /tmp/ccLgyIvW.s:339    .data.b:0000000000000000 b
+     /tmp/ccLgyIvW.s:359    .bss.mutex:0000000000000000 mutex
+     /tmp/ccLgyIvW.s:354    .bss.cond1:0000000000000000 cond1
+     /tmp/ccLgyIvW.s:344    .bss.cond3:0000000000000000 cond3
+     /tmp/ccLgyIvW.s:105    .text.Thread2:0000000000000000 Thread2
+     /tmp/ccLgyIvW.s:349    .bss.cond2:0000000000000000 cond2
+     /tmp/ccLgyIvW.s:161    .text.Thread1:0000000000000000 Thread1
+     /tmp/ccLgyIvW.s:218    .text.startup.main:0000000000000000 main
+     /tmp/ccLgyIvW.s:334    .bss.waThread1:0000000000000000 waThread1
+     /tmp/ccLgyIvW.s:329    .bss.waThread2:0000000000000000 waThread2
+     /tmp/ccLgyIvW.s:324    .bss.waThread3:0000000000000000 waThread3
+
+UNDEFINED SYMBOLS
+chMtxLock
+chCondSignal
+chMtxUnlock
+chCondWait
+chThdSleep
+halInit
+chSysInit
+_pal_lld_setgroupmode
+chMtxObjectInit
+chCondObjectInit
+chThdCreateStatic
+__do_copy_data
+__do_clear_bss

@@ -1,0 +1,1776 @@
+   1               		.file	"chmemheaps.c"
+   2               	__SP_H__ = 0x3e
+   3               	__SP_L__ = 0x3d
+   4               	__SREG__ = 0x3f
+   5               	__tmp_reg__ = 0
+   6               	__zero_reg__ = 1
+   7               		.text
+   8               	.Ltext0:
+   9               		.cfi_sections	.debug_frame
+  10               		.section	.text.__heap_init,"ax",@progbits
+  11               	.global	__heap_init
+  13               	__heap_init:
+  14               	.LFB193:
+  15               		.file 1 "../../../os/oslib/src/chmemheaps.c"
+   1:../../../os/oslib/src/chmemheaps.c **** /*
+   2:../../../os/oslib/src/chmemheaps.c ****     ChibiOS - Copyright (C) 2006,2007,2008,2009,2010,2011,2012,2013,2014,
+   3:../../../os/oslib/src/chmemheaps.c ****               2015,2016,2017,2018,2019,2020,2021 Giovanni Di Sirio.
+   4:../../../os/oslib/src/chmemheaps.c **** 
+   5:../../../os/oslib/src/chmemheaps.c ****     This file is part of ChibiOS.
+   6:../../../os/oslib/src/chmemheaps.c **** 
+   7:../../../os/oslib/src/chmemheaps.c ****     ChibiOS is free software; you can redistribute it and/or modify
+   8:../../../os/oslib/src/chmemheaps.c ****     it under the terms of the GNU General Public License as published by
+   9:../../../os/oslib/src/chmemheaps.c ****     the Free Software Foundation version 3 of the License.
+  10:../../../os/oslib/src/chmemheaps.c **** 
+  11:../../../os/oslib/src/chmemheaps.c ****     ChibiOS is distributed in the hope that it will be useful,
+  12:../../../os/oslib/src/chmemheaps.c ****     but WITHOUT ANY WARRANTY; without even the implied warranty of
+  13:../../../os/oslib/src/chmemheaps.c ****     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  14:../../../os/oslib/src/chmemheaps.c ****     GNU General Public License for more details.
+  15:../../../os/oslib/src/chmemheaps.c **** 
+  16:../../../os/oslib/src/chmemheaps.c ****     You should have received a copy of the GNU General Public License
+  17:../../../os/oslib/src/chmemheaps.c ****     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  18:../../../os/oslib/src/chmemheaps.c **** */
+  19:../../../os/oslib/src/chmemheaps.c **** 
+  20:../../../os/oslib/src/chmemheaps.c **** /**
+  21:../../../os/oslib/src/chmemheaps.c ****  * @file    oslib/src/chmemheaps.c
+  22:../../../os/oslib/src/chmemheaps.c ****  * @brief   Memory heaps code.
+  23:../../../os/oslib/src/chmemheaps.c ****  *
+  24:../../../os/oslib/src/chmemheaps.c ****  * @addtogroup oslib_memheaps
+  25:../../../os/oslib/src/chmemheaps.c ****  * @details Heap Allocator related APIs.
+  26:../../../os/oslib/src/chmemheaps.c ****  *          <h2>Operation mode</h2>
+  27:../../../os/oslib/src/chmemheaps.c ****  *          The heap allocator implements a first-fit strategy and its APIs
+  28:../../../os/oslib/src/chmemheaps.c ****  *          are functionally equivalent to the usual @p malloc() and @p free()
+  29:../../../os/oslib/src/chmemheaps.c ****  *          library functions. The main difference is that the OS heap APIs
+  30:../../../os/oslib/src/chmemheaps.c ****  *          are guaranteed to be thread safe and there is the ability to
+  31:../../../os/oslib/src/chmemheaps.c ****  *          return memory blocks aligned to arbitrary powers of two.<br>
+  32:../../../os/oslib/src/chmemheaps.c ****  * @pre     In order to use the heap APIs the @p CH_CFG_USE_HEAP option must
+  33:../../../os/oslib/src/chmemheaps.c ****  *          be enabled in @p chconf.h.
+  34:../../../os/oslib/src/chmemheaps.c ****  * @note    Compatible with RT and NIL.
+  35:../../../os/oslib/src/chmemheaps.c ****  * @{
+  36:../../../os/oslib/src/chmemheaps.c ****  */
+  37:../../../os/oslib/src/chmemheaps.c **** 
+  38:../../../os/oslib/src/chmemheaps.c **** #include <string.h>
+  39:../../../os/oslib/src/chmemheaps.c **** 
+  40:../../../os/oslib/src/chmemheaps.c **** #include "ch.h"
+  41:../../../os/oslib/src/chmemheaps.c **** 
+  42:../../../os/oslib/src/chmemheaps.c **** #if (CH_CFG_USE_HEAP == TRUE) || defined(__DOXYGEN__)
+  43:../../../os/oslib/src/chmemheaps.c **** 
+  44:../../../os/oslib/src/chmemheaps.c **** /*===========================================================================*/
+  45:../../../os/oslib/src/chmemheaps.c **** /* Module local definitions.                                                 */
+  46:../../../os/oslib/src/chmemheaps.c **** /*===========================================================================*/
+  47:../../../os/oslib/src/chmemheaps.c **** 
+  48:../../../os/oslib/src/chmemheaps.c **** /*
+  49:../../../os/oslib/src/chmemheaps.c ****  * Defaults on the best synchronization mechanism available.
+  50:../../../os/oslib/src/chmemheaps.c ****  */
+  51:../../../os/oslib/src/chmemheaps.c **** #if (CH_CFG_USE_MUTEXES == TRUE) || defined(__DOXYGEN__)
+  52:../../../os/oslib/src/chmemheaps.c **** #define H_LOCK(h)           chMtxLock(&(h)->mtx)
+  53:../../../os/oslib/src/chmemheaps.c **** #define H_UNLOCK(h)         chMtxUnlock(&(h)->mtx)
+  54:../../../os/oslib/src/chmemheaps.c **** #else
+  55:../../../os/oslib/src/chmemheaps.c **** #define H_LOCK(h)           (void) chSemWait(&(h)->sem)
+  56:../../../os/oslib/src/chmemheaps.c **** #define H_UNLOCK(h)         chSemSignal(&(h)->sem)
+  57:../../../os/oslib/src/chmemheaps.c **** #endif
+  58:../../../os/oslib/src/chmemheaps.c **** 
+  59:../../../os/oslib/src/chmemheaps.c **** #define H_BLOCK(hp)         ((hp) + 1U)
+  60:../../../os/oslib/src/chmemheaps.c **** 
+  61:../../../os/oslib/src/chmemheaps.c **** #define H_FREE_PAGES(hp)    ((hp)->free.pages)
+  62:../../../os/oslib/src/chmemheaps.c **** 
+  63:../../../os/oslib/src/chmemheaps.c **** #define H_FREE_NEXT(hp)     ((hp)->free.next)
+  64:../../../os/oslib/src/chmemheaps.c **** 
+  65:../../../os/oslib/src/chmemheaps.c **** #define H_FREE_FULLSIZE(hp) (size_t)(((hp)->free.pages + 1U) * sizeof (heap_header_t))
+  66:../../../os/oslib/src/chmemheaps.c **** 
+  67:../../../os/oslib/src/chmemheaps.c **** #define H_FREE_LIMIT(hp)    (H_BLOCK(hp) + H_FREE_PAGES(hp))
+  68:../../../os/oslib/src/chmemheaps.c **** 
+  69:../../../os/oslib/src/chmemheaps.c **** #define H_USED_HEAP(hp)     ((hp)->used.heap)
+  70:../../../os/oslib/src/chmemheaps.c **** 
+  71:../../../os/oslib/src/chmemheaps.c **** #define H_USED_SIZE(hp)     ((hp)->used.size)
+  72:../../../os/oslib/src/chmemheaps.c **** 
+  73:../../../os/oslib/src/chmemheaps.c **** /*
+  74:../../../os/oslib/src/chmemheaps.c ****  * Number of pages between two pointers in a MISRA-compatible way.
+  75:../../../os/oslib/src/chmemheaps.c ****  */
+  76:../../../os/oslib/src/chmemheaps.c **** #define NPAGES(p1, p2)                                                      \
+  77:../../../os/oslib/src/chmemheaps.c ****   /*lint -save -e9033 [10.8] The cast is safe.*/                            \
+  78:../../../os/oslib/src/chmemheaps.c ****   ((size_t)((p1) - (p2)))                                                   \
+  79:../../../os/oslib/src/chmemheaps.c ****   /*lint -restore*/
+  80:../../../os/oslib/src/chmemheaps.c **** 
+  81:../../../os/oslib/src/chmemheaps.c **** /*===========================================================================*/
+  82:../../../os/oslib/src/chmemheaps.c **** /* Module exported variables.                                                */
+  83:../../../os/oslib/src/chmemheaps.c **** /*===========================================================================*/
+  84:../../../os/oslib/src/chmemheaps.c **** 
+  85:../../../os/oslib/src/chmemheaps.c **** /*===========================================================================*/
+  86:../../../os/oslib/src/chmemheaps.c **** /* Module local types.                                                       */
+  87:../../../os/oslib/src/chmemheaps.c **** /*===========================================================================*/
+  88:../../../os/oslib/src/chmemheaps.c **** 
+  89:../../../os/oslib/src/chmemheaps.c **** /*===========================================================================*/
+  90:../../../os/oslib/src/chmemheaps.c **** /* Module local variables.                                                   */
+  91:../../../os/oslib/src/chmemheaps.c **** /*===========================================================================*/
+  92:../../../os/oslib/src/chmemheaps.c **** 
+  93:../../../os/oslib/src/chmemheaps.c **** /**
+  94:../../../os/oslib/src/chmemheaps.c ****  * @brief   Default heap descriptor.
+  95:../../../os/oslib/src/chmemheaps.c ****  */
+  96:../../../os/oslib/src/chmemheaps.c **** static memory_heap_t default_heap;
+  97:../../../os/oslib/src/chmemheaps.c **** 
+  98:../../../os/oslib/src/chmemheaps.c **** /*===========================================================================*/
+  99:../../../os/oslib/src/chmemheaps.c **** /* Module local functions.                                                   */
+ 100:../../../os/oslib/src/chmemheaps.c **** /*===========================================================================*/
+ 101:../../../os/oslib/src/chmemheaps.c **** 
+ 102:../../../os/oslib/src/chmemheaps.c **** /*===========================================================================*/
+ 103:../../../os/oslib/src/chmemheaps.c **** /* Module exported functions.                                                */
+ 104:../../../os/oslib/src/chmemheaps.c **** /*===========================================================================*/
+ 105:../../../os/oslib/src/chmemheaps.c **** 
+ 106:../../../os/oslib/src/chmemheaps.c **** /**
+ 107:../../../os/oslib/src/chmemheaps.c ****  * @brief   Initializes the default heap.
+ 108:../../../os/oslib/src/chmemheaps.c ****  *
+ 109:../../../os/oslib/src/chmemheaps.c ****  * @notapi
+ 110:../../../os/oslib/src/chmemheaps.c ****  */
+ 111:../../../os/oslib/src/chmemheaps.c **** void __heap_init(void) {
+  16               		.loc 1 111 0
+  17               		.cfi_startproc
+  18 0000 CF93      		push r28
+  19               	.LCFI0:
+  20               		.cfi_def_cfa_offset 3
+  21               		.cfi_offset 28, -2
+  22 0002 DF93      		push r29
+  23               	.LCFI1:
+  24               		.cfi_def_cfa_offset 4
+  25               		.cfi_offset 29, -3
+  26               	/* prologue: function */
+  27               	/* frame size = 0 */
+  28               	/* stack size = 2 */
+  29               	.L__stack_usage = 2
+ 112:../../../os/oslib/src/chmemheaps.c **** 
+ 113:../../../os/oslib/src/chmemheaps.c ****   default_heap.provider = chCoreAllocAlignedWithOffset;
+  30               		.loc 1 113 0
+  31 0004 C0E0      		ldi r28,lo8(default_heap)
+  32 0006 D0E0      		ldi r29,hi8(default_heap)
+  33 0008 80E0      		ldi r24,lo8(gs(chCoreAllocFromTop))
+  34 000a 90E0      		ldi r25,hi8(gs(chCoreAllocFromTop))
+  35 000c 9983      		std Y+1,r25
+  36 000e 8883      		st Y,r24
+ 114:../../../os/oslib/src/chmemheaps.c ****   chCoreGetStatusX(&default_heap.area);
+  37               		.loc 1 114 0
+  38 0010 80E0      		ldi r24,lo8(default_heap+2)
+  39 0012 90E0      		ldi r25,hi8(default_heap+2)
+  40 0014 0E94 0000 		call chCoreGetStatusX
+  41               	.LVL0:
+ 115:../../../os/oslib/src/chmemheaps.c ****   H_FREE_NEXT(&default_heap.header) = NULL;
+  42               		.loc 1 115 0
+  43 0018 1F82      		std Y+7,__zero_reg__
+  44 001a 1E82      		std Y+6,__zero_reg__
+ 116:../../../os/oslib/src/chmemheaps.c ****   H_FREE_PAGES(&default_heap.header) = 0;
+  45               		.loc 1 116 0
+  46 001c 1986      		std Y+9,__zero_reg__
+  47 001e 1886      		std Y+8,__zero_reg__
+ 117:../../../os/oslib/src/chmemheaps.c **** #if (CH_CFG_USE_MUTEXES == TRUE) || defined(__DOXYGEN__)
+ 118:../../../os/oslib/src/chmemheaps.c ****   chMtxObjectInit(&default_heap.mtx);
+  48               		.loc 1 118 0
+  49 0020 80E0      		ldi r24,lo8(default_heap+10)
+  50 0022 90E0      		ldi r25,hi8(default_heap+10)
+  51               	/* epilogue start */
+ 119:../../../os/oslib/src/chmemheaps.c **** #else
+ 120:../../../os/oslib/src/chmemheaps.c ****   chSemObjectInit(&default_heap.sem, (cnt_t)1);
+ 121:../../../os/oslib/src/chmemheaps.c **** #endif
+ 122:../../../os/oslib/src/chmemheaps.c **** }
+  52               		.loc 1 122 0
+  53 0024 DF91      		pop r29
+  54 0026 CF91      		pop r28
+ 118:../../../os/oslib/src/chmemheaps.c **** #else
+  55               		.loc 1 118 0
+  56 0028 0C94 0000 		jmp chMtxObjectInit
+  57               	.LVL1:
+  58               		.cfi_endproc
+  59               	.LFE193:
+  61               		.section	.text.chHeapObjectInit,"ax",@progbits
+  62               	.global	chHeapObjectInit
+  64               	chHeapObjectInit:
+  65               	.LFB194:
+ 123:../../../os/oslib/src/chmemheaps.c **** 
+ 124:../../../os/oslib/src/chmemheaps.c **** /**
+ 125:../../../os/oslib/src/chmemheaps.c ****  * @brief   Initializes a memory heap from a static memory area.
+ 126:../../../os/oslib/src/chmemheaps.c ****  * @note    The heap buffer base and size are adjusted if the passed buffer
+ 127:../../../os/oslib/src/chmemheaps.c ****  *          is not aligned to @p CH_HEAP_ALIGNMENT. This mean that the
+ 128:../../../os/oslib/src/chmemheaps.c ****  *          effective heap size can be less than @p size.
+ 129:../../../os/oslib/src/chmemheaps.c ****  *
+ 130:../../../os/oslib/src/chmemheaps.c ****  * @param[out] heapp    pointer to the memory heap descriptor to be initialized
+ 131:../../../os/oslib/src/chmemheaps.c ****  * @param[in] buf       heap buffer base
+ 132:../../../os/oslib/src/chmemheaps.c ****  * @param[in] size      heap size
+ 133:../../../os/oslib/src/chmemheaps.c ****  *
+ 134:../../../os/oslib/src/chmemheaps.c ****  * @init
+ 135:../../../os/oslib/src/chmemheaps.c ****  */
+ 136:../../../os/oslib/src/chmemheaps.c **** void chHeapObjectInit(memory_heap_t *heapp, void *buf, size_t size) {
+  66               		.loc 1 136 0
+  67               		.cfi_startproc
+  68               	.LVL2:
+  69               	/* prologue: function */
+  70               	/* frame size = 0 */
+  71               	/* stack size = 0 */
+  72               	.L__stack_usage = 0
+  73 0000 DC01      		movw r26,r24
+ 137:../../../os/oslib/src/chmemheaps.c ****   heap_header_t *hp = (heap_header_t *)MEM_ALIGN_NEXT(buf, CH_HEAP_ALIGNMENT);
+  74               		.loc 1 137 0
+  75 0002 FB01      		movw r30,r22
+  76 0004 3396      		adiw r30,3
+  77 0006 EC7F      		andi r30,252
+  78               	.LVL3:
+ 138:../../../os/oslib/src/chmemheaps.c **** 
+ 139:../../../os/oslib/src/chmemheaps.c ****   chDbgCheck((heapp != NULL) && (size > 0U));
+ 140:../../../os/oslib/src/chmemheaps.c **** 
+ 141:../../../os/oslib/src/chmemheaps.c ****   /* Adjusting the size in case the initial block was not correctly
+ 142:../../../os/oslib/src/chmemheaps.c ****      aligned.*/
+ 143:../../../os/oslib/src/chmemheaps.c ****   /*lint -save -e9033 [10.8] Required cast operations.*/
+ 144:../../../os/oslib/src/chmemheaps.c ****   size -= (size_t)((uint8_t *)hp - (uint8_t *)buf);
+ 145:../../../os/oslib/src/chmemheaps.c ****   /*lint restore*/
+ 146:../../../os/oslib/src/chmemheaps.c **** 
+ 147:../../../os/oslib/src/chmemheaps.c ****   /* Initializing the heap header.*/
+ 148:../../../os/oslib/src/chmemheaps.c ****   heapp->provider = NULL;
+  79               		.loc 1 148 0
+  80 0008 1196      		adiw r26,1
+  81 000a 1C92      		st X,__zero_reg__
+  82 000c 1E92      		st -X,__zero_reg__
+ 149:../../../os/oslib/src/chmemheaps.c ****   H_FREE_NEXT(&heapp->header) = hp;
+  83               		.loc 1 149 0
+  84 000e 1796      		adiw r26,6+1
+  85 0010 FC93      		st X,r31
+  86 0012 EE93      		st -X,r30
+  87 0014 1697      		sbiw r26,6
+ 150:../../../os/oslib/src/chmemheaps.c ****   H_FREE_PAGES(&heapp->header) = 0;
+  88               		.loc 1 150 0
+  89 0016 1996      		adiw r26,8+1
+  90 0018 1C92      		st X,__zero_reg__
+  91 001a 1E92      		st -X,__zero_reg__
+  92 001c 1897      		sbiw r26,8
+ 151:../../../os/oslib/src/chmemheaps.c ****   H_FREE_NEXT(hp) = NULL;
+  93               		.loc 1 151 0
+  94 001e 1182      		std Z+1,__zero_reg__
+  95 0020 1082      		st Z,__zero_reg__
+ 152:../../../os/oslib/src/chmemheaps.c ****   H_FREE_PAGES(hp) = (size - sizeof (heap_header_t)) / CH_HEAP_ALIGNMENT;
+  96               		.loc 1 152 0
+  97 0022 4450      		subi r20,4
+  98 0024 5109      		sbc r21,__zero_reg__
+  99               	.LVL4:
+ 100 0026 CF01      		movw r24,r30
+ 101               	.LVL5:
+ 102 0028 861B      		sub r24,r22
+ 103 002a 970B      		sbc r25,r23
+ 104 002c 481B      		sub r20,r24
+ 105 002e 590B      		sbc r21,r25
+ 106               	.LVL6:
+ 107 0030 5695      		lsr r21
+ 108 0032 4795      		ror r20
+ 109 0034 5695      		lsr r21
+ 110 0036 4795      		ror r20
+ 111 0038 5383      		std Z+3,r21
+ 112 003a 4283      		std Z+2,r20
+ 153:../../../os/oslib/src/chmemheaps.c ****   heapp->area.base = (uint8_t *)(void *)hp;
+ 113               		.loc 1 153 0
+ 114 003c 1396      		adiw r26,2+1
+ 115 003e FC93      		st X,r31
+ 116 0040 EE93      		st -X,r30
+ 117 0042 1297      		sbiw r26,2
+ 154:../../../os/oslib/src/chmemheaps.c ****   heapp->area.size = H_FREE_FULLSIZE(hp);
+ 118               		.loc 1 154 0
+ 119 0044 8281      		ldd r24,Z+2
+ 120 0046 9381      		ldd r25,Z+3
+ 121 0048 0196      		adiw r24,1
+ 122 004a 880F      		lsl r24
+ 123 004c 991F      		rol r25
+ 124 004e 880F      		lsl r24
+ 125 0050 991F      		rol r25
+ 126 0052 1596      		adiw r26,4+1
+ 127 0054 9C93      		st X,r25
+ 128 0056 8E93      		st -X,r24
+ 129 0058 1497      		sbiw r26,4
+ 155:../../../os/oslib/src/chmemheaps.c **** #if (CH_CFG_USE_MUTEXES == TRUE) || defined(__DOXYGEN__)
+ 156:../../../os/oslib/src/chmemheaps.c ****   chMtxObjectInit(&heapp->mtx);
+ 130               		.loc 1 156 0
+ 131 005a CD01      		movw r24,r26
+ 132 005c 0A96      		adiw r24,10
+ 133 005e 0C94 0000 		jmp chMtxObjectInit
+ 134               	.LVL7:
+ 135               		.cfi_endproc
+ 136               	.LFE194:
+ 138               		.section	.text.chHeapObjectDispose,"ax",@progbits
+ 139               	.global	chHeapObjectDispose
+ 141               	chHeapObjectDispose:
+ 142               	.LFB195:
+ 157:../../../os/oslib/src/chmemheaps.c **** #else
+ 158:../../../os/oslib/src/chmemheaps.c ****   chSemObjectInit(&heapp->sem, (cnt_t)1);
+ 159:../../../os/oslib/src/chmemheaps.c **** #endif
+ 160:../../../os/oslib/src/chmemheaps.c **** }
+ 161:../../../os/oslib/src/chmemheaps.c **** 
+ 162:../../../os/oslib/src/chmemheaps.c **** /**
+ 163:../../../os/oslib/src/chmemheaps.c ****  * @brief   Disposes a memory heap object.
+ 164:../../../os/oslib/src/chmemheaps.c ****  * @note    Objects disposing does not involve freeing memory but just
+ 165:../../../os/oslib/src/chmemheaps.c ****  *          performing checks that make sure that the object is in a
+ 166:../../../os/oslib/src/chmemheaps.c ****  *          state compatible with operations stop.
+ 167:../../../os/oslib/src/chmemheaps.c ****  * @note    If the option @p CH_CFG_HARDENING_LEVEL is greater than zero then
+ 168:../../../os/oslib/src/chmemheaps.c ****  *          the object is also cleared, attempts to use the object would likely
+ 169:../../../os/oslib/src/chmemheaps.c ****  *          result in a clean memory access violation because dereferencing
+ 170:../../../os/oslib/src/chmemheaps.c ****  *          of @p NULL pointers rather than dereferencing previously valid
+ 171:../../../os/oslib/src/chmemheaps.c ****  *          pointers.
+ 172:../../../os/oslib/src/chmemheaps.c ****  *
+ 173:../../../os/oslib/src/chmemheaps.c ****  * @param[in] heapp     pointer to a @p memory_heap_t object
+ 174:../../../os/oslib/src/chmemheaps.c ****  *
+ 175:../../../os/oslib/src/chmemheaps.c ****  * @dispose
+ 176:../../../os/oslib/src/chmemheaps.c ****  */
+ 177:../../../os/oslib/src/chmemheaps.c **** void chHeapObjectDispose(memory_heap_t *heapp) {
+ 143               		.loc 1 177 0
+ 144               		.cfi_startproc
+ 145               	.LVL8:
+ 146               	/* prologue: function */
+ 147               	/* frame size = 0 */
+ 148               	/* stack size = 0 */
+ 149               	.L__stack_usage = 0
+ 150 0000 0895      		ret
+ 151               		.cfi_endproc
+ 152               	.LFE195:
+ 154               		.section	.text.chHeapAllocAligned,"ax",@progbits
+ 155               	.global	chHeapAllocAligned
+ 157               	chHeapAllocAligned:
+ 158               	.LFB196:
+ 178:../../../os/oslib/src/chmemheaps.c **** 
+ 179:../../../os/oslib/src/chmemheaps.c ****   chDbgCheck(heapp != NULL);
+ 180:../../../os/oslib/src/chmemheaps.c **** 
+ 181:../../../os/oslib/src/chmemheaps.c **** #if CH_CFG_HARDENING_LEVEL > 0
+ 182:../../../os/oslib/src/chmemheaps.c ****   memset((void *)heapp, 0, sizeof (memory_heap_t));
+ 183:../../../os/oslib/src/chmemheaps.c **** #endif
+ 184:../../../os/oslib/src/chmemheaps.c **** }
+ 185:../../../os/oslib/src/chmemheaps.c **** 
+ 186:../../../os/oslib/src/chmemheaps.c **** /**
+ 187:../../../os/oslib/src/chmemheaps.c ****  * @brief   Allocates a block of memory from the heap by using the first-fit
+ 188:../../../os/oslib/src/chmemheaps.c ****  *          algorithm.
+ 189:../../../os/oslib/src/chmemheaps.c ****  * @details The allocated block is guaranteed to be properly aligned to the
+ 190:../../../os/oslib/src/chmemheaps.c ****  *          specified alignment.
+ 191:../../../os/oslib/src/chmemheaps.c ****  *
+ 192:../../../os/oslib/src/chmemheaps.c ****  * @param[in] heapp     pointer to a heap descriptor or @p NULL in order to
+ 193:../../../os/oslib/src/chmemheaps.c ****  *                      access the default heap.
+ 194:../../../os/oslib/src/chmemheaps.c ****  * @param[in] size      the size of the block to be allocated. Note that the
+ 195:../../../os/oslib/src/chmemheaps.c ****  *                      allocated block may be a bit bigger than the requested
+ 196:../../../os/oslib/src/chmemheaps.c ****  *                      size for alignment and fragmentation reasons.
+ 197:../../../os/oslib/src/chmemheaps.c ****  * @param[in] align     desired memory alignment
+ 198:../../../os/oslib/src/chmemheaps.c ****  * @return              A pointer to the aligned allocated block.
+ 199:../../../os/oslib/src/chmemheaps.c ****  * @retval NULL         if the block cannot be allocated.
+ 200:../../../os/oslib/src/chmemheaps.c ****  *
+ 201:../../../os/oslib/src/chmemheaps.c ****  * @api
+ 202:../../../os/oslib/src/chmemheaps.c ****  */
+ 203:../../../os/oslib/src/chmemheaps.c **** void *chHeapAllocAligned(memory_heap_t *heapp, size_t size, unsigned align) {
+ 159               		.loc 1 203 0
+ 160               		.cfi_startproc
+ 161               	.LVL9:
+ 162               		.loc 1 203 0
+ 163 0000 4F92      		push r4
+ 164               	.LCFI2:
+ 165               		.cfi_def_cfa_offset 3
+ 166               		.cfi_offset 4, -2
+ 167 0002 5F92      		push r5
+ 168               	.LCFI3:
+ 169               		.cfi_def_cfa_offset 4
+ 170               		.cfi_offset 5, -3
+ 171 0004 6F92      		push r6
+ 172               	.LCFI4:
+ 173               		.cfi_def_cfa_offset 5
+ 174               		.cfi_offset 6, -4
+ 175 0006 7F92      		push r7
+ 176               	.LCFI5:
+ 177               		.cfi_def_cfa_offset 6
+ 178               		.cfi_offset 7, -5
+ 179 0008 8F92      		push r8
+ 180               	.LCFI6:
+ 181               		.cfi_def_cfa_offset 7
+ 182               		.cfi_offset 8, -6
+ 183 000a 9F92      		push r9
+ 184               	.LCFI7:
+ 185               		.cfi_def_cfa_offset 8
+ 186               		.cfi_offset 9, -7
+ 187 000c AF92      		push r10
+ 188               	.LCFI8:
+ 189               		.cfi_def_cfa_offset 9
+ 190               		.cfi_offset 10, -8
+ 191 000e BF92      		push r11
+ 192               	.LCFI9:
+ 193               		.cfi_def_cfa_offset 10
+ 194               		.cfi_offset 11, -9
+ 195 0010 CF92      		push r12
+ 196               	.LCFI10:
+ 197               		.cfi_def_cfa_offset 11
+ 198               		.cfi_offset 12, -10
+ 199 0012 DF92      		push r13
+ 200               	.LCFI11:
+ 201               		.cfi_def_cfa_offset 12
+ 202               		.cfi_offset 13, -11
+ 203 0014 EF92      		push r14
+ 204               	.LCFI12:
+ 205               		.cfi_def_cfa_offset 13
+ 206               		.cfi_offset 14, -12
+ 207 0016 FF92      		push r15
+ 208               	.LCFI13:
+ 209               		.cfi_def_cfa_offset 14
+ 210               		.cfi_offset 15, -13
+ 211 0018 0F93      		push r16
+ 212               	.LCFI14:
+ 213               		.cfi_def_cfa_offset 15
+ 214               		.cfi_offset 16, -14
+ 215 001a 1F93      		push r17
+ 216               	.LCFI15:
+ 217               		.cfi_def_cfa_offset 16
+ 218               		.cfi_offset 17, -15
+ 219 001c CF93      		push r28
+ 220               	.LCFI16:
+ 221               		.cfi_def_cfa_offset 17
+ 222               		.cfi_offset 28, -16
+ 223 001e DF93      		push r29
+ 224               	.LCFI17:
+ 225               		.cfi_def_cfa_offset 18
+ 226               		.cfi_offset 29, -17
+ 227               	/* prologue: function */
+ 228               	/* frame size = 0 */
+ 229               	/* stack size = 16 */
+ 230               	.L__stack_usage = 16
+ 231 0020 4C01      		movw r8,r24
+ 232 0022 2B01      		movw r4,r22
+ 233 0024 EA01      		movw r28,r20
+ 204:../../../os/oslib/src/chmemheaps.c ****   heap_header_t *qp, *hp, *ahp;
+ 205:../../../os/oslib/src/chmemheaps.c ****   size_t pages;
+ 206:../../../os/oslib/src/chmemheaps.c **** 
+ 207:../../../os/oslib/src/chmemheaps.c ****   chDbgCheck((size > 0U) && MEM_IS_VALID_ALIGNMENT(align));
+ 208:../../../os/oslib/src/chmemheaps.c **** 
+ 209:../../../os/oslib/src/chmemheaps.c ****   /* If an heap is not specified then the default system header is used.*/
+ 210:../../../os/oslib/src/chmemheaps.c ****   if (heapp == NULL) {
+ 234               		.loc 1 210 0
+ 235 0026 892B      		or r24,r25
+ 236 0028 01F4      		brne .+2
+ 237 002a 00C0      		rjmp .L21
+ 238               	.L5:
+ 239               	.LVL10:
+ 211:../../../os/oslib/src/chmemheaps.c ****     heapp = &default_heap;
+ 212:../../../os/oslib/src/chmemheaps.c ****   }
+ 213:../../../os/oslib/src/chmemheaps.c **** 
+ 214:../../../os/oslib/src/chmemheaps.c ****   /* Minimum alignment is constrained by the heap header structure size.*/
+ 215:../../../os/oslib/src/chmemheaps.c ****   if (align < CH_HEAP_ALIGNMENT) {
+ 240               		.loc 1 215 0
+ 241 002c C430      		cpi r28,4
+ 242 002e D105      		cpc r29,__zero_reg__
+ 243 0030 00F4      		brsh .L6
+ 216:../../../os/oslib/src/chmemheaps.c ****     align = CH_HEAP_ALIGNMENT;
+ 244               		.loc 1 216 0
+ 245 0032 C4E0      		ldi r28,lo8(4)
+ 246 0034 D0E0      		ldi r29,0
+ 247               	.L6:
+ 248               	.LVL11:
+ 217:../../../os/oslib/src/chmemheaps.c ****   }
+ 218:../../../os/oslib/src/chmemheaps.c **** 
+ 219:../../../os/oslib/src/chmemheaps.c ****   /* Size is converted in number of elementary allocation units.*/
+ 220:../../../os/oslib/src/chmemheaps.c ****   pages = MEM_ALIGN_NEXT(size, CH_HEAP_ALIGNMENT) / CH_HEAP_ALIGNMENT;
+ 249               		.loc 1 220 0
+ 250 0036 5201      		movw r10,r4
+ 251 0038 83E0      		ldi r24,3
+ 252 003a A80E      		add r10,r24
+ 253 003c B11C      		adc r11,__zero_reg__
+ 254 003e B694      		lsr r11
+ 255 0040 A794      		ror r10
+ 256 0042 B694      		lsr r11
+ 257 0044 A794      		ror r10
+ 258               	.LVL12:
+ 221:../../../os/oslib/src/chmemheaps.c **** 
+ 222:../../../os/oslib/src/chmemheaps.c ****   /* Taking heap mutex.*/
+ 223:../../../os/oslib/src/chmemheaps.c ****   H_LOCK(heapp);
+ 259               		.loc 1 223 0
+ 260 0046 3401      		movw r6,r8
+ 261 0048 AAE0      		ldi r26,10
+ 262 004a 6A0E      		add r6,r26
+ 263 004c 711C      		adc r7,__zero_reg__
+ 264 004e C301      		movw r24,r6
+ 265 0050 0E94 0000 		call chMtxLock
+ 266               	.LVL13:
+ 224:../../../os/oslib/src/chmemheaps.c **** 
+ 225:../../../os/oslib/src/chmemheaps.c ****   /* Start of the free blocks list.*/
+ 226:../../../os/oslib/src/chmemheaps.c ****   qp = &heapp->header;
+ 267               		.loc 1 226 0
+ 268 0054 A401      		movw r20,r8
+ 269 0056 4A5F      		subi r20,-6
+ 270 0058 5F4F      		sbci r21,-1
+ 271               	.LVL14:
+ 227:../../../os/oslib/src/chmemheaps.c ****   while (H_FREE_NEXT(qp) != NULL) {
+ 228:../../../os/oslib/src/chmemheaps.c **** 
+ 229:../../../os/oslib/src/chmemheaps.c ****     /* Next free block.*/
+ 230:../../../os/oslib/src/chmemheaps.c ****     hp = H_FREE_NEXT(qp);
+ 231:../../../os/oslib/src/chmemheaps.c **** 
+ 232:../../../os/oslib/src/chmemheaps.c ****     /* Pointer aligned to the requested alignment.*/
+ 233:../../../os/oslib/src/chmemheaps.c ****     ahp = (heap_header_t *)MEM_ALIGN_NEXT(H_BLOCK(hp), align) - 1U;
+ 272               		.loc 1 233 0
+ 273 005a EE24      		clr r14
+ 274 005c FF24      		clr r15
+ 275 005e EC1A      		sub r14,r28
+ 276 0060 FD0A      		sbc r15,r29
+ 227:../../../os/oslib/src/chmemheaps.c ****   while (H_FREE_NEXT(qp) != NULL) {
+ 277               		.loc 1 227 0
+ 278 0062 DA01      		movw r26,r20
+ 279 0064 ED91      		ld r30,X+
+ 280 0066 FC91      		ld r31,X
+ 281 0068 3097      		sbiw r30,0
+ 282 006a 01F0      		breq .L22
+ 283               	.L14:
+ 284               	.LVL15:
+ 285               		.loc 1 233 0
+ 286 006c 8F01      		movw r16,r30
+ 287 006e 0C5F      		subi r16,-4
+ 288 0070 1F4F      		sbci r17,-1
+ 289 0072 CF01      		movw r24,r30
+ 290 0074 0396      		adiw r24,3
+ 291 0076 8C0F      		add r24,r28
+ 292 0078 9D1F      		adc r25,r29
+ 293 007a 8E21      		and r24,r14
+ 294 007c 9F21      		and r25,r15
+ 295 007e DC01      		movw r26,r24
+ 296 0080 1497      		sbiw r26,4
+ 297               	.LVL16:
+ 234:../../../os/oslib/src/chmemheaps.c **** 
+ 235:../../../os/oslib/src/chmemheaps.c ****     if ((ahp < H_FREE_LIMIT(hp)) && (pages <= NPAGES(H_FREE_LIMIT(hp), ahp + 1U))) {
+ 298               		.loc 1 235 0
+ 299 0082 6281      		ldd r22,Z+2
+ 300 0084 7381      		ldd r23,Z+3
+ 301 0086 9B01      		movw r18,r22
+ 302 0088 2F5F      		subi r18,-1
+ 303 008a 3F4F      		sbci r19,-1
+ 304 008c 220F      		lsl r18
+ 305 008e 331F      		rol r19
+ 306 0090 220F      		lsl r18
+ 307 0092 331F      		rol r19
+ 308 0094 6F01      		movw r12,r30
+ 309 0096 C20E      		add r12,r18
+ 310 0098 D31E      		adc r13,r19
+ 311 009a AC15      		cp r26,r12
+ 312 009c BD05      		cpc r27,r13
+ 313 009e 00F4      		brsh .L8
+ 314               		.loc 1 235 0 is_stmt 0 discriminator 1
+ 315 00a0 2450      		subi r18,4
+ 316 00a2 3109      		sbc r19,__zero_reg__
+ 317 00a4 6F01      		movw r12,r30
+ 318 00a6 CA1A      		sub r12,r26
+ 319 00a8 DB0A      		sbc r13,r27
+ 320 00aa C20E      		add r12,r18
+ 321 00ac D31E      		adc r13,r19
+ 322 00ae D594      		asr r13
+ 323 00b0 C794      		ror r12
+ 324 00b2 D594      		asr r13
+ 325 00b4 C794      		ror r12
+ 326 00b6 CA14      		cp r12,r10
+ 327 00b8 DB04      		cpc r13,r11
+ 328 00ba 00F4      		brsh .L23
+ 329               	.L8:
+ 330               	.LBB4:
+ 236:../../../os/oslib/src/chmemheaps.c ****       /* The block is large enough to contain a correctly aligned area
+ 237:../../../os/oslib/src/chmemheaps.c ****          of sufficient size.*/
+ 238:../../../os/oslib/src/chmemheaps.c **** 
+ 239:../../../os/oslib/src/chmemheaps.c ****       if (ahp > hp) {
+ 240:../../../os/oslib/src/chmemheaps.c ****         /* The block is not properly aligned, must split it.*/
+ 241:../../../os/oslib/src/chmemheaps.c ****         size_t bpages;
+ 242:../../../os/oslib/src/chmemheaps.c **** 
+ 243:../../../os/oslib/src/chmemheaps.c ****         bpages = NPAGES(H_FREE_LIMIT(hp), H_BLOCK(ahp));
+ 244:../../../os/oslib/src/chmemheaps.c ****         H_FREE_PAGES(hp) = NPAGES(ahp, H_BLOCK(hp));
+ 245:../../../os/oslib/src/chmemheaps.c ****         if (bpages > pages) {
+ 246:../../../os/oslib/src/chmemheaps.c ****           /* The block is bigger than required, must split the excess.*/
+ 247:../../../os/oslib/src/chmemheaps.c ****           heap_header_t *fp;
+ 248:../../../os/oslib/src/chmemheaps.c **** 
+ 249:../../../os/oslib/src/chmemheaps.c ****           /* Creating the excess block.*/
+ 250:../../../os/oslib/src/chmemheaps.c ****           fp = H_BLOCK(ahp) + pages;
+ 251:../../../os/oslib/src/chmemheaps.c ****           H_FREE_PAGES(fp) = (bpages - pages) - 1U;
+ 252:../../../os/oslib/src/chmemheaps.c **** 
+ 253:../../../os/oslib/src/chmemheaps.c ****           /* Linking the excess block.*/
+ 254:../../../os/oslib/src/chmemheaps.c ****           H_FREE_NEXT(fp) = H_FREE_NEXT(hp);
+ 255:../../../os/oslib/src/chmemheaps.c ****           H_FREE_NEXT(hp) = fp;
+ 256:../../../os/oslib/src/chmemheaps.c ****         }
+ 257:../../../os/oslib/src/chmemheaps.c **** 
+ 258:../../../os/oslib/src/chmemheaps.c ****         hp = ahp;
+ 259:../../../os/oslib/src/chmemheaps.c ****       }
+ 260:../../../os/oslib/src/chmemheaps.c ****       else {
+ 261:../../../os/oslib/src/chmemheaps.c ****         /* The block is already properly aligned.*/
+ 262:../../../os/oslib/src/chmemheaps.c **** 
+ 263:../../../os/oslib/src/chmemheaps.c ****         if (H_FREE_PAGES(hp) == pages) {
+ 264:../../../os/oslib/src/chmemheaps.c ****           /* Exact size, getting the whole block.*/
+ 265:../../../os/oslib/src/chmemheaps.c ****           H_FREE_NEXT(qp) = H_FREE_NEXT(hp);
+ 266:../../../os/oslib/src/chmemheaps.c ****         }
+ 267:../../../os/oslib/src/chmemheaps.c ****         else {
+ 268:../../../os/oslib/src/chmemheaps.c ****           /* The block is bigger than required, must split the excess.*/
+ 269:../../../os/oslib/src/chmemheaps.c ****           heap_header_t *fp;
+ 270:../../../os/oslib/src/chmemheaps.c **** 
+ 271:../../../os/oslib/src/chmemheaps.c ****           fp = H_BLOCK(hp) + pages;
+ 272:../../../os/oslib/src/chmemheaps.c ****           H_FREE_NEXT(fp) = H_FREE_NEXT(hp);
+ 273:../../../os/oslib/src/chmemheaps.c ****           H_FREE_PAGES(fp) = NPAGES(H_FREE_LIMIT(hp), H_BLOCK(fp));
+ 274:../../../os/oslib/src/chmemheaps.c ****           H_FREE_NEXT(qp) = fp;
+ 331               		.loc 1 274 0 is_stmt 1
+ 332 00bc AF01      		movw r20,r30
+ 333               	.LVL17:
+ 334               	.LBE4:
+ 227:../../../os/oslib/src/chmemheaps.c **** 
+ 335               		.loc 1 227 0
+ 336 00be DA01      		movw r26,r20
+ 337               	.LVL18:
+ 338 00c0 ED91      		ld r30,X+
+ 339 00c2 FC91      		ld r31,X
+ 340               	.LVL19:
+ 341 00c4 3097      		sbiw r30,0
+ 342 00c6 01F4      		brne .L14
+ 343               	.LVL20:
+ 344               	.L22:
+ 275:../../../os/oslib/src/chmemheaps.c ****         }
+ 276:../../../os/oslib/src/chmemheaps.c ****       }
+ 277:../../../os/oslib/src/chmemheaps.c **** 
+ 278:../../../os/oslib/src/chmemheaps.c ****       /* Setting in the block owner heap and size.*/
+ 279:../../../os/oslib/src/chmemheaps.c ****       H_USED_SIZE(hp) = size;
+ 280:../../../os/oslib/src/chmemheaps.c ****       H_USED_HEAP(hp) = heapp;
+ 281:../../../os/oslib/src/chmemheaps.c **** 
+ 282:../../../os/oslib/src/chmemheaps.c ****       /* Releasing heap mutex.*/
+ 283:../../../os/oslib/src/chmemheaps.c ****       H_UNLOCK(heapp);
+ 284:../../../os/oslib/src/chmemheaps.c **** 
+ 285:../../../os/oslib/src/chmemheaps.c ****       /*lint -save -e9087 [11.3] Safe cast.*/
+ 286:../../../os/oslib/src/chmemheaps.c ****       return (void *)H_BLOCK(hp);
+ 287:../../../os/oslib/src/chmemheaps.c ****       /*lint -restore*/
+ 288:../../../os/oslib/src/chmemheaps.c ****     }
+ 289:../../../os/oslib/src/chmemheaps.c **** 
+ 290:../../../os/oslib/src/chmemheaps.c ****     /* Next in the free blocks list.*/
+ 291:../../../os/oslib/src/chmemheaps.c ****     qp = hp;
+ 292:../../../os/oslib/src/chmemheaps.c ****   }
+ 293:../../../os/oslib/src/chmemheaps.c **** 
+ 294:../../../os/oslib/src/chmemheaps.c ****   /* Releasing heap mutex.*/
+ 295:../../../os/oslib/src/chmemheaps.c ****   H_UNLOCK(heapp);
+ 345               		.loc 1 295 0
+ 346 00c8 C301      		movw r24,r6
+ 347 00ca 0E94 0000 		call chMtxUnlock
+ 348               	.LVL21:
+ 296:../../../os/oslib/src/chmemheaps.c **** 
+ 297:../../../os/oslib/src/chmemheaps.c ****   /* More memory is required, tries to get it from the associated provider
+ 298:../../../os/oslib/src/chmemheaps.c ****      else fails.*/
+ 299:../../../os/oslib/src/chmemheaps.c ****   if (heapp->provider != NULL) {
+ 349               		.loc 1 299 0
+ 350 00ce D401      		movw r26,r8
+ 351 00d0 ED91      		ld r30,X+
+ 352 00d2 FC91      		ld r31,X
+ 353 00d4 3097      		sbiw r30,0
+ 354 00d6 01F4      		brne .+2
+ 355 00d8 00C0      		rjmp .L18
+ 300:../../../os/oslib/src/chmemheaps.c ****     ahp = heapp->provider(pages * CH_HEAP_ALIGNMENT,
+ 356               		.loc 1 300 0
+ 357 00da 44E0      		ldi r20,lo8(4)
+ 358 00dc 50E0      		ldi r21,0
+ 359 00de BE01      		movw r22,r28
+ 360 00e0 C501      		movw r24,r10
+ 361 00e2 880F      		lsl r24
+ 362 00e4 991F      		rol r25
+ 363 00e6 880F      		lsl r24
+ 364 00e8 991F      		rol r25
+ 365 00ea 0995      		icall
+ 366               	.LVL22:
+ 301:../../../os/oslib/src/chmemheaps.c ****                           align,
+ 302:../../../os/oslib/src/chmemheaps.c ****                           sizeof (heap_header_t));
+ 303:../../../os/oslib/src/chmemheaps.c ****     if (ahp != NULL) {
+ 367               		.loc 1 303 0
+ 368 00ec 0097      		sbiw r24,0
+ 369 00ee 01F4      		brne .+2
+ 370 00f0 00C0      		rjmp .L18
+ 371               	.LVL23:
+ 304:../../../os/oslib/src/chmemheaps.c ****       hp = ahp - 1U;
+ 305:../../../os/oslib/src/chmemheaps.c ****       H_USED_HEAP(hp) = heapp;
+ 372               		.loc 1 305 0
+ 373 00f2 FC01      		movw r30,r24
+ 374 00f4 3497      		sbiw r30,4
+ 375               	.LVL24:
+ 376 00f6 9182      		std Z+1,r9
+ 377 00f8 8082      		st Z,r8
+ 306:../../../os/oslib/src/chmemheaps.c ****       H_USED_SIZE(hp) = size;
+ 378               		.loc 1 306 0
+ 379 00fa 5382      		std Z+3,r5
+ 380 00fc 4282      		std Z+2,r4
+ 381               	.LVL25:
+ 382               	.L13:
+ 383               	/* epilogue start */
+ 307:../../../os/oslib/src/chmemheaps.c **** 
+ 308:../../../os/oslib/src/chmemheaps.c ****       /*lint -save -e9087 [11.3] Safe cast.*/
+ 309:../../../os/oslib/src/chmemheaps.c ****       return (void *)ahp;
+ 310:../../../os/oslib/src/chmemheaps.c ****       /*lint -restore*/
+ 311:../../../os/oslib/src/chmemheaps.c ****     }
+ 312:../../../os/oslib/src/chmemheaps.c ****   }
+ 313:../../../os/oslib/src/chmemheaps.c **** 
+ 314:../../../os/oslib/src/chmemheaps.c ****   return NULL;
+ 315:../../../os/oslib/src/chmemheaps.c **** }
+ 384               		.loc 1 315 0
+ 385 00fe DF91      		pop r29
+ 386 0100 CF91      		pop r28
+ 387 0102 1F91      		pop r17
+ 388 0104 0F91      		pop r16
+ 389 0106 FF90      		pop r15
+ 390 0108 EF90      		pop r14
+ 391               	.LVL26:
+ 392 010a DF90      		pop r13
+ 393 010c CF90      		pop r12
+ 394 010e BF90      		pop r11
+ 395 0110 AF90      		pop r10
+ 396 0112 9F90      		pop r9
+ 397 0114 8F90      		pop r8
+ 398               	.LVL27:
+ 399 0116 7F90      		pop r7
+ 400 0118 6F90      		pop r6
+ 401               	.LVL28:
+ 402 011a 5F90      		pop r5
+ 403 011c 4F90      		pop r4
+ 404               	.LVL29:
+ 405 011e 0895      		ret
+ 406               	.LVL30:
+ 407               	.L23:
+ 239:../../../os/oslib/src/chmemheaps.c ****         /* The block is not properly aligned, must split it.*/
+ 408               		.loc 1 239 0
+ 409 0120 EA17      		cp r30,r26
+ 410 0122 FB07      		cpc r31,r27
+ 411 0124 00F0      		brlo .L24
+ 263:../../../os/oslib/src/chmemheaps.c ****           /* Exact size, getting the whole block.*/
+ 412               		.loc 1 263 0
+ 413 0126 A616      		cp r10,r22
+ 414 0128 B706      		cpc r11,r23
+ 415 012a 01F4      		brne .+2
+ 416 012c 00C0      		rjmp .L25
+ 417               	.LBB5:
+ 271:../../../os/oslib/src/chmemheaps.c ****           H_FREE_NEXT(fp) = H_FREE_NEXT(hp);
+ 418               		.loc 1 271 0
+ 419 012e D501      		movw r26,r10
+ 420               	.LVL31:
+ 421 0130 1196      		adiw r26,1
+ 422 0132 AA0F      		lsl r26
+ 423 0134 BB1F      		rol r27
+ 424 0136 AA0F      		lsl r26
+ 425 0138 BB1F      		rol r27
+ 426 013a AE0F      		add r26,r30
+ 427 013c BF1F      		adc r27,r31
+ 428               	.LVL32:
+ 272:../../../os/oslib/src/chmemheaps.c ****           H_FREE_PAGES(fp) = NPAGES(H_FREE_LIMIT(hp), H_BLOCK(fp));
+ 429               		.loc 1 272 0
+ 430 013e 8081      		ld r24,Z
+ 431 0140 9181      		ldd r25,Z+1
+ 432               	.LVL33:
+ 433 0142 1196      		adiw r26,1
+ 434 0144 9C93      		st X,r25
+ 435 0146 8E93      		st -X,r24
+ 273:../../../os/oslib/src/chmemheaps.c ****           H_FREE_NEXT(qp) = fp;
+ 436               		.loc 1 273 0
+ 437 0148 CF01      		movw r24,r30
+ 438 014a 8A1B      		sub r24,r26
+ 439 014c 9B0B      		sbc r25,r27
+ 440 014e 280F      		add r18,r24
+ 441 0150 391F      		adc r19,r25
+ 442 0152 3595      		asr r19
+ 443 0154 2795      		ror r18
+ 444 0156 3595      		asr r19
+ 445 0158 2795      		ror r18
+ 446 015a 1396      		adiw r26,2+1
+ 447 015c 3C93      		st X,r19
+ 448 015e 2E93      		st -X,r18
+ 449 0160 1297      		sbiw r26,2
+ 274:../../../os/oslib/src/chmemheaps.c ****         }
+ 450               		.loc 1 274 0
+ 451 0162 EA01      		movw r28,r20
+ 452               	.LVL34:
+ 453 0164 B983      		std Y+1,r27
+ 454 0166 A883      		st Y,r26
+ 455 0168 DF01      		movw r26,r30
+ 456               	.LVL35:
+ 457               	.L11:
+ 458               	.LBE5:
+ 279:../../../os/oslib/src/chmemheaps.c ****       H_USED_HEAP(hp) = heapp;
+ 459               		.loc 1 279 0
+ 460 016a 1396      		adiw r26,2+1
+ 461 016c 5C92      		st X,r5
+ 462 016e 4E92      		st -X,r4
+ 463 0170 1297      		sbiw r26,2
+ 280:../../../os/oslib/src/chmemheaps.c **** 
+ 464               		.loc 1 280 0
+ 465 0172 8D92      		st X+,r8
+ 466 0174 9C92      		st X,r9
+ 283:../../../os/oslib/src/chmemheaps.c **** 
+ 467               		.loc 1 283 0
+ 468 0176 C301      		movw r24,r6
+ 469 0178 0E94 0000 		call chMtxUnlock
+ 470               	.LVL36:
+ 286:../../../os/oslib/src/chmemheaps.c ****       /*lint -restore*/
+ 471               		.loc 1 286 0
+ 472 017c C801      		movw r24,r16
+ 473 017e 00C0      		rjmp .L13
+ 474               	.LVL37:
+ 475               	.L24:
+ 476               	.LBB6:
+ 244:../../../os/oslib/src/chmemheaps.c ****         if (bpages > pages) {
+ 477               		.loc 1 244 0
+ 478 0180 9D01      		movw r18,r26
+ 479 0182 201B      		sub r18,r16
+ 480 0184 310B      		sbc r19,r17
+ 481 0186 3595      		asr r19
+ 482 0188 2795      		ror r18
+ 483 018a 3595      		asr r19
+ 484 018c 2795      		ror r18
+ 485 018e 3383      		std Z+3,r19
+ 486 0190 2283      		std Z+2,r18
+ 245:../../../os/oslib/src/chmemheaps.c ****           /* The block is bigger than required, must split the excess.*/
+ 487               		.loc 1 245 0
+ 488 0192 AC14      		cp r10,r12
+ 489 0194 BD04      		cpc r11,r13
+ 490 0196 00F4      		brsh .L19
+ 491               	.LBB7:
+ 250:../../../os/oslib/src/chmemheaps.c ****           H_FREE_PAGES(fp) = (bpages - pages) - 1U;
+ 492               		.loc 1 250 0
+ 493 0198 E501      		movw r28,r10
+ 494               	.LVL38:
+ 495 019a 2196      		adiw r28,1
+ 496 019c CC0F      		lsl r28
+ 497 019e DD1F      		rol r29
+ 498 01a0 CC0F      		lsl r28
+ 499 01a2 DD1F      		rol r29
+ 500 01a4 CA0F      		add r28,r26
+ 501 01a6 DB1F      		adc r29,r27
+ 502               	.LVL39:
+ 251:../../../os/oslib/src/chmemheaps.c **** 
+ 503               		.loc 1 251 0
+ 504 01a8 A094      		com r10
+ 505 01aa B094      		com r11
+ 506               	.LVL40:
+ 507 01ac CA0C      		add r12,r10
+ 508 01ae DB1C      		adc r13,r11
+ 509               	.LVL41:
+ 510 01b0 DB82      		std Y+3,r13
+ 511 01b2 CA82      		std Y+2,r12
+ 254:../../../os/oslib/src/chmemheaps.c ****           H_FREE_NEXT(hp) = fp;
+ 512               		.loc 1 254 0
+ 513 01b4 2081      		ld r18,Z
+ 514 01b6 3181      		ldd r19,Z+1
+ 515 01b8 3983      		std Y+1,r19
+ 516 01ba 2883      		st Y,r18
+ 255:../../../os/oslib/src/chmemheaps.c ****         }
+ 517               		.loc 1 255 0
+ 518 01bc D183      		std Z+1,r29
+ 519 01be C083      		st Z,r28
+ 520               	.LVL42:
+ 521               	.L19:
+ 522 01c0 8C01      		movw r16,r24
+ 523 01c2 00C0      		rjmp .L11
+ 524               	.LVL43:
+ 525               	.L21:
+ 526               	.LBE7:
+ 527               	.LBE6:
+ 211:../../../os/oslib/src/chmemheaps.c ****   }
+ 528               		.loc 1 211 0
+ 529 01c4 90E0      		ldi r25,lo8(default_heap)
+ 530 01c6 892E      		mov r8,r25
+ 531 01c8 90E0      		ldi r25,hi8(default_heap)
+ 532 01ca 992E      		mov r9,r25
+ 533               	.LVL44:
+ 534 01cc 00C0      		rjmp .L5
+ 535               	.LVL45:
+ 536               	.L25:
+ 265:../../../os/oslib/src/chmemheaps.c ****         }
+ 537               		.loc 1 265 0
+ 538 01ce 8081      		ld r24,Z
+ 539 01d0 9181      		ldd r25,Z+1
+ 540 01d2 EA01      		movw r28,r20
+ 541               	.LVL46:
+ 542 01d4 9983      		std Y+1,r25
+ 543 01d6 8883      		st Y,r24
+ 544 01d8 DF01      		movw r26,r30
+ 545               	.LVL47:
+ 546 01da 00C0      		rjmp .L11
+ 547               	.LVL48:
+ 548               	.L18:
+ 314:../../../os/oslib/src/chmemheaps.c **** }
+ 549               		.loc 1 314 0
+ 550 01dc 80E0      		ldi r24,0
+ 551 01de 90E0      		ldi r25,0
+ 552 01e0 00C0      		rjmp .L13
+ 553               		.cfi_endproc
+ 554               	.LFE196:
+ 556               		.section	.text.chHeapFree,"ax",@progbits
+ 557               	.global	chHeapFree
+ 559               	chHeapFree:
+ 560               	.LFB197:
+ 316:../../../os/oslib/src/chmemheaps.c **** 
+ 317:../../../os/oslib/src/chmemheaps.c **** /**
+ 318:../../../os/oslib/src/chmemheaps.c ****  * @brief   Frees a previously allocated memory block.
+ 319:../../../os/oslib/src/chmemheaps.c ****  *
+ 320:../../../os/oslib/src/chmemheaps.c ****  * @param[in] p         pointer to the memory block to be freed
+ 321:../../../os/oslib/src/chmemheaps.c ****  *
+ 322:../../../os/oslib/src/chmemheaps.c ****  * @api
+ 323:../../../os/oslib/src/chmemheaps.c ****  */
+ 324:../../../os/oslib/src/chmemheaps.c **** void chHeapFree(void *p) {
+ 561               		.loc 1 324 0
+ 562               		.cfi_startproc
+ 563               	.LVL49:
+ 564 0000 EF92      		push r14
+ 565               	.LCFI18:
+ 566               		.cfi_def_cfa_offset 3
+ 567               		.cfi_offset 14, -2
+ 568 0002 FF92      		push r15
+ 569               	.LCFI19:
+ 570               		.cfi_def_cfa_offset 4
+ 571               		.cfi_offset 15, -3
+ 572 0004 0F93      		push r16
+ 573               	.LCFI20:
+ 574               		.cfi_def_cfa_offset 5
+ 575               		.cfi_offset 16, -4
+ 576 0006 1F93      		push r17
+ 577               	.LCFI21:
+ 578               		.cfi_def_cfa_offset 6
+ 579               		.cfi_offset 17, -5
+ 580 0008 CF93      		push r28
+ 581               	.LCFI22:
+ 582               		.cfi_def_cfa_offset 7
+ 583               		.cfi_offset 28, -6
+ 584 000a DF93      		push r29
+ 585               	.LCFI23:
+ 586               		.cfi_def_cfa_offset 8
+ 587               		.cfi_offset 29, -7
+ 588               	/* prologue: function */
+ 589               	/* frame size = 0 */
+ 590               	/* stack size = 6 */
+ 591               	.L__stack_usage = 6
+ 325:../../../os/oslib/src/chmemheaps.c ****   heap_header_t *qp, *hp;
+ 326:../../../os/oslib/src/chmemheaps.c ****   memory_heap_t *heapp;
+ 327:../../../os/oslib/src/chmemheaps.c **** 
+ 328:../../../os/oslib/src/chmemheaps.c ****   chDbgCheck((p != NULL) && MEM_IS_ALIGNED(p, CH_HEAP_ALIGNMENT));
+ 329:../../../os/oslib/src/chmemheaps.c **** 
+ 330:../../../os/oslib/src/chmemheaps.c ****   /*lint -save -e9087 [11.3] Safe cast.*/
+ 331:../../../os/oslib/src/chmemheaps.c ****   hp = (heap_header_t *)p - 1U;
+ 592               		.loc 1 331 0
+ 593 000c EC01      		movw r28,r24
+ 594 000e 2497      		sbiw r28,4
+ 595               	.LVL50:
+ 332:../../../os/oslib/src/chmemheaps.c ****   /*lint -restore*/
+ 333:../../../os/oslib/src/chmemheaps.c ****   heapp = H_USED_HEAP(hp);
+ 596               		.loc 1 333 0
+ 597 0010 E880      		ld r14,Y
+ 598 0012 F980      		ldd r15,Y+1
+ 599               	.LVL51:
+ 334:../../../os/oslib/src/chmemheaps.c ****   qp = &heapp->header;
+ 600               		.loc 1 334 0
+ 601 0014 8701      		movw r16,r14
+ 602 0016 0A5F      		subi r16,-6
+ 603 0018 1F4F      		sbci r17,-1
+ 604               	.LVL52:
+ 335:../../../os/oslib/src/chmemheaps.c **** 
+ 336:../../../os/oslib/src/chmemheaps.c **** #if CH_CFG_HARDENING_LEVEL > 0
+ 337:../../../os/oslib/src/chmemheaps.c ****   memset((void *)p, 0, MEM_ALIGN_NEXT(H_USED_SIZE(hp), CH_HEAP_ALIGNMENT));
+ 338:../../../os/oslib/src/chmemheaps.c **** #endif
+ 339:../../../os/oslib/src/chmemheaps.c **** 
+ 340:../../../os/oslib/src/chmemheaps.c ****   /* Size is converted in number of elementary allocation units.*/
+ 341:../../../os/oslib/src/chmemheaps.c ****   H_FREE_PAGES(hp) = MEM_ALIGN_NEXT(H_USED_SIZE(hp),
+ 605               		.loc 1 341 0
+ 606 001a 8A81      		ldd r24,Y+2
+ 607 001c 9B81      		ldd r25,Y+3
+ 608               	.LVL53:
+ 609 001e 0396      		adiw r24,3
+ 610 0020 9695      		lsr r25
+ 611 0022 8795      		ror r24
+ 612 0024 9695      		lsr r25
+ 613 0026 8795      		ror r24
+ 614 0028 9B83      		std Y+3,r25
+ 615 002a 8A83      		std Y+2,r24
+ 342:../../../os/oslib/src/chmemheaps.c ****                                     CH_HEAP_ALIGNMENT) / CH_HEAP_ALIGNMENT;
+ 343:../../../os/oslib/src/chmemheaps.c **** 
+ 344:../../../os/oslib/src/chmemheaps.c ****   /* Taking heap mutex.*/
+ 345:../../../os/oslib/src/chmemheaps.c ****   H_LOCK(heapp);
+ 616               		.loc 1 345 0
+ 617 002c 8AE0      		ldi r24,10
+ 618 002e E80E      		add r14,r24
+ 619 0030 F11C      		adc r15,__zero_reg__
+ 620               	.LVL54:
+ 621 0032 C701      		movw r24,r14
+ 622 0034 0E94 0000 		call chMtxLock
+ 623               	.LVL55:
+ 334:../../../os/oslib/src/chmemheaps.c **** 
+ 624               		.loc 1 334 0
+ 625 0038 F801      		movw r30,r16
+ 626               	.LVL56:
+ 627               	.L33:
+ 346:../../../os/oslib/src/chmemheaps.c **** 
+ 347:../../../os/oslib/src/chmemheaps.c ****   while (true) {
+ 348:../../../os/oslib/src/chmemheaps.c ****     chDbgAssert((hp < qp) || (hp >= H_FREE_LIMIT(qp)), "within free block");
+ 349:../../../os/oslib/src/chmemheaps.c **** 
+ 350:../../../os/oslib/src/chmemheaps.c ****     if (((qp == &heapp->header) || (hp > qp)) &&
+ 628               		.loc 1 350 0
+ 629 003a E017      		cp r30,r16
+ 630 003c F107      		cpc r31,r17
+ 631 003e 01F0      		breq .L27
+ 632               	.L38:
+ 633               		.loc 1 350 0 is_stmt 0 discriminator 2
+ 634 0040 EC17      		cp r30,r28
+ 635 0042 FD07      		cpc r31,r29
+ 636 0044 00F0      		brlo .L27
+ 637 0046 0190      		ld __tmp_reg__,Z+
+ 638 0048 F081      		ld r31,Z
+ 639 004a E02D      		mov r30,__tmp_reg__
+ 640               	.LVL57:
+ 641               		.loc 1 350 0
+ 642 004c E017      		cp r30,r16
+ 643 004e F107      		cpc r31,r17
+ 644 0050 01F4      		brne .L38
+ 645               	.L27:
+ 351:../../../os/oslib/src/chmemheaps.c ****         ((H_FREE_NEXT(qp) == NULL) || (hp < H_FREE_NEXT(qp)))) {
+ 646               		.loc 1 351 0 is_stmt 1 discriminator 3
+ 647 0052 8081      		ld r24,Z
+ 648 0054 9181      		ldd r25,Z+1
+ 350:../../../os/oslib/src/chmemheaps.c ****         ((H_FREE_NEXT(qp) == NULL) || (hp < H_FREE_NEXT(qp)))) {
+ 649               		.loc 1 350 0 discriminator 3
+ 650 0056 0097      		sbiw r24,0
+ 651 0058 01F0      		breq .L29
+ 652               		.loc 1 351 0
+ 653 005a C817      		cp r28,r24
+ 654 005c D907      		cpc r29,r25
+ 655 005e 00F0      		brlo .L29
+ 656 0060 FC01      		movw r30,r24
+ 657               	.LVL58:
+ 352:../../../os/oslib/src/chmemheaps.c ****       /* Insertion after qp.*/
+ 353:../../../os/oslib/src/chmemheaps.c ****       H_FREE_NEXT(hp) = H_FREE_NEXT(qp);
+ 354:../../../os/oslib/src/chmemheaps.c ****       H_FREE_NEXT(qp) = hp;
+ 355:../../../os/oslib/src/chmemheaps.c ****       /* Verifies if the newly inserted block should be merged.*/
+ 356:../../../os/oslib/src/chmemheaps.c ****       if (H_FREE_LIMIT(hp) == H_FREE_NEXT(hp)) {
+ 357:../../../os/oslib/src/chmemheaps.c ****         /* Merge with the next block.*/
+ 358:../../../os/oslib/src/chmemheaps.c ****         H_FREE_PAGES(hp) += H_FREE_PAGES(H_FREE_NEXT(hp)) + 1U;
+ 359:../../../os/oslib/src/chmemheaps.c ****         H_FREE_NEXT(hp) = H_FREE_NEXT(H_FREE_NEXT(hp));
+ 360:../../../os/oslib/src/chmemheaps.c ****       }
+ 361:../../../os/oslib/src/chmemheaps.c ****       if ((H_FREE_LIMIT(qp) == hp)) {
+ 362:../../../os/oslib/src/chmemheaps.c ****         /* Merge with the previous block.*/
+ 363:../../../os/oslib/src/chmemheaps.c ****         H_FREE_PAGES(qp) += H_FREE_PAGES(hp) + 1U;
+ 364:../../../os/oslib/src/chmemheaps.c ****         H_FREE_NEXT(qp) = H_FREE_NEXT(hp);
+ 365:../../../os/oslib/src/chmemheaps.c ****       }
+ 366:../../../os/oslib/src/chmemheaps.c ****       break;
+ 367:../../../os/oslib/src/chmemheaps.c ****     }
+ 368:../../../os/oslib/src/chmemheaps.c ****     qp = H_FREE_NEXT(qp);
+ 369:../../../os/oslib/src/chmemheaps.c ****   }
+ 658               		.loc 1 369 0
+ 659 0062 00C0      		rjmp .L33
+ 660               	.LVL59:
+ 661               	.L29:
+ 353:../../../os/oslib/src/chmemheaps.c ****       H_FREE_NEXT(qp) = hp;
+ 662               		.loc 1 353 0
+ 663 0064 9983      		std Y+1,r25
+ 664 0066 8883      		st Y,r24
+ 354:../../../os/oslib/src/chmemheaps.c ****       /* Verifies if the newly inserted block should be merged.*/
+ 665               		.loc 1 354 0
+ 666 0068 D183      		std Z+1,r29
+ 667 006a C083      		st Z,r28
+ 356:../../../os/oslib/src/chmemheaps.c ****         /* Merge with the next block.*/
+ 668               		.loc 1 356 0
+ 669 006c 8A81      		ldd r24,Y+2
+ 670 006e 9B81      		ldd r25,Y+3
+ 671 0070 DC01      		movw r26,r24
+ 672 0072 1196      		adiw r26,1
+ 673 0074 AA0F      		lsl r26
+ 674 0076 BB1F      		rol r27
+ 675 0078 AA0F      		lsl r26
+ 676 007a BB1F      		rol r27
+ 677 007c AC0F      		add r26,r28
+ 678 007e BD1F      		adc r27,r29
+ 679 0080 2881      		ld r18,Y
+ 680 0082 3981      		ldd r19,Y+1
+ 681 0084 A217      		cp r26,r18
+ 682 0086 B307      		cpc r27,r19
+ 683 0088 01F0      		breq .L39
+ 684               	.L31:
+ 361:../../../os/oslib/src/chmemheaps.c ****         /* Merge with the previous block.*/
+ 685               		.loc 1 361 0
+ 686 008a 2281      		ldd r18,Z+2
+ 687 008c 3381      		ldd r19,Z+3
+ 688 008e C901      		movw r24,r18
+ 689 0090 0196      		adiw r24,1
+ 690 0092 880F      		lsl r24
+ 691 0094 991F      		rol r25
+ 692 0096 880F      		lsl r24
+ 693 0098 991F      		rol r25
+ 694 009a 8E0F      		add r24,r30
+ 695 009c 9F1F      		adc r25,r31
+ 696 009e C817      		cp r28,r24
+ 697 00a0 D907      		cpc r29,r25
+ 698 00a2 01F0      		breq .L40
+ 699               	.L32:
+ 370:../../../os/oslib/src/chmemheaps.c **** 
+ 371:../../../os/oslib/src/chmemheaps.c ****   /* Releasing heap mutex.*/
+ 372:../../../os/oslib/src/chmemheaps.c ****   H_UNLOCK(heapp);
+ 700               		.loc 1 372 0
+ 701 00a4 C701      		movw r24,r14
+ 702               	/* epilogue start */
+ 373:../../../os/oslib/src/chmemheaps.c **** 
+ 374:../../../os/oslib/src/chmemheaps.c ****   return;
+ 375:../../../os/oslib/src/chmemheaps.c **** }
+ 703               		.loc 1 375 0
+ 704 00a6 DF91      		pop r29
+ 705 00a8 CF91      		pop r28
+ 706               	.LVL60:
+ 707 00aa 1F91      		pop r17
+ 708 00ac 0F91      		pop r16
+ 709 00ae FF90      		pop r15
+ 710 00b0 EF90      		pop r14
+ 711               	.LVL61:
+ 372:../../../os/oslib/src/chmemheaps.c **** 
+ 712               		.loc 1 372 0
+ 713 00b2 0C94 0000 		jmp chMtxUnlock
+ 714               	.LVL62:
+ 715               	.L39:
+ 358:../../../os/oslib/src/chmemheaps.c ****         H_FREE_NEXT(hp) = H_FREE_NEXT(H_FREE_NEXT(hp));
+ 716               		.loc 1 358 0
+ 717 00b6 1296      		adiw r26,2
+ 718 00b8 2D91      		ld r18,X+
+ 719 00ba 3C91      		ld r19,X
+ 720 00bc 1397      		sbiw r26,2+1
+ 721 00be 820F      		add r24,r18
+ 722 00c0 931F      		adc r25,r19
+ 723 00c2 0196      		adiw r24,1
+ 724 00c4 9B83      		std Y+3,r25
+ 725 00c6 8A83      		std Y+2,r24
+ 359:../../../os/oslib/src/chmemheaps.c ****       }
+ 726               		.loc 1 359 0
+ 727 00c8 8D91      		ld r24,X+
+ 728 00ca 9C91      		ld r25,X
+ 729 00cc 9983      		std Y+1,r25
+ 730 00ce 8883      		st Y,r24
+ 731 00d0 00C0      		rjmp .L31
+ 732               	.L40:
+ 363:../../../os/oslib/src/chmemheaps.c ****         H_FREE_NEXT(qp) = H_FREE_NEXT(hp);
+ 733               		.loc 1 363 0
+ 734 00d2 8A81      		ldd r24,Y+2
+ 735 00d4 9B81      		ldd r25,Y+3
+ 736 00d6 280F      		add r18,r24
+ 737 00d8 391F      		adc r19,r25
+ 738 00da 2F5F      		subi r18,-1
+ 739 00dc 3F4F      		sbci r19,-1
+ 740 00de 3383      		std Z+3,r19
+ 741 00e0 2283      		std Z+2,r18
+ 364:../../../os/oslib/src/chmemheaps.c ****       }
+ 742               		.loc 1 364 0
+ 743 00e2 8881      		ld r24,Y
+ 744 00e4 9981      		ldd r25,Y+1
+ 745 00e6 9183      		std Z+1,r25
+ 746 00e8 8083      		st Z,r24
+ 747 00ea 00C0      		rjmp .L32
+ 748               		.cfi_endproc
+ 749               	.LFE197:
+ 751               		.section	.text.chHeapStatus,"ax",@progbits
+ 752               	.global	chHeapStatus
+ 754               	chHeapStatus:
+ 755               	.LFB198:
+ 376:../../../os/oslib/src/chmemheaps.c **** 
+ 377:../../../os/oslib/src/chmemheaps.c **** /**
+ 378:../../../os/oslib/src/chmemheaps.c ****  * @brief   Reports the heap status.
+ 379:../../../os/oslib/src/chmemheaps.c ****  * @note    This function is meant to be used in the test suite, it should
+ 380:../../../os/oslib/src/chmemheaps.c ****  *          not be really useful for the application code.
+ 381:../../../os/oslib/src/chmemheaps.c ****  *
+ 382:../../../os/oslib/src/chmemheaps.c ****  * @param[in] heapp     pointer to a heap descriptor or @p NULL in order to
+ 383:../../../os/oslib/src/chmemheaps.c ****  *                      access the default heap.
+ 384:../../../os/oslib/src/chmemheaps.c ****  * @param[in] totalp    pointer to a variable that will receive the total
+ 385:../../../os/oslib/src/chmemheaps.c ****  *                      fragmented free space or @p NULL
+ 386:../../../os/oslib/src/chmemheaps.c ****  * @param[in] largestp  pointer to a variable that will receive the largest
+ 387:../../../os/oslib/src/chmemheaps.c ****  *                      free free block found space or @p NULL
+ 388:../../../os/oslib/src/chmemheaps.c ****  * @return              The number of fragments in the heap.
+ 389:../../../os/oslib/src/chmemheaps.c ****  *
+ 390:../../../os/oslib/src/chmemheaps.c ****  * @api
+ 391:../../../os/oslib/src/chmemheaps.c ****  */
+ 392:../../../os/oslib/src/chmemheaps.c **** size_t chHeapStatus(memory_heap_t *heapp, size_t *totalp, size_t *largestp) {
+ 756               		.loc 1 392 0
+ 757               		.cfi_startproc
+ 758               	.LVL63:
+ 759 0000 CF92      		push r12
+ 760               	.LCFI24:
+ 761               		.cfi_def_cfa_offset 3
+ 762               		.cfi_offset 12, -2
+ 763 0002 DF92      		push r13
+ 764               	.LCFI25:
+ 765               		.cfi_def_cfa_offset 4
+ 766               		.cfi_offset 13, -3
+ 767 0004 EF92      		push r14
+ 768               	.LCFI26:
+ 769               		.cfi_def_cfa_offset 5
+ 770               		.cfi_offset 14, -4
+ 771 0006 FF92      		push r15
+ 772               	.LCFI27:
+ 773               		.cfi_def_cfa_offset 6
+ 774               		.cfi_offset 15, -5
+ 775 0008 0F93      		push r16
+ 776               	.LCFI28:
+ 777               		.cfi_def_cfa_offset 7
+ 778               		.cfi_offset 16, -6
+ 779 000a 1F93      		push r17
+ 780               	.LCFI29:
+ 781               		.cfi_def_cfa_offset 8
+ 782               		.cfi_offset 17, -7
+ 783 000c CF93      		push r28
+ 784               	.LCFI30:
+ 785               		.cfi_def_cfa_offset 9
+ 786               		.cfi_offset 28, -8
+ 787 000e DF93      		push r29
+ 788               	.LCFI31:
+ 789               		.cfi_def_cfa_offset 10
+ 790               		.cfi_offset 29, -9
+ 791               	/* prologue: function */
+ 792               	/* frame size = 0 */
+ 793               	/* stack size = 8 */
+ 794               	.L__stack_usage = 8
+ 795 0010 EC01      		movw r28,r24
+ 796 0012 6B01      		movw r12,r22
+ 797 0014 7A01      		movw r14,r20
+ 393:../../../os/oslib/src/chmemheaps.c ****   heap_header_t *qp;
+ 394:../../../os/oslib/src/chmemheaps.c ****   size_t n, tpages, lpages;
+ 395:../../../os/oslib/src/chmemheaps.c **** 
+ 396:../../../os/oslib/src/chmemheaps.c ****   if (heapp == NULL) {
+ 798               		.loc 1 396 0
+ 799 0016 892B      		or r24,r25
+ 800 0018 01F4      		brne .+2
+ 801 001a 00C0      		rjmp .L56
+ 802               	.L42:
+ 803               	.LVL64:
+ 397:../../../os/oslib/src/chmemheaps.c ****     heapp = &default_heap;
+ 398:../../../os/oslib/src/chmemheaps.c ****   }
+ 399:../../../os/oslib/src/chmemheaps.c **** 
+ 400:../../../os/oslib/src/chmemheaps.c ****   H_LOCK(heapp);
+ 804               		.loc 1 400 0
+ 805 001c 8E01      		movw r16,r28
+ 806 001e 065F      		subi r16,-10
+ 807 0020 1F4F      		sbci r17,-1
+ 808 0022 C801      		movw r24,r16
+ 809 0024 0E94 0000 		call chMtxLock
+ 810               	.LVL65:
+ 401:../../../os/oslib/src/chmemheaps.c ****   tpages = 0U;
+ 402:../../../os/oslib/src/chmemheaps.c ****   lpages = 0U;
+ 403:../../../os/oslib/src/chmemheaps.c ****   n = 0U;
+ 404:../../../os/oslib/src/chmemheaps.c ****   qp = &heapp->header;
+ 405:../../../os/oslib/src/chmemheaps.c ****   while (H_FREE_NEXT(qp) != NULL) {
+ 811               		.loc 1 405 0
+ 812 0028 EE81      		ldd r30,Y+6
+ 813 002a FF81      		ldd r31,Y+7
+ 814 002c 40E0      		ldi r20,0
+ 815 002e 50E0      		ldi r21,0
+ 816 0030 20E0      		ldi r18,0
+ 817 0032 30E0      		ldi r19,0
+ 818 0034 C0E0      		ldi r28,0
+ 819 0036 D0E0      		ldi r29,0
+ 820               	.LVL66:
+ 821 0038 3097      		sbiw r30,0
+ 822 003a 01F0      		breq .L43
+ 823               	.LVL67:
+ 824               	.L45:
+ 825               	.LBB8:
+ 406:../../../os/oslib/src/chmemheaps.c ****     size_t pages = H_FREE_PAGES(H_FREE_NEXT(qp));
+ 826               		.loc 1 406 0
+ 827 003c 8281      		ldd r24,Z+2
+ 828 003e 9381      		ldd r25,Z+3
+ 829               	.LVL68:
+ 407:../../../os/oslib/src/chmemheaps.c **** 
+ 408:../../../os/oslib/src/chmemheaps.c ****     /* Updating counters.*/
+ 409:../../../os/oslib/src/chmemheaps.c ****     n++;
+ 830               		.loc 1 409 0
+ 831 0040 2196      		adiw r28,1
+ 832               	.LVL69:
+ 410:../../../os/oslib/src/chmemheaps.c ****     tpages += pages;
+ 833               		.loc 1 410 0
+ 834 0042 280F      		add r18,r24
+ 835 0044 391F      		adc r19,r25
+ 836               	.LVL70:
+ 837 0046 4817      		cp r20,r24
+ 838 0048 5907      		cpc r21,r25
+ 839 004a 00F4      		brsh .L44
+ 840 004c AC01      		movw r20,r24
+ 841               	.LVL71:
+ 842               	.L44:
+ 843               	.LBE8:
+ 405:../../../os/oslib/src/chmemheaps.c ****     size_t pages = H_FREE_PAGES(H_FREE_NEXT(qp));
+ 844               		.loc 1 405 0
+ 845 004e 0190      		ld __tmp_reg__,Z+
+ 846 0050 F081      		ld r31,Z
+ 847 0052 E02D      		mov r30,__tmp_reg__
+ 848               	.LVL72:
+ 849 0054 3097      		sbiw r30,0
+ 850 0056 01F4      		brne .L45
+ 851               	.LVL73:
+ 852               	.L43:
+ 411:../../../os/oslib/src/chmemheaps.c ****     if (pages > lpages) {
+ 412:../../../os/oslib/src/chmemheaps.c ****       lpages = pages;
+ 413:../../../os/oslib/src/chmemheaps.c ****     }
+ 414:../../../os/oslib/src/chmemheaps.c **** 
+ 415:../../../os/oslib/src/chmemheaps.c ****     qp = H_FREE_NEXT(qp);
+ 416:../../../os/oslib/src/chmemheaps.c ****   }
+ 417:../../../os/oslib/src/chmemheaps.c **** 
+ 418:../../../os/oslib/src/chmemheaps.c ****   /* Writing out fragmented free memory.*/
+ 419:../../../os/oslib/src/chmemheaps.c ****   if (totalp != NULL) {
+ 853               		.loc 1 419 0
+ 854 0058 C114      		cp r12,__zero_reg__
+ 855 005a D104      		cpc r13,__zero_reg__
+ 856 005c 01F0      		breq .L46
+ 420:../../../os/oslib/src/chmemheaps.c ****     *totalp = tpages * CH_HEAP_ALIGNMENT;
+ 857               		.loc 1 420 0
+ 858 005e 220F      		lsl r18
+ 859 0060 331F      		rol r19
+ 860 0062 220F      		lsl r18
+ 861 0064 331F      		rol r19
+ 862 0066 F601      		movw r30,r12
+ 863 0068 3183      		std Z+1,r19
+ 864 006a 2083      		st Z,r18
+ 865               	.L46:
+ 421:../../../os/oslib/src/chmemheaps.c ****   }
+ 422:../../../os/oslib/src/chmemheaps.c **** 
+ 423:../../../os/oslib/src/chmemheaps.c ****   /* Writing out unfragmented free memory.*/
+ 424:../../../os/oslib/src/chmemheaps.c ****   if (largestp != NULL) {
+ 866               		.loc 1 424 0
+ 867 006c E114      		cp r14,__zero_reg__
+ 868 006e F104      		cpc r15,__zero_reg__
+ 869 0070 01F0      		breq .L47
+ 425:../../../os/oslib/src/chmemheaps.c ****     *largestp = lpages * CH_HEAP_ALIGNMENT;
+ 870               		.loc 1 425 0
+ 871 0072 440F      		lsl r20
+ 872 0074 551F      		rol r21
+ 873 0076 440F      		lsl r20
+ 874 0078 551F      		rol r21
+ 875 007a F701      		movw r30,r14
+ 876 007c 5183      		std Z+1,r21
+ 877 007e 4083      		st Z,r20
+ 878               	.L47:
+ 426:../../../os/oslib/src/chmemheaps.c ****   }
+ 427:../../../os/oslib/src/chmemheaps.c ****   H_UNLOCK(heapp);
+ 879               		.loc 1 427 0
+ 880 0080 C801      		movw r24,r16
+ 881 0082 0E94 0000 		call chMtxUnlock
+ 882               	.LVL74:
+ 428:../../../os/oslib/src/chmemheaps.c **** 
+ 429:../../../os/oslib/src/chmemheaps.c ****   return n;
+ 430:../../../os/oslib/src/chmemheaps.c **** }
+ 883               		.loc 1 430 0
+ 884 0086 CE01      		movw r24,r28
+ 885               	/* epilogue start */
+ 886 0088 DF91      		pop r29
+ 887 008a CF91      		pop r28
+ 888 008c 1F91      		pop r17
+ 889 008e 0F91      		pop r16
+ 890               	.LVL75:
+ 891 0090 FF90      		pop r15
+ 892 0092 EF90      		pop r14
+ 893               	.LVL76:
+ 894 0094 DF90      		pop r13
+ 895 0096 CF90      		pop r12
+ 896               	.LVL77:
+ 897 0098 0895      		ret
+ 898               	.LVL78:
+ 899               	.L56:
+ 397:../../../os/oslib/src/chmemheaps.c ****   }
+ 900               		.loc 1 397 0
+ 901 009a C0E0      		ldi r28,lo8(default_heap)
+ 902 009c D0E0      		ldi r29,hi8(default_heap)
+ 903 009e 00C0      		rjmp .L42
+ 904               		.cfi_endproc
+ 905               	.LFE198:
+ 907               		.section	.text.chHeapIntegrityCheck,"ax",@progbits
+ 908               	.global	chHeapIntegrityCheck
+ 910               	chHeapIntegrityCheck:
+ 911               	.LFB199:
+ 431:../../../os/oslib/src/chmemheaps.c **** 
+ 432:../../../os/oslib/src/chmemheaps.c **** /**
+ 433:../../../os/oslib/src/chmemheaps.c ****  * @brief   Heap integrity check.
+ 434:../../../os/oslib/src/chmemheaps.c ****  * @details Performs an integrity check of a heap stucture.
+ 435:../../../os/oslib/src/chmemheaps.c ****  *
+ 436:../../../os/oslib/src/chmemheaps.c ****  * @param[in] heapp     pointer to a heap descriptor or @p NULL in order to
+ 437:../../../os/oslib/src/chmemheaps.c ****  *                      access the default heap.
+ 438:../../../os/oslib/src/chmemheaps.c ****  * @return              The test result.
+ 439:../../../os/oslib/src/chmemheaps.c ****  * @retval false        The test succeeded.
+ 440:../../../os/oslib/src/chmemheaps.c ****  * @retval true         Test failed.
+ 441:../../../os/oslib/src/chmemheaps.c ****  *
+ 442:../../../os/oslib/src/chmemheaps.c ****  * @api
+ 443:../../../os/oslib/src/chmemheaps.c ****  */
+ 444:../../../os/oslib/src/chmemheaps.c **** bool chHeapIntegrityCheck(memory_heap_t *heapp) {
+ 912               		.loc 1 444 0
+ 913               		.cfi_startproc
+ 914               	.LVL79:
+ 915 0000 0F93      		push r16
+ 916               	.LCFI32:
+ 917               		.cfi_def_cfa_offset 3
+ 918               		.cfi_offset 16, -2
+ 919 0002 1F93      		push r17
+ 920               	.LCFI33:
+ 921               		.cfi_def_cfa_offset 4
+ 922               		.cfi_offset 17, -3
+ 923 0004 CF93      		push r28
+ 924               	.LCFI34:
+ 925               		.cfi_def_cfa_offset 5
+ 926               		.cfi_offset 28, -4
+ 927 0006 DF93      		push r29
+ 928               	.LCFI35:
+ 929               		.cfi_def_cfa_offset 6
+ 930               		.cfi_offset 29, -5
+ 931               	/* prologue: function */
+ 932               	/* frame size = 0 */
+ 933               	/* stack size = 4 */
+ 934               	.L__stack_usage = 4
+ 935 0008 EC01      		movw r28,r24
+ 936               	.LVL80:
+ 445:../../../os/oslib/src/chmemheaps.c ****   bool result = false;
+ 446:../../../os/oslib/src/chmemheaps.c ****   heap_header_t *hp, *prevhp;
+ 447:../../../os/oslib/src/chmemheaps.c **** 
+ 448:../../../os/oslib/src/chmemheaps.c ****   /* If an heap is not specified then the default system header is used.*/
+ 449:../../../os/oslib/src/chmemheaps.c ****   if (heapp == NULL) {
+ 937               		.loc 1 449 0
+ 938 000a 892B      		or r24,r25
+ 939 000c 01F4      		brne .+2
+ 940 000e 00C0      		rjmp .L70
+ 941               	.L58:
+ 942               	.LVL81:
+ 450:../../../os/oslib/src/chmemheaps.c ****     heapp = &default_heap;
+ 451:../../../os/oslib/src/chmemheaps.c ****   }
+ 452:../../../os/oslib/src/chmemheaps.c **** 
+ 453:../../../os/oslib/src/chmemheaps.c ****   /* Validating heap object.*/
+ 454:../../../os/oslib/src/chmemheaps.c ****   if (heapp->provider != NULL) {
+ 943               		.loc 1 454 0
+ 944 0010 8881      		ld r24,Y
+ 945 0012 9981      		ldd r25,Y+1
+ 946 0014 0097      		sbiw r24,0
+ 947 0016 01F0      		breq .L61
+ 455:../../../os/oslib/src/chmemheaps.c ****     if (!chMemIsAddressExecutableX((const void *)heapp->provider)) {
+ 948               		.loc 1 455 0
+ 949 0018 0E94 0000 		call chMemIsAddressExecutableX
+ 950               	.LVL82:
+ 951 001c 8823      		tst r24
+ 952 001e 01F0      		breq .L71
+ 953               	.L61:
+ 456:../../../os/oslib/src/chmemheaps.c ****       return true;
+ 457:../../../os/oslib/src/chmemheaps.c ****     }
+ 458:../../../os/oslib/src/chmemheaps.c ****   }
+ 459:../../../os/oslib/src/chmemheaps.c **** 
+ 460:../../../os/oslib/src/chmemheaps.c ****   /* Taking heap mutex.*/
+ 461:../../../os/oslib/src/chmemheaps.c ****   H_LOCK(heapp);
+ 954               		.loc 1 461 0
+ 955 0020 8E01      		movw r16,r28
+ 956 0022 065F      		subi r16,-10
+ 957 0024 1F4F      		sbci r17,-1
+ 958 0026 C801      		movw r24,r16
+ 959 0028 0E94 0000 		call chMtxLock
+ 960               	.LVL83:
+ 462:../../../os/oslib/src/chmemheaps.c **** 
+ 463:../../../os/oslib/src/chmemheaps.c ****   prevhp = NULL;
+ 464:../../../os/oslib/src/chmemheaps.c ****   hp = &heapp->header;
+ 961               		.loc 1 464 0
+ 962 002c FE01      		movw r30,r28
+ 963 002e 3696      		adiw r30,6
+ 964               	.LVL84:
+ 463:../../../os/oslib/src/chmemheaps.c ****   hp = &heapp->header;
+ 965               		.loc 1 463 0
+ 966 0030 60E0      		ldi r22,0
+ 967 0032 70E0      		ldi r23,0
+ 968               	.LVL85:
+ 969               	.L60:
+ 465:../../../os/oslib/src/chmemheaps.c ****   while ((hp = H_FREE_NEXT(hp)) != NULL) {
+ 970               		.loc 1 465 0
+ 971 0034 0190      		ld __tmp_reg__,Z+
+ 972 0036 F081      		ld r31,Z
+ 973 0038 E02D      		mov r30,__tmp_reg__
+ 974               	.LVL86:
+ 975 003a 3097      		sbiw r30,0
+ 976 003c 01F0      		breq .L72
+ 466:../../../os/oslib/src/chmemheaps.c **** 
+ 467:../../../os/oslib/src/chmemheaps.c ****     /* Order violation or loop.*/
+ 468:../../../os/oslib/src/chmemheaps.c ****     if (hp <= prevhp) {
+ 977               		.loc 1 468 0
+ 978 003e 6E17      		cp r22,r30
+ 979 0040 7F07      		cpc r23,r31
+ 980 0042 00F4      		brsh .L69
+ 469:../../../os/oslib/src/chmemheaps.c ****       result = true;
+ 470:../../../os/oslib/src/chmemheaps.c ****       break;
+ 471:../../../os/oslib/src/chmemheaps.c ****     }
+ 472:../../../os/oslib/src/chmemheaps.c **** 
+ 473:../../../os/oslib/src/chmemheaps.c ****     /* Checking pointer alignment.*/
+ 474:../../../os/oslib/src/chmemheaps.c ****     if (!MEM_IS_ALIGNED(hp, CH_HEAP_ALIGNMENT)) {
+ 981               		.loc 1 474 0
+ 982 0044 CF01      		movw r24,r30
+ 983 0046 8370      		andi r24,3
+ 984 0048 9927      		clr r25
+ 985 004a 892B      		or r24,r25
+ 986 004c 01F4      		brne .L69
+ 987               	.LVL87:
+ 988               	.LBB9:
+ 989               	.LBB10:
+ 990               		.file 2 "../../../os/oslib/include/chmemchecks.h"
+   1:../../../os/oslib/include/chmemchecks.h **** /*
+   2:../../../os/oslib/include/chmemchecks.h ****     ChibiOS - Copyright (C) 2006,2007,2008,2009,2010,2011,2012,2013,2014,
+   3:../../../os/oslib/include/chmemchecks.h ****               2015,2016,2017,2018,2019,2020,2021 Giovanni Di Sirio.
+   4:../../../os/oslib/include/chmemchecks.h **** 
+   5:../../../os/oslib/include/chmemchecks.h ****     This file is part of ChibiOS.
+   6:../../../os/oslib/include/chmemchecks.h **** 
+   7:../../../os/oslib/include/chmemchecks.h ****     ChibiOS is free software; you can redistribute it and/or modify
+   8:../../../os/oslib/include/chmemchecks.h ****     it under the terms of the GNU General Public License as published by
+   9:../../../os/oslib/include/chmemchecks.h ****     the Free Software Foundation version 3 of the License.
+  10:../../../os/oslib/include/chmemchecks.h **** 
+  11:../../../os/oslib/include/chmemchecks.h ****     ChibiOS is distributed in the hope that it will be useful,
+  12:../../../os/oslib/include/chmemchecks.h ****     but WITHOUT ANY WARRANTY; without even the implied warranty of
+  13:../../../os/oslib/include/chmemchecks.h ****     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  14:../../../os/oslib/include/chmemchecks.h ****     GNU General Public License for more details.
+  15:../../../os/oslib/include/chmemchecks.h **** 
+  16:../../../os/oslib/include/chmemchecks.h ****     You should have received a copy of the GNU General Public License
+  17:../../../os/oslib/include/chmemchecks.h ****     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  18:../../../os/oslib/include/chmemchecks.h **** */
+  19:../../../os/oslib/include/chmemchecks.h **** 
+  20:../../../os/oslib/include/chmemchecks.h **** /**
+  21:../../../os/oslib/include/chmemchecks.h ****  * @file    oslib/include/chmemchecks.h
+  22:../../../os/oslib/include/chmemchecks.h ****  * @brief   Memory areas and pointers validation macros and structures.
+  23:../../../os/oslib/include/chmemchecks.h ****  *
+  24:../../../os/oslib/include/chmemchecks.h ****  * @addtogroup oslib_memareas
+  25:../../../os/oslib/include/chmemchecks.h ****  * @{
+  26:../../../os/oslib/include/chmemchecks.h ****  */
+  27:../../../os/oslib/include/chmemchecks.h **** 
+  28:../../../os/oslib/include/chmemchecks.h **** #ifndef CHMEMCHECKS_H
+  29:../../../os/oslib/include/chmemchecks.h **** #define CHMEMCHECKS_H
+  30:../../../os/oslib/include/chmemchecks.h **** 
+  31:../../../os/oslib/include/chmemchecks.h **** /*===========================================================================*/
+  32:../../../os/oslib/include/chmemchecks.h **** /* Module constants.                                                         */
+  33:../../../os/oslib/include/chmemchecks.h **** /*===========================================================================*/
+  34:../../../os/oslib/include/chmemchecks.h **** 
+  35:../../../os/oslib/include/chmemchecks.h **** /*===========================================================================*/
+  36:../../../os/oslib/include/chmemchecks.h **** /* Module pre-compile time settings.                                         */
+  37:../../../os/oslib/include/chmemchecks.h **** /*===========================================================================*/
+  38:../../../os/oslib/include/chmemchecks.h **** 
+  39:../../../os/oslib/include/chmemchecks.h **** /*===========================================================================*/
+  40:../../../os/oslib/include/chmemchecks.h **** /* Derived constants and error checks.                                       */
+  41:../../../os/oslib/include/chmemchecks.h **** /*===========================================================================*/
+  42:../../../os/oslib/include/chmemchecks.h **** 
+  43:../../../os/oslib/include/chmemchecks.h **** /*===========================================================================*/
+  44:../../../os/oslib/include/chmemchecks.h **** /* Module data structures and types.                                         */
+  45:../../../os/oslib/include/chmemchecks.h **** /*===========================================================================*/
+  46:../../../os/oslib/include/chmemchecks.h **** 
+  47:../../../os/oslib/include/chmemchecks.h **** /**
+  48:../../../os/oslib/include/chmemchecks.h ****  * @brief   Type of a memory area.
+  49:../../../os/oslib/include/chmemchecks.h ****  */
+  50:../../../os/oslib/include/chmemchecks.h **** typedef struct {
+  51:../../../os/oslib/include/chmemchecks.h ****   /**
+  52:../../../os/oslib/include/chmemchecks.h ****    * @brief   Memory area base.
+  53:../../../os/oslib/include/chmemchecks.h ****    * @note    Value -1 is reserved as end-on-array marker.
+  54:../../../os/oslib/include/chmemchecks.h ****    */
+  55:../../../os/oslib/include/chmemchecks.h ****   uint8_t                       *base;
+  56:../../../os/oslib/include/chmemchecks.h ****   /**
+  57:../../../os/oslib/include/chmemchecks.h ****    * @brief   Memory area size.
+  58:../../../os/oslib/include/chmemchecks.h ****    * @note    Value 0 represents the whole address space and is only valid
+  59:../../../os/oslib/include/chmemchecks.h ****    *          when @p base is also zero.
+  60:../../../os/oslib/include/chmemchecks.h ****    */
+  61:../../../os/oslib/include/chmemchecks.h ****   size_t                        size;
+  62:../../../os/oslib/include/chmemchecks.h **** } memory_area_t;
+  63:../../../os/oslib/include/chmemchecks.h **** 
+  64:../../../os/oslib/include/chmemchecks.h **** /*===========================================================================*/
+  65:../../../os/oslib/include/chmemchecks.h **** /* Module macros.                                                            */
+  66:../../../os/oslib/include/chmemchecks.h **** /*===========================================================================*/
+  67:../../../os/oslib/include/chmemchecks.h **** 
+  68:../../../os/oslib/include/chmemchecks.h **** /*===========================================================================*/
+  69:../../../os/oslib/include/chmemchecks.h **** /* External declarations.                                                    */
+  70:../../../os/oslib/include/chmemchecks.h **** /*===========================================================================*/
+  71:../../../os/oslib/include/chmemchecks.h **** 
+  72:../../../os/oslib/include/chmemchecks.h **** #if !defined(__DOXYGEN__)
+  73:../../../os/oslib/include/chmemchecks.h **** extern const memory_area_t __ch_mem_writable_areas[];
+  74:../../../os/oslib/include/chmemchecks.h **** extern const memory_area_t __ch_mem_readable_areas[];
+  75:../../../os/oslib/include/chmemchecks.h **** extern const memory_area_t __ch_mem_executable_areas[];
+  76:../../../os/oslib/include/chmemchecks.h **** #endif
+  77:../../../os/oslib/include/chmemchecks.h **** 
+  78:../../../os/oslib/include/chmemchecks.h **** #ifdef __cplusplus
+  79:../../../os/oslib/include/chmemchecks.h **** extern "C" {
+  80:../../../os/oslib/include/chmemchecks.h **** #endif
+  81:../../../os/oslib/include/chmemchecks.h **** #if CH_CFG_USE_MEMCHECKS == TRUE
+  82:../../../os/oslib/include/chmemchecks.h ****   size_t chMemIsStringWithinX(const memory_area_t *map,
+  83:../../../os/oslib/include/chmemchecks.h ****                               const char *s,
+  84:../../../os/oslib/include/chmemchecks.h ****                               size_t max);
+  85:../../../os/oslib/include/chmemchecks.h ****   size_t chMemIsPointersArrayWithinX(const memory_area_t *map,
+  86:../../../os/oslib/include/chmemchecks.h ****                                      const void *pp[],
+  87:../../../os/oslib/include/chmemchecks.h ****                                      size_t max);
+  88:../../../os/oslib/include/chmemchecks.h ****   bool chMemIsSpaceContainedX(const memory_area_t areas[],
+  89:../../../os/oslib/include/chmemchecks.h ****                               const void *p,
+  90:../../../os/oslib/include/chmemchecks.h ****                               size_t size);
+  91:../../../os/oslib/include/chmemchecks.h ****   bool chMemIsSpaceWritableX(void *p,
+  92:../../../os/oslib/include/chmemchecks.h ****                              size_t size,
+  93:../../../os/oslib/include/chmemchecks.h ****                              unsigned align);
+  94:../../../os/oslib/include/chmemchecks.h ****   bool chMemIsSpaceReadableX(const void *p,
+  95:../../../os/oslib/include/chmemchecks.h ****                              size_t size,
+  96:../../../os/oslib/include/chmemchecks.h ****                              unsigned align);
+  97:../../../os/oslib/include/chmemchecks.h ****   bool chMemIsAddressExecutableX(const void *p);
+  98:../../../os/oslib/include/chmemchecks.h **** #endif
+  99:../../../os/oslib/include/chmemchecks.h **** #ifdef __cplusplus
+ 100:../../../os/oslib/include/chmemchecks.h **** }
+ 101:../../../os/oslib/include/chmemchecks.h **** #endif
+ 102:../../../os/oslib/include/chmemchecks.h **** 
+ 103:../../../os/oslib/include/chmemchecks.h **** /*===========================================================================*/
+ 104:../../../os/oslib/include/chmemchecks.h **** /* Module inline functions.                                                  */
+ 105:../../../os/oslib/include/chmemchecks.h **** /*===========================================================================*/
+ 106:../../../os/oslib/include/chmemchecks.h **** 
+ 107:../../../os/oslib/include/chmemchecks.h **** /**
+ 108:../../../os/oslib/include/chmemchecks.h ****  * @brief   Memory space inclusion check.
+ 109:../../../os/oslib/include/chmemchecks.h ****  * @details Checks if specified space belongs to the specified memory area.
+ 110:../../../os/oslib/include/chmemchecks.h ****  *
+ 111:../../../os/oslib/include/chmemchecks.h ****  * @param[in] map       pointer to a @p memory_area_t structure
+ 112:../../../os/oslib/include/chmemchecks.h ****  * @param[in] p         pointer to the memory space to be checked
+ 113:../../../os/oslib/include/chmemchecks.h ****  * @param[in] size      size of the memory space to be checked, zero is
+ 114:../../../os/oslib/include/chmemchecks.h ****  *                      considered the whole address space
+ 115:../../../os/oslib/include/chmemchecks.h ****  * @return              The test result.
+ 116:../../../os/oslib/include/chmemchecks.h ****  * @retval true         if the memory space is entirely contained.
+ 117:../../../os/oslib/include/chmemchecks.h ****  * @retval false        if the memory space is not entirely contained.
+ 118:../../../os/oslib/include/chmemchecks.h ****  *
+ 119:../../../os/oslib/include/chmemchecks.h ****  * @xclass
+ 120:../../../os/oslib/include/chmemchecks.h ****  */
+ 121:../../../os/oslib/include/chmemchecks.h **** static inline bool chMemIsSpaceWithinX(const memory_area_t *map,
+ 122:../../../os/oslib/include/chmemchecks.h ****                                        const void *p,
+ 123:../../../os/oslib/include/chmemchecks.h ****                                        size_t size) {
+ 124:../../../os/oslib/include/chmemchecks.h ****   const uint8_t *mem_base = (const uint8_t *)map->base;
+ 991               		.loc 2 124 0
+ 992 004e 4A81      		ldd r20,Y+2
+ 993 0050 5B81      		ldd r21,Y+3
+ 994               	.LVL88:
+ 125:../../../os/oslib/include/chmemchecks.h ****   const uint8_t *mem_end  = mem_base + map->size - (size_t)1;
+ 995               		.loc 2 125 0
+ 996 0052 2C81      		ldd r18,Y+4
+ 997 0054 3D81      		ldd r19,Y+5
+ 998               	.LVL89:
+ 126:../../../os/oslib/include/chmemchecks.h ****   const uint8_t *base     = (const uint8_t *)p;
+ 127:../../../os/oslib/include/chmemchecks.h ****   const uint8_t *end      = base + size - (size_t)1;
+ 999               		.loc 2 127 0
+ 1000 0056 8281      		ldd r24,Z+2
+ 1001 0058 9381      		ldd r25,Z+3
+ 1002 005a 880F      		lsl r24
+ 1003 005c 991F      		rol r25
+ 1004 005e 880F      		lsl r24
+ 1005 0060 991F      		rol r25
+ 1006               	.LVL90:
+ 1007 0062 0396      		adiw r24,3
+ 1008 0064 8E0F      		add r24,r30
+ 1009 0066 9F1F      		adc r25,r31
+ 1010               	.LVL91:
+ 128:../../../os/oslib/include/chmemchecks.h **** 
+ 129:../../../os/oslib/include/chmemchecks.h ****   chDbgAssert((mem_base <= mem_end) && (base <= end), "invalid memory area");
+ 130:../../../os/oslib/include/chmemchecks.h **** 
+ 131:../../../os/oslib/include/chmemchecks.h ****   return (bool)((base <= end) && (base >= mem_base) && (end <= mem_end));
+ 1011               		.loc 2 131 0
+ 1012 0068 8E17      		cp r24,r30
+ 1013 006a 9F07      		cpc r25,r31
+ 1014 006c 00F0      		brlo .L69
+ 1015 006e E417      		cp r30,r20
+ 1016 0070 F507      		cpc r31,r21
+ 1017 0072 00F0      		brlo .L69
+ 1018 0074 BF01      		movw r22,r30
+ 1019 0076 2150      		subi r18,1
+ 1020 0078 3109      		sbc r19,__zero_reg__
+ 1021               	.LVL92:
+ 1022 007a 240F      		add r18,r20
+ 1023 007c 351F      		adc r19,r21
+ 1024               	.LVL93:
+ 1025 007e 2817      		cp r18,r24
+ 1026 0080 3907      		cpc r19,r25
+ 1027 0082 00F4      		brsh .L60
+ 1028               	.LVL94:
+ 1029               	.L69:
+ 1030               	.LBE10:
+ 1031               	.LBE9:
+ 469:../../../os/oslib/src/chmemheaps.c ****       break;
+ 1032               		.loc 1 469 0
+ 1033 0084 C1E0      		ldi r28,lo8(1)
+ 1034               	.LVL95:
+ 1035               	.L63:
+ 475:../../../os/oslib/src/chmemheaps.c ****       result = true;
+ 476:../../../os/oslib/src/chmemheaps.c ****       break;
+ 477:../../../os/oslib/src/chmemheaps.c ****     }
+ 478:../../../os/oslib/src/chmemheaps.c **** 
+ 479:../../../os/oslib/src/chmemheaps.c ****     /* Validating the found free block.*/
+ 480:../../../os/oslib/src/chmemheaps.c ****     if (!chMemIsSpaceWithinX(&heapp->area,
+ 481:../../../os/oslib/src/chmemheaps.c ****                              (void *)hp,
+ 482:../../../os/oslib/src/chmemheaps.c ****                              H_FREE_FULLSIZE(hp))) {
+ 483:../../../os/oslib/src/chmemheaps.c ****       result = true;
+ 484:../../../os/oslib/src/chmemheaps.c ****       break;
+ 485:../../../os/oslib/src/chmemheaps.c ****     }
+ 486:../../../os/oslib/src/chmemheaps.c **** 
+ 487:../../../os/oslib/src/chmemheaps.c ****     prevhp = hp;
+ 488:../../../os/oslib/src/chmemheaps.c ****   }
+ 489:../../../os/oslib/src/chmemheaps.c **** 
+ 490:../../../os/oslib/src/chmemheaps.c ****   /* Releasing the heap mutex.*/
+ 491:../../../os/oslib/src/chmemheaps.c ****   H_UNLOCK(heapp);
+ 1036               		.loc 1 491 0
+ 1037 0086 C801      		movw r24,r16
+ 1038 0088 0E94 0000 		call chMtxUnlock
+ 1039               	.LVL96:
+ 492:../../../os/oslib/src/chmemheaps.c **** 
+ 493:../../../os/oslib/src/chmemheaps.c ****   return result;
+ 1040               		.loc 1 493 0
+ 1041 008c 8C2F      		mov r24,r28
+ 1042               	/* epilogue start */
+ 494:../../../os/oslib/src/chmemheaps.c **** }
+ 1043               		.loc 1 494 0
+ 1044 008e DF91      		pop r29
+ 1045 0090 CF91      		pop r28
+ 1046               	.LVL97:
+ 1047 0092 1F91      		pop r17
+ 1048 0094 0F91      		pop r16
+ 1049               	.LVL98:
+ 1050 0096 0895      		ret
+ 1051               	.LVL99:
+ 1052               	.L71:
+ 456:../../../os/oslib/src/chmemheaps.c ****     }
+ 1053               		.loc 1 456 0
+ 1054 0098 81E0      		ldi r24,lo8(1)
+ 1055               	/* epilogue start */
+ 1056               		.loc 1 494 0
+ 1057 009a DF91      		pop r29
+ 1058 009c CF91      		pop r28
+ 1059               	.LVL100:
+ 1060 009e 1F91      		pop r17
+ 1061 00a0 0F91      		pop r16
+ 1062 00a2 0895      		ret
+ 1063               	.LVL101:
+ 1064               	.L72:
+ 445:../../../os/oslib/src/chmemheaps.c ****   heap_header_t *hp, *prevhp;
+ 1065               		.loc 1 445 0
+ 1066 00a4 C0E0      		ldi r28,0
+ 1067               	.LVL102:
+ 1068 00a6 00C0      		rjmp .L63
+ 1069               	.LVL103:
+ 1070               	.L70:
+ 450:../../../os/oslib/src/chmemheaps.c ****   }
+ 1071               		.loc 1 450 0
+ 1072 00a8 C0E0      		ldi r28,lo8(default_heap)
+ 1073 00aa D0E0      		ldi r29,hi8(default_heap)
+ 1074 00ac 00C0      		rjmp .L58
+ 1075               		.cfi_endproc
+ 1076               	.LFE199:
+ 1078               		.section	.bss.default_heap,"aw",@nobits
+ 1081               	default_heap:
+ 1082 0000 0000 0000 		.zero	18
+ 1082      0000 0000 
+ 1082      0000 0000 
+ 1082      0000 0000 
+ 1082      0000 
+ 1083               		.text
+ 1084               	.Letext0:
+ 1085               		.file 3 "/usr/lib/gcc/avr/5.4.0/include/stddef.h"
+ 1086               		.file 4 "/usr/lib/avr/include/stdint.h"
+ 1087               		.file 5 "../../../os/common/ports/AVR/compilers/GCC/chtypes.h"
+ 1088               		.file 6 "../../../os/rt/include/chearly.h"
+ 1089               		.file 7 "../../../os/rt/include/chobjects.h"
+ 1090               		.file 8 "../../../os/rt/include/chrfcu.h"
+ 1091               		.file 9 "../../../os/rt/include/chdebug.h"
+ 1092               		.file 10 "../../../os/rt/include/chtime.h"
+ 1093               		.file 11 "../../../os/rt/include/chlists.h"
+ 1094               		.file 12 "../../../os/common/ports/AVR/chcore.h"
+ 1095               		.file 13 "../../../os/rt/include/chsem.h"
+ 1096               		.file 14 "../../../os/rt/include/chmtx.h"
+ 1097               		.file 15 "../../../os/oslib/include/chmemcore.h"
+ 1098               		.file 16 "../../../os/oslib/include/chmemheaps.h"
+ 1099               		.file 17 "../../../os/rt/include/chsys.h"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 chmemheaps.c
+     /tmp/cc0cIkBD.s:2      *ABS*:000000000000003e __SP_H__
+     /tmp/cc0cIkBD.s:3      *ABS*:000000000000003d __SP_L__
+     /tmp/cc0cIkBD.s:4      *ABS*:000000000000003f __SREG__
+     /tmp/cc0cIkBD.s:5      *ABS*:0000000000000000 __tmp_reg__
+     /tmp/cc0cIkBD.s:6      *ABS*:0000000000000001 __zero_reg__
+     /tmp/cc0cIkBD.s:13     .text.__heap_init:0000000000000000 __heap_init
+     /tmp/cc0cIkBD.s:1081   .bss.default_heap:0000000000000000 default_heap
+     /tmp/cc0cIkBD.s:64     .text.chHeapObjectInit:0000000000000000 chHeapObjectInit
+     /tmp/cc0cIkBD.s:141    .text.chHeapObjectDispose:0000000000000000 chHeapObjectDispose
+     /tmp/cc0cIkBD.s:157    .text.chHeapAllocAligned:0000000000000000 chHeapAllocAligned
+     /tmp/cc0cIkBD.s:559    .text.chHeapFree:0000000000000000 chHeapFree
+     /tmp/cc0cIkBD.s:754    .text.chHeapStatus:0000000000000000 chHeapStatus
+     /tmp/cc0cIkBD.s:910    .text.chHeapIntegrityCheck:0000000000000000 chHeapIntegrityCheck
+
+UNDEFINED SYMBOLS
+chCoreAllocFromTop
+chCoreGetStatusX
+chMtxObjectInit
+chMtxLock
+chMtxUnlock
+chMemIsAddressExecutableX
+__do_clear_bss

@@ -1,0 +1,53 @@
+---------------------
+Variáveis de condição
+---------------------
+
+Local: ChibiOS/os/rt/include/chcond.h
+
+
+1 - Introdução
+
+    - Mutexes são muito usados em conjunção com variáveis de condição.
+
+    - O par variável de condição e mutex combinam a proteção do mutex com uma condição lógica e a sua sinalização pela variável de condição.
+
+    - Usar apenas variáveis de condição sem mutex não é possível para manter a sincronização correta e evitar condições de corrida. 
+
+2 - Operação
+
+    - De forma similar ao mutex, para criarmos uma variável de condição usamos a macro CONDVAR_DECL(name).
+        * Isto cria a variável name do tipo condition_variable_t inicializada de modo apropriado.
+        * A função chCondObjectInit(condition_variable_t *mp) também pode ser usada para inicializar uma variável de condição.
+
+    - As principais funções são a chCondWait(condition_variable_t *mp) e a chCondSignal(condition_variable_t *mp).
+
+    - A função chCondWait() libera o último mutex adquirido pela thread e espera que a função chCondSignal() seja chamada por outra thread, quando então 
+     readquire o mutex.
+        * Ela só retorna quando a thread for sinalizada
+        * A função chCondSignal() age como uma interrupção
+
+    - As assinaturas das funções são as mostradas abaixo.
+        * void chCondObjectInit(condition_variable_t *cp);
+        * void chCondObjectDispose(condition_variable_t *cp);
+        * void chCondSignal(condition_variable_t *cp);
+        * void chCondSignalI(condition_variable_t *cp);
+        * void chCondBroadcast(condition_variable_t *cp);
+        * void chCondBroadcastI(condition_variable_t *cp);
+
+        * msg_t chCondWait(condition_variable_t *cp);
+        * msg_t chCondWaitS(condition_variable_t *cp);
+
+    - O código abaixo é o uso típico de variáveis de condição:
+
+        chMtxLock(&mtx);
+
+        /*  Código opcional protegido por mutex */
+
+        while(!condittion)
+            chCondWait(&cond1);
+
+        /*  Código da região crítica com condição satisfeita */
+
+        chMtxUnlock();
+
+ 

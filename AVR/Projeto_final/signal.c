@@ -31,10 +31,10 @@ void config_signals(){
         
  
  // Botões - Pinos de entrada
-        palSetPadMode(IOPORT4, PUSH_BUTTON_AMB_MAIN, PAL_MODE_INPUT); //  Ambulância na principal
-        palSetPadMode(IOPORT4, PUSH_BUTTON_AMB_SEC, PAL_MODE_INPUT);  //  Ambulância na secundária
-        palSetPadMode(IOPORT4, PUSH_BUTTON_SEC, PAL_MODE_INPUT);      //  Carro na secundária
-        palSetPadMode(IOPORT4, PUSH_BUTTON_WALK, PAL_MODE_INPUT);     //  Pedestre
+        palSetPadMode(IOPORT4, PUSH_BUTTON_AMB_MAIN, PAL_MODE_INPUT_PULLDOWN); //  Ambulância na principal
+        palSetPadMode(IOPORT4, PUSH_BUTTON_AMB_SEC, PAL_MODE_INPUT_PULLDOWN);  //  Ambulância na secundária
+        palSetPadMode(IOPORT4, PUSH_BUTTON_SEC, PAL_MODE_INPUT_PULLUP);      //  Carro na secundária
+        palSetPadMode(IOPORT4, PUSH_BUTTON_WALK, PAL_MODE_INPUT_PULLUP);     //  Pedestre
 
 }
 

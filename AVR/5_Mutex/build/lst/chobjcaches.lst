@@ -1,0 +1,2124 @@
+   1               		.file	"chobjcaches.c"
+   2               	__SP_H__ = 0x3e
+   3               	__SP_L__ = 0x3d
+   4               	__SREG__ = 0x3f
+   5               	__tmp_reg__ = 0
+   6               	__zero_reg__ = 1
+   7               		.text
+   8               	.Ltext0:
+   9               		.cfi_sections	.debug_frame
+  10               		.section	.text.chCacheObjectInit,"ax",@progbits
+  11               	.global	chCacheObjectInit
+  13               	chCacheObjectInit:
+  14               	.LFB195:
+  15               		.file 1 "../../../os/oslib/src/chobjcaches.c"
+   1:../../../os/oslib/src/chobjcaches.c **** /*
+   2:../../../os/oslib/src/chobjcaches.c ****     ChibiOS - Copyright (C) 2006,2007,2008,2009,2010,2011,2012,2013,2014,
+   3:../../../os/oslib/src/chobjcaches.c ****               2015,2016,2017,2018,2019,2020,2021 Giovanni Di Sirio.
+   4:../../../os/oslib/src/chobjcaches.c **** 
+   5:../../../os/oslib/src/chobjcaches.c ****     This file is part of ChibiOS.
+   6:../../../os/oslib/src/chobjcaches.c **** 
+   7:../../../os/oslib/src/chobjcaches.c ****     ChibiOS is free software; you can redistribute it and/or modify
+   8:../../../os/oslib/src/chobjcaches.c ****     it under the terms of the GNU General Public License as published by
+   9:../../../os/oslib/src/chobjcaches.c ****     the Free Software Foundation version 3 of the License.
+  10:../../../os/oslib/src/chobjcaches.c **** 
+  11:../../../os/oslib/src/chobjcaches.c ****     ChibiOS is distributed in the hope that it will be useful,
+  12:../../../os/oslib/src/chobjcaches.c ****     but WITHOUT ANY WARRANTY; without even the implied warranty of
+  13:../../../os/oslib/src/chobjcaches.c ****     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  14:../../../os/oslib/src/chobjcaches.c ****     GNU General Public License for more details.
+  15:../../../os/oslib/src/chobjcaches.c **** 
+  16:../../../os/oslib/src/chobjcaches.c ****     You should have received a copy of the GNU General Public License
+  17:../../../os/oslib/src/chobjcaches.c ****     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  18:../../../os/oslib/src/chobjcaches.c **** */
+  19:../../../os/oslib/src/chobjcaches.c **** 
+  20:../../../os/oslib/src/chobjcaches.c **** /**
+  21:../../../os/oslib/src/chobjcaches.c ****  * @file    oslib/src/chobjcaches.c
+  22:../../../os/oslib/src/chobjcaches.c ****  * @brief   Objects Caches code.
+  23:../../../os/oslib/src/chobjcaches.c ****  * @details Objects caches.
+  24:../../../os/oslib/src/chobjcaches.c ****  *          <h2>Operation mode</h2>
+  25:../../../os/oslib/src/chobjcaches.c ****  *          An object cache allows to retrieve and release objects from a
+  26:../../../os/oslib/src/chobjcaches.c ****  *          slow media, for example a disk or flash.<br>
+  27:../../../os/oslib/src/chobjcaches.c ****  *          The most recently used objects are kept in a series of RAM
+  28:../../../os/oslib/src/chobjcaches.c ****  *          buffers making access faster. Objects are identified by a
+  29:../../../os/oslib/src/chobjcaches.c ****  *          pair <group, key> which could be mapped, for example, to a
+  30:../../../os/oslib/src/chobjcaches.c ****  *          disk drive identifier and sector identifier.<br>
+  31:../../../os/oslib/src/chobjcaches.c ****  *          Read and write operations are performed using externally-supplied
+  32:../../../os/oslib/src/chobjcaches.c ****  *          functions, the cache is device-agnostic.<br>
+  33:../../../os/oslib/src/chobjcaches.c ****  *          The cache uses internally an hash table, the size of the table
+  34:../../../os/oslib/src/chobjcaches.c ****  *          should be dimensioned to minimize the risk of hash collisions,
+  35:../../../os/oslib/src/chobjcaches.c ****  *          a factor of two is usually acceptable, it depends on the specific
+  36:../../../os/oslib/src/chobjcaches.c ****  *          application requirements.<br>
+  37:../../../os/oslib/src/chobjcaches.c ****  *          Operations defined for caches:
+  38:../../../os/oslib/src/chobjcaches.c ****  *          - <b>Get Object</b>: Retrieves an object from cache, if not
+  39:../../../os/oslib/src/chobjcaches.c ****  *            present then an empty buffer is returned.
+  40:../../../os/oslib/src/chobjcaches.c ****  *          - <b>Read Object</b>: Retrieves an object from cache, if not
+  41:../../../os/oslib/src/chobjcaches.c ****  *            present a buffer is allocated and the object is read from the
+  42:../../../os/oslib/src/chobjcaches.c ****  *            media.
+  43:../../../os/oslib/src/chobjcaches.c ****  *          - <b>Release Object</b>: Releases an object to the cache handling
+  44:../../../os/oslib/src/chobjcaches.c ****  *            the media update, if required.
+  45:../../../os/oslib/src/chobjcaches.c ****  *          .
+  46:../../../os/oslib/src/chobjcaches.c ****  * @pre     In order to use the pipes APIs the @p CH_CFG_USE_OBJ_CACHES
+  47:../../../os/oslib/src/chobjcaches.c ****  *          option must be enabled in @p chconf.h.
+  48:../../../os/oslib/src/chobjcaches.c ****  * @note    Compatible with RT and NIL.
+  49:../../../os/oslib/src/chobjcaches.c ****  *
+  50:../../../os/oslib/src/chobjcaches.c ****  * @addtogroup oslib_objchaches
+  51:../../../os/oslib/src/chobjcaches.c ****  * @{
+  52:../../../os/oslib/src/chobjcaches.c ****  */
+  53:../../../os/oslib/src/chobjcaches.c **** 
+  54:../../../os/oslib/src/chobjcaches.c **** #include "ch.h"
+  55:../../../os/oslib/src/chobjcaches.c **** 
+  56:../../../os/oslib/src/chobjcaches.c **** #if (CH_CFG_USE_OBJ_CACHES == TRUE) || defined(__DOXYGEN__)
+  57:../../../os/oslib/src/chobjcaches.c **** 
+  58:../../../os/oslib/src/chobjcaches.c **** /*===========================================================================*/
+  59:../../../os/oslib/src/chobjcaches.c **** /* Module local definitions.                                                 */
+  60:../../../os/oslib/src/chobjcaches.c **** /*===========================================================================*/
+  61:../../../os/oslib/src/chobjcaches.c **** 
+  62:../../../os/oslib/src/chobjcaches.c **** /* Default hash function.*/
+  63:../../../os/oslib/src/chobjcaches.c **** #if !defined(OC_HASH_FUNCTION) || defined(__DOXYGEN__)
+  64:../../../os/oslib/src/chobjcaches.c **** #define OC_HASH_FUNCTION(ocp, group, key)                                   \
+  65:../../../os/oslib/src/chobjcaches.c ****   (((unsigned)(group) + (unsigned)(key)) & ((unsigned)(ocp)->hashn - 1U))
+  66:../../../os/oslib/src/chobjcaches.c **** #endif
+  67:../../../os/oslib/src/chobjcaches.c **** 
+  68:../../../os/oslib/src/chobjcaches.c **** /* Insertion into an hash slot list.*/
+  69:../../../os/oslib/src/chobjcaches.c **** #define HASH_INSERT(ocp, objp, group, key) {                                \
+  70:../../../os/oslib/src/chobjcaches.c ****   oc_hash_header_t *hhp;                                                    \
+  71:../../../os/oslib/src/chobjcaches.c ****   (hhp) = &(ocp)->hashp[OC_HASH_FUNCTION(ocp, group, key)];                 \
+  72:../../../os/oslib/src/chobjcaches.c ****   (objp)->hash_next = (hhp)->hash_next;                                     \
+  73:../../../os/oslib/src/chobjcaches.c ****   (objp)->hash_prev = (oc_object_t *)(hhp);                                 \
+  74:../../../os/oslib/src/chobjcaches.c ****   (hhp)->hash_next->hash_prev = (objp);                                     \
+  75:../../../os/oslib/src/chobjcaches.c ****   (hhp)->hash_next = (objp);                                                \
+  76:../../../os/oslib/src/chobjcaches.c **** }
+  77:../../../os/oslib/src/chobjcaches.c **** 
+  78:../../../os/oslib/src/chobjcaches.c **** /* Removal of an object from the hash.*/
+  79:../../../os/oslib/src/chobjcaches.c **** #define HASH_REMOVE(objp) {                                                 \
+  80:../../../os/oslib/src/chobjcaches.c ****   (objp)->hash_prev->hash_next = (objp)->hash_next;                         \
+  81:../../../os/oslib/src/chobjcaches.c ****   (objp)->hash_next->hash_prev = (objp)->hash_prev;                         \
+  82:../../../os/oslib/src/chobjcaches.c **** }
+  83:../../../os/oslib/src/chobjcaches.c **** 
+  84:../../../os/oslib/src/chobjcaches.c **** /* Insertion on LRU list head (newer objects).*/
+  85:../../../os/oslib/src/chobjcaches.c **** #define LRU_INSERT_HEAD(ocp, objp) {                                        \
+  86:../../../os/oslib/src/chobjcaches.c ****   (objp)->lru_next = (ocp)->lru.lru_next;                                   \
+  87:../../../os/oslib/src/chobjcaches.c ****   (objp)->lru_prev = (oc_object_t *)&(ocp)->lru;                            \
+  88:../../../os/oslib/src/chobjcaches.c ****   (ocp)->lru.lru_next->lru_prev = (objp);                                   \
+  89:../../../os/oslib/src/chobjcaches.c ****   (ocp)->lru.lru_next = (objp);                                             \
+  90:../../../os/oslib/src/chobjcaches.c **** }
+  91:../../../os/oslib/src/chobjcaches.c **** 
+  92:../../../os/oslib/src/chobjcaches.c **** /* Insertion on LRU list head (newer objects).*/
+  93:../../../os/oslib/src/chobjcaches.c **** #define LRU_INSERT_TAIL(ocp, objp) {                                        \
+  94:../../../os/oslib/src/chobjcaches.c ****   (objp)->lru_prev = (ocp)->lru.lru_prev;                                   \
+  95:../../../os/oslib/src/chobjcaches.c ****   (objp)->lru_next = (oc_object_t *)&(ocp)->lru;                            \
+  96:../../../os/oslib/src/chobjcaches.c ****   (ocp)->lru.lru_prev->lru_next = (objp);                                   \
+  97:../../../os/oslib/src/chobjcaches.c ****   (ocp)->lru.lru_prev = (objp);                                             \
+  98:../../../os/oslib/src/chobjcaches.c **** }
+  99:../../../os/oslib/src/chobjcaches.c **** 
+ 100:../../../os/oslib/src/chobjcaches.c **** /* Removal of an object from the LRU list.*/
+ 101:../../../os/oslib/src/chobjcaches.c **** #define LRU_REMOVE(objp) {                                                  \
+ 102:../../../os/oslib/src/chobjcaches.c ****   (objp)->lru_prev->lru_next = (objp)->lru_next;                            \
+ 103:../../../os/oslib/src/chobjcaches.c ****   (objp)->lru_next->lru_prev = (objp)->lru_prev;                            \
+ 104:../../../os/oslib/src/chobjcaches.c **** }
+ 105:../../../os/oslib/src/chobjcaches.c **** 
+ 106:../../../os/oslib/src/chobjcaches.c **** /*===========================================================================*/
+ 107:../../../os/oslib/src/chobjcaches.c **** /* Module exported variables.                                                */
+ 108:../../../os/oslib/src/chobjcaches.c **** /*===========================================================================*/
+ 109:../../../os/oslib/src/chobjcaches.c **** 
+ 110:../../../os/oslib/src/chobjcaches.c **** /*===========================================================================*/
+ 111:../../../os/oslib/src/chobjcaches.c **** /* Module local types.                                                       */
+ 112:../../../os/oslib/src/chobjcaches.c **** /*===========================================================================*/
+ 113:../../../os/oslib/src/chobjcaches.c **** 
+ 114:../../../os/oslib/src/chobjcaches.c **** /*===========================================================================*/
+ 115:../../../os/oslib/src/chobjcaches.c **** /* Module local variables.                                                   */
+ 116:../../../os/oslib/src/chobjcaches.c **** /*===========================================================================*/
+ 117:../../../os/oslib/src/chobjcaches.c **** 
+ 118:../../../os/oslib/src/chobjcaches.c **** /*===========================================================================*/
+ 119:../../../os/oslib/src/chobjcaches.c **** /* Module local functions.                                                   */
+ 120:../../../os/oslib/src/chobjcaches.c **** /*===========================================================================*/
+ 121:../../../os/oslib/src/chobjcaches.c **** 
+ 122:../../../os/oslib/src/chobjcaches.c **** /**
+ 123:../../../os/oslib/src/chobjcaches.c ****  * @brief   Returns an object pointer from the cache, if present.
+ 124:../../../os/oslib/src/chobjcaches.c ****  *
+ 125:../../../os/oslib/src/chobjcaches.c ****  * @param[out] ocp      pointer to the @p objects_cache_t object to be
+ 126:../../../os/oslib/src/chobjcaches.c ****  * @param[in] group     object group identifier
+ 127:../../../os/oslib/src/chobjcaches.c ****  * @param[in] key       object identifier within the group
+ 128:../../../os/oslib/src/chobjcaches.c ****  *                      initialized
+ 129:../../../os/oslib/src/chobjcaches.c ****  * @return              The pointer to the retrieved object.
+ 130:../../../os/oslib/src/chobjcaches.c ****  * @retval NULL         if the object is not in cache.
+ 131:../../../os/oslib/src/chobjcaches.c ****  *
+ 132:../../../os/oslib/src/chobjcaches.c ****  * @notapi
+ 133:../../../os/oslib/src/chobjcaches.c ****  */
+ 134:../../../os/oslib/src/chobjcaches.c **** static oc_object_t *hash_get_s(objects_cache_t *ocp,
+ 135:../../../os/oslib/src/chobjcaches.c ****                                uint32_t group,
+ 136:../../../os/oslib/src/chobjcaches.c ****                                uint32_t key) {
+ 137:../../../os/oslib/src/chobjcaches.c ****   oc_hash_header_t *hhp;
+ 138:../../../os/oslib/src/chobjcaches.c ****   oc_object_t *objp;
+ 139:../../../os/oslib/src/chobjcaches.c **** 
+ 140:../../../os/oslib/src/chobjcaches.c ****   /* Hash slot where to search for an hit.*/
+ 141:../../../os/oslib/src/chobjcaches.c ****   hhp  = &ocp->hashp[OC_HASH_FUNCTION(ocp, group, key)];
+ 142:../../../os/oslib/src/chobjcaches.c ****   objp = hhp->hash_next;
+ 143:../../../os/oslib/src/chobjcaches.c **** 
+ 144:../../../os/oslib/src/chobjcaches.c ****   /* Scanning the siblings collision list.*/
+ 145:../../../os/oslib/src/chobjcaches.c ****   while (objp != (oc_object_t *)hhp) {
+ 146:../../../os/oslib/src/chobjcaches.c ****     if ((objp->obj_key == key) && (objp->obj_group == group)) {
+ 147:../../../os/oslib/src/chobjcaches.c **** 
+ 148:../../../os/oslib/src/chobjcaches.c ****       /* Cache hit.*/
+ 149:../../../os/oslib/src/chobjcaches.c ****       return objp;
+ 150:../../../os/oslib/src/chobjcaches.c ****     }
+ 151:../../../os/oslib/src/chobjcaches.c ****     objp = objp->hash_next;
+ 152:../../../os/oslib/src/chobjcaches.c ****   }
+ 153:../../../os/oslib/src/chobjcaches.c **** 
+ 154:../../../os/oslib/src/chobjcaches.c ****   return NULL;
+ 155:../../../os/oslib/src/chobjcaches.c **** }
+ 156:../../../os/oslib/src/chobjcaches.c **** 
+ 157:../../../os/oslib/src/chobjcaches.c **** /**
+ 158:../../../os/oslib/src/chobjcaches.c ****  * @brief   Gets the least recently used object buffer from the LRU list.
+ 159:../../../os/oslib/src/chobjcaches.c ****  *
+ 160:../../../os/oslib/src/chobjcaches.c ****  * @param[out] ocp      pointer to the @p objects_cache_t object to be
+ 161:../../../os/oslib/src/chobjcaches.c ****  * @return              The pointer to the retrieved object.
+ 162:../../../os/oslib/src/chobjcaches.c ****  *
+ 163:../../../os/oslib/src/chobjcaches.c ****  * @notapi
+ 164:../../../os/oslib/src/chobjcaches.c ****  */
+ 165:../../../os/oslib/src/chobjcaches.c **** static oc_object_t *lru_get_last_s(objects_cache_t *ocp) {
+ 166:../../../os/oslib/src/chobjcaches.c ****   oc_object_t *objp;
+ 167:../../../os/oslib/src/chobjcaches.c **** 
+ 168:../../../os/oslib/src/chobjcaches.c ****   while (true) {
+ 169:../../../os/oslib/src/chobjcaches.c ****     /* Waiting for an object buffer to become available in the LRU.*/
+ 170:../../../os/oslib/src/chobjcaches.c ****     (void) chSemWaitS(&ocp->lru_sem);
+ 171:../../../os/oslib/src/chobjcaches.c **** 
+ 172:../../../os/oslib/src/chobjcaches.c ****     /* Now an object buffer is in the LRU for sure, taking it from the
+ 173:../../../os/oslib/src/chobjcaches.c ****        LRU tail.*/
+ 174:../../../os/oslib/src/chobjcaches.c ****     objp = ocp->lru.lru_prev;
+ 175:../../../os/oslib/src/chobjcaches.c **** 
+ 176:../../../os/oslib/src/chobjcaches.c ****     chDbgAssert((objp->obj_flags & OC_FLAG_INLRU) == OC_FLAG_INLRU,
+ 177:../../../os/oslib/src/chobjcaches.c ****                 "not in LRU");
+ 178:../../../os/oslib/src/chobjcaches.c ****     chDbgAssert(chSemGetCounterI(&objp->obj_sem) == (cnt_t)1,
+ 179:../../../os/oslib/src/chobjcaches.c ****                 "semaphore counter not 1");
+ 180:../../../os/oslib/src/chobjcaches.c **** 
+ 181:../../../os/oslib/src/chobjcaches.c ****     LRU_REMOVE(objp);
+ 182:../../../os/oslib/src/chobjcaches.c ****     objp->obj_flags &= ~OC_FLAG_INLRU;
+ 183:../../../os/oslib/src/chobjcaches.c **** 
+ 184:../../../os/oslib/src/chobjcaches.c ****     /* Getting the object semaphore, we know there is no wait so
+ 185:../../../os/oslib/src/chobjcaches.c ****        using the "fast" variant.*/
+ 186:../../../os/oslib/src/chobjcaches.c ****     chSemFastWaitI(&objp->obj_sem);
+ 187:../../../os/oslib/src/chobjcaches.c **** 
+ 188:../../../os/oslib/src/chobjcaches.c ****     /* If it is a buffer not needing (lazy) write then it can be used
+ 189:../../../os/oslib/src/chobjcaches.c ****        right away.*/
+ 190:../../../os/oslib/src/chobjcaches.c ****     if ((objp->obj_flags & OC_FLAG_LAZYWRITE) == 0U) {
+ 191:../../../os/oslib/src/chobjcaches.c **** 
+ 192:../../../os/oslib/src/chobjcaches.c ****       /* Removing from hash table if required.*/
+ 193:../../../os/oslib/src/chobjcaches.c ****       if ((objp->obj_flags & OC_FLAG_INHASH) != 0U) {
+ 194:../../../os/oslib/src/chobjcaches.c ****         HASH_REMOVE(objp);
+ 195:../../../os/oslib/src/chobjcaches.c ****       }
+ 196:../../../os/oslib/src/chobjcaches.c **** 
+ 197:../../../os/oslib/src/chobjcaches.c ****       /* Removing all flags, it is "new" now.*/
+ 198:../../../os/oslib/src/chobjcaches.c ****       objp->obj_flags = 0U;
+ 199:../../../os/oslib/src/chobjcaches.c **** 
+ 200:../../../os/oslib/src/chobjcaches.c ****       return objp;
+ 201:../../../os/oslib/src/chobjcaches.c ****     }
+ 202:../../../os/oslib/src/chobjcaches.c **** 
+ 203:../../../os/oslib/src/chobjcaches.c ****     /* Out of critical section.*/
+ 204:../../../os/oslib/src/chobjcaches.c ****     chSysUnlock();
+ 205:../../../os/oslib/src/chobjcaches.c **** 
+ 206:../../../os/oslib/src/chobjcaches.c ****    /* Invoking the writer asynchronously, it will release the buffer once it
+ 207:../../../os/oslib/src/chobjcaches.c ****       is written. It is responsibility of the write function to release
+ 208:../../../os/oslib/src/chobjcaches.c ****       the buffer.*/
+ 209:../../../os/oslib/src/chobjcaches.c ****     objp->obj_flags = OC_FLAG_INHASH | OC_FLAG_FORGET;
+ 210:../../../os/oslib/src/chobjcaches.c ****     (void) ocp->writef(ocp, objp, true);
+ 211:../../../os/oslib/src/chobjcaches.c **** 
+ 212:../../../os/oslib/src/chobjcaches.c ****     /* Critical section enter again.*/
+ 213:../../../os/oslib/src/chobjcaches.c ****     chSysLock();
+ 214:../../../os/oslib/src/chobjcaches.c ****   }
+ 215:../../../os/oslib/src/chobjcaches.c **** }
+ 216:../../../os/oslib/src/chobjcaches.c **** 
+ 217:../../../os/oslib/src/chobjcaches.c **** /*===========================================================================*/
+ 218:../../../os/oslib/src/chobjcaches.c **** /* Module exported functions.                                                */
+ 219:../../../os/oslib/src/chobjcaches.c **** /*===========================================================================*/
+ 220:../../../os/oslib/src/chobjcaches.c **** 
+ 221:../../../os/oslib/src/chobjcaches.c **** /**
+ 222:../../../os/oslib/src/chobjcaches.c ****  * @brief   Initializes a @p objects_cache_t object.
+ 223:../../../os/oslib/src/chobjcaches.c ****  *
+ 224:../../../os/oslib/src/chobjcaches.c ****  * @param[out] ocp      pointer to the @p objects_cache_t object to be
+ 225:../../../os/oslib/src/chobjcaches.c ****  *                      initialized
+ 226:../../../os/oslib/src/chobjcaches.c ****  * @param[in] hashn     number of elements in the hash table array, must be
+ 227:../../../os/oslib/src/chobjcaches.c ****  *                      a power of two and not lower than @p objn
+ 228:../../../os/oslib/src/chobjcaches.c ****  * @param[in] hashp     pointer to the hash table as an array of
+ 229:../../../os/oslib/src/chobjcaches.c ****  *                      @p oc_hash_header_t
+ 230:../../../os/oslib/src/chobjcaches.c ****  * @param[in] objn      number of elements in the objects table array
+ 231:../../../os/oslib/src/chobjcaches.c ****  * @param[in] objsz     size of elements in the objects table array, the
+ 232:../../../os/oslib/src/chobjcaches.c ****  *                      minimum value is <tt>sizeof (oc_object_t)</tt>.
+ 233:../../../os/oslib/src/chobjcaches.c ****  * @param[in] objvp     pointer to the hash objects as an array of structures
+ 234:../../../os/oslib/src/chobjcaches.c ****  *                      starting with an @p oc_object_t
+ 235:../../../os/oslib/src/chobjcaches.c ****  * @param[in] readf     pointer to an object reader function
+ 236:../../../os/oslib/src/chobjcaches.c ****  * @param[in] writef    pointer to an object writer function
+ 237:../../../os/oslib/src/chobjcaches.c ****  *
+ 238:../../../os/oslib/src/chobjcaches.c ****  * @init
+ 239:../../../os/oslib/src/chobjcaches.c ****  */
+ 240:../../../os/oslib/src/chobjcaches.c **** void chCacheObjectInit(objects_cache_t *ocp,
+ 241:../../../os/oslib/src/chobjcaches.c ****                        ucnt_t hashn,
+ 242:../../../os/oslib/src/chobjcaches.c ****                        oc_hash_header_t *hashp,
+ 243:../../../os/oslib/src/chobjcaches.c ****                        ucnt_t objn,
+ 244:../../../os/oslib/src/chobjcaches.c ****                        size_t objsz,
+ 245:../../../os/oslib/src/chobjcaches.c ****                        void *objvp,
+ 246:../../../os/oslib/src/chobjcaches.c ****                        oc_readf_t readf,
+ 247:../../../os/oslib/src/chobjcaches.c ****                        oc_writef_t writef) {
+  16               		.loc 1 247 0
+  17               		.cfi_startproc
+  18               	.LVL0:
+  19 0000 6F92      		push r6
+  20               	.LCFI0:
+  21               		.cfi_def_cfa_offset 3
+  22               		.cfi_offset 6, -2
+  23 0002 7F92      		push r7
+  24               	.LCFI1:
+  25               		.cfi_def_cfa_offset 4
+  26               		.cfi_offset 7, -3
+  27 0004 8F92      		push r8
+  28               	.LCFI2:
+  29               		.cfi_def_cfa_offset 5
+  30               		.cfi_offset 8, -4
+  31 0006 9F92      		push r9
+  32               	.LCFI3:
+  33               		.cfi_def_cfa_offset 6
+  34               		.cfi_offset 9, -5
+  35 0008 AF92      		push r10
+  36               	.LCFI4:
+  37               		.cfi_def_cfa_offset 7
+  38               		.cfi_offset 10, -6
+  39 000a BF92      		push r11
+  40               	.LCFI5:
+  41               		.cfi_def_cfa_offset 8
+  42               		.cfi_offset 11, -7
+  43 000c CF92      		push r12
+  44               	.LCFI6:
+  45               		.cfi_def_cfa_offset 9
+  46               		.cfi_offset 12, -8
+  47 000e DF92      		push r13
+  48               	.LCFI7:
+  49               		.cfi_def_cfa_offset 10
+  50               		.cfi_offset 13, -9
+  51 0010 EF92      		push r14
+  52               	.LCFI8:
+  53               		.cfi_def_cfa_offset 11
+  54               		.cfi_offset 14, -10
+  55 0012 FF92      		push r15
+  56               	.LCFI9:
+  57               		.cfi_def_cfa_offset 12
+  58               		.cfi_offset 15, -11
+  59 0014 0F93      		push r16
+  60               	.LCFI10:
+  61               		.cfi_def_cfa_offset 13
+  62               		.cfi_offset 16, -12
+  63 0016 1F93      		push r17
+  64               	.LCFI11:
+  65               		.cfi_def_cfa_offset 14
+  66               		.cfi_offset 17, -13
+  67 0018 CF93      		push r28
+  68               	.LCFI12:
+  69               		.cfi_def_cfa_offset 15
+  70               		.cfi_offset 28, -14
+  71 001a DF93      		push r29
+  72               	.LCFI13:
+  73               		.cfi_def_cfa_offset 16
+  74               		.cfi_offset 29, -15
+  75               	/* prologue: function */
+  76               	/* frame size = 0 */
+  77               	/* stack size = 14 */
+  78               	.L__stack_usage = 14
+  79 001c EC01      		movw r28,r24
+  80 001e 662E      		mov r6,r22
+  81 0020 4A01      		movw r8,r20
+  82 0022 722E      		mov r7,r18
+ 248:../../../os/oslib/src/chobjcaches.c **** 
+ 249:../../../os/oslib/src/chobjcaches.c ****   chDbgCheck((ocp != NULL) && (hashp != NULL) && (objvp != NULL) &&
+ 250:../../../os/oslib/src/chobjcaches.c ****              ((hashn & (hashn - (ucnt_t)1)) == (ucnt_t)0) &&
+ 251:../../../os/oslib/src/chobjcaches.c ****              (objn > (ucnt_t)0) && (hashn >= objn) &&
+ 252:../../../os/oslib/src/chobjcaches.c ****              (objsz >= sizeof (oc_object_t)) &&
+ 253:../../../os/oslib/src/chobjcaches.c ****              ((objsz & (PORT_NATURAL_ALIGN - 1U)) == 0U));
+ 254:../../../os/oslib/src/chobjcaches.c **** 
+ 255:../../../os/oslib/src/chobjcaches.c ****   chSemObjectInit(&ocp->cache_sem, (cnt_t)1);
+  83               		.loc 1 255 0
+  84 0024 61E0      		ldi r22,lo8(1)
+  85               	.LVL1:
+  86 0026 4096      		adiw r24,16
+  87               	.LVL2:
+  88 0028 0E94 0000 		call chSemObjectInit
+  89               	.LVL3:
+ 256:../../../os/oslib/src/chobjcaches.c ****   chSemObjectInit(&ocp->lru_sem, (cnt_t)objn);
+  90               		.loc 1 256 0
+  91 002c 672D      		mov r22,r7
+  92 002e CE01      		movw r24,r28
+  93 0030 4596      		adiw r24,21
+  94 0032 0E94 0000 		call chSemObjectInit
+  95               	.LVL4:
+ 257:../../../os/oslib/src/chobjcaches.c ****   ocp->hashn            = hashn;
+  96               		.loc 1 257 0
+  97 0036 6882      		st Y,r6
+ 258:../../../os/oslib/src/chobjcaches.c ****   ocp->hashp            = hashp;
+  98               		.loc 1 258 0
+  99 0038 9A82      		std Y+2,r9
+ 100 003a 8982      		std Y+1,r8
+ 259:../../../os/oslib/src/chobjcaches.c ****   ocp->objn             = objn;
+ 101               		.loc 1 259 0
+ 102 003c 7B82      		std Y+3,r7
+ 260:../../../os/oslib/src/chobjcaches.c ****   ocp->objvp            = objvp;
+ 103               		.loc 1 260 0
+ 104 003e FF82      		std Y+7,r15
+ 105 0040 EE82      		std Y+6,r14
+ 261:../../../os/oslib/src/chobjcaches.c ****   ocp->readf            = readf;
+ 106               		.loc 1 261 0
+ 107 0042 DB8E      		std Y+27,r13
+ 108 0044 CA8E      		std Y+26,r12
+ 262:../../../os/oslib/src/chobjcaches.c ****   ocp->writef           = writef;
+ 109               		.loc 1 262 0
+ 110 0046 BD8E      		std Y+29,r11
+ 111 0048 AC8E      		std Y+28,r10
+ 263:../../../os/oslib/src/chobjcaches.c ****   ocp->lru.hash_next    = NULL;
+ 112               		.loc 1 263 0
+ 113 004a 1986      		std Y+9,__zero_reg__
+ 114 004c 1886      		std Y+8,__zero_reg__
+ 264:../../../os/oslib/src/chobjcaches.c ****   ocp->lru.hash_prev    = NULL;
+ 115               		.loc 1 264 0
+ 116 004e 1B86      		std Y+11,__zero_reg__
+ 117 0050 1A86      		std Y+10,__zero_reg__
+ 265:../../../os/oslib/src/chobjcaches.c ****   ocp->lru.lru_next     = (oc_object_t *)&ocp->lru;
+ 118               		.loc 1 265 0
+ 119 0052 6E01      		movw r12,r28
+ 120               	.LVL5:
+ 121 0054 28E0      		ldi r18,8
+ 122 0056 C20E      		add r12,r18
+ 123 0058 D11C      		adc r13,__zero_reg__
+ 124 005a DD86      		std Y+13,r13
+ 125 005c CC86      		std Y+12,r12
+ 266:../../../os/oslib/src/chobjcaches.c ****   ocp->lru.lru_prev     = (oc_object_t *)&ocp->lru;
+ 126               		.loc 1 266 0
+ 127 005e DF86      		std Y+15,r13
+ 128 0060 CE86      		std Y+14,r12
+ 129 0062 F401      		movw r30,r8
+ 130               	.LVL6:
+ 131               	.L2:
+ 267:../../../os/oslib/src/chobjcaches.c **** 
+ 268:../../../os/oslib/src/chobjcaches.c ****   /* Hash headers initialization.*/
+ 269:../../../os/oslib/src/chobjcaches.c ****   do {
+ 270:../../../os/oslib/src/chobjcaches.c ****     hashp->hash_next = (oc_object_t *)hashp;
+ 132               		.loc 1 270 0 discriminator 1
+ 133 0064 F183      		std Z+1,r31
+ 134 0066 E083      		st Z,r30
+ 271:../../../os/oslib/src/chobjcaches.c ****     hashp->hash_prev = (oc_object_t *)hashp;
+ 135               		.loc 1 271 0 discriminator 1
+ 136 0068 F383      		std Z+3,r31
+ 137 006a E283      		std Z+2,r30
+ 272:../../../os/oslib/src/chobjcaches.c ****     hashp++;
+ 138               		.loc 1 272 0 discriminator 1
+ 139 006c 3496      		adiw r30,4
+ 140               	.LVL7:
+ 273:../../../os/oslib/src/chobjcaches.c ****   } while (hashp < &ocp->hashp[ocp->hashn]);
+ 141               		.loc 1 273 0 discriminator 1
+ 142 006e 8881      		ld r24,Y
+ 143 0070 D401      		movw r26,r8
+ 144 0072 24E0      		ldi r18,lo8(4)
+ 145 0074 829F      		mul r24,r18
+ 146 0076 A00D      		add r26,r0
+ 147 0078 B11D      		adc r27,r1
+ 148 007a 1124      		clr __zero_reg__
+ 149 007c EA17      		cp r30,r26
+ 150 007e FB07      		cpc r31,r27
+ 151 0080 00F0      		brlo .L2
+ 152               	.LBB35:
+ 274:../../../os/oslib/src/chobjcaches.c **** 
+ 275:../../../os/oslib/src/chobjcaches.c ****   /* Object headers initialization.*/
+ 276:../../../os/oslib/src/chobjcaches.c ****   do {
+ 277:../../../os/oslib/src/chobjcaches.c ****     oc_object_t *objp = (oc_object_t *)objvp;
+ 278:../../../os/oslib/src/chobjcaches.c **** 
+ 279:../../../os/oslib/src/chobjcaches.c ****     chSemObjectInit(&objp->obj_sem, (cnt_t)1);
+ 280:../../../os/oslib/src/chobjcaches.c ****     LRU_INSERT_HEAD(ocp, objp);
+ 281:../../../os/oslib/src/chobjcaches.c ****     objp->obj_group = 0U;
+ 282:../../../os/oslib/src/chobjcaches.c ****     objp->obj_key   = 0U;
+ 283:../../../os/oslib/src/chobjcaches.c ****     objp->obj_flags = OC_FLAG_INLRU;
+ 153               		.loc 1 283 0 discriminator 1
+ 154 0082 812C      		mov r8,__zero_reg__
+ 155 0084 912C      		mov r9,__zero_reg__
+ 156 0086 5401      		movw r10,r8
+ 157 0088 8394      		inc r8
+ 158               	.LVL8:
+ 159               	.L3:
+ 279:../../../os/oslib/src/chobjcaches.c ****     LRU_INSERT_HEAD(ocp, objp);
+ 160               		.loc 1 279 0 discriminator 1
+ 161 008a 61E0      		ldi r22,lo8(1)
+ 162 008c C701      		movw r24,r14
+ 163 008e 4096      		adiw r24,16
+ 164 0090 0E94 0000 		call chSemObjectInit
+ 165               	.LVL9:
+ 280:../../../os/oslib/src/chobjcaches.c ****     objp->obj_group = 0U;
+ 166               		.loc 1 280 0 discriminator 1
+ 167 0094 EC85      		ldd r30,Y+12
+ 168 0096 FD85      		ldd r31,Y+13
+ 169 0098 D701      		movw r26,r14
+ 170 009a 1596      		adiw r26,4+1
+ 171 009c FC93      		st X,r31
+ 172 009e EE93      		st -X,r30
+ 173 00a0 1497      		sbiw r26,4
+ 174 00a2 1796      		adiw r26,6+1
+ 175 00a4 DC92      		st X,r13
+ 176 00a6 CE92      		st -X,r12
+ 177 00a8 1697      		sbiw r26,6
+ 178 00aa F782      		std Z+7,r15
+ 179 00ac E682      		std Z+6,r14
+ 180 00ae FD86      		std Y+13,r15
+ 181 00b0 EC86      		std Y+12,r14
+ 281:../../../os/oslib/src/chobjcaches.c ****     objp->obj_key   = 0U;
+ 182               		.loc 1 281 0 discriminator 1
+ 183 00b2 F701      		movw r30,r14
+ 184 00b4 1086      		std Z+8,__zero_reg__
+ 185 00b6 1186      		std Z+9,__zero_reg__
+ 186 00b8 1286      		std Z+10,__zero_reg__
+ 187 00ba 1386      		std Z+11,__zero_reg__
+ 282:../../../os/oslib/src/chobjcaches.c ****     objp->obj_flags = OC_FLAG_INLRU;
+ 188               		.loc 1 282 0 discriminator 1
+ 189 00bc 1C96      		adiw r26,12
+ 190 00be 1D92      		st X+,__zero_reg__
+ 191 00c0 1D92      		st X+,__zero_reg__
+ 192 00c2 1D92      		st X+,__zero_reg__
+ 193 00c4 1C92      		st X,__zero_reg__
+ 194 00c6 1F97      		sbiw r26,12+3
+ 195               		.loc 1 283 0 discriminator 1
+ 196 00c8 858A      		std Z+21,r8
+ 197 00ca 968A      		std Z+22,r9
+ 198 00cc A78A      		std Z+23,r10
+ 199 00ce B08E      		std Z+24,r11
+ 284:../../../os/oslib/src/chobjcaches.c ****     objp->dptr      = NULL;
+ 200               		.loc 1 284 0 discriminator 1
+ 201 00d0 128E      		std Z+26,__zero_reg__
+ 202 00d2 118E      		std Z+25,__zero_reg__
+ 285:../../../os/oslib/src/chobjcaches.c ****     objvp = (void *)((uint8_t *)objvp + objsz);
+ 203               		.loc 1 285 0 discriminator 1
+ 204 00d4 E00E      		add r14,r16
+ 205 00d6 F11E      		adc r15,r17
+ 206               	.LVL10:
+ 286:../../../os/oslib/src/chobjcaches.c ****     objn--;
+ 207               		.loc 1 286 0 discriminator 1
+ 208 00d8 7A94      		dec r7
+ 209               	.LVL11:
+ 210               	.LBE35:
+ 287:../../../os/oslib/src/chobjcaches.c ****   } while (objn > (ucnt_t)0);
+ 211               		.loc 1 287 0 discriminator 1
+ 212 00da 7110      		cpse r7,__zero_reg__
+ 213 00dc 00C0      		rjmp .L3
+ 214               	/* epilogue start */
+ 288:../../../os/oslib/src/chobjcaches.c **** }
+ 215               		.loc 1 288 0
+ 216 00de DF91      		pop r29
+ 217 00e0 CF91      		pop r28
+ 218               	.LVL12:
+ 219 00e2 1F91      		pop r17
+ 220 00e4 0F91      		pop r16
+ 221               	.LVL13:
+ 222 00e6 FF90      		pop r15
+ 223 00e8 EF90      		pop r14
+ 224               	.LVL14:
+ 225 00ea DF90      		pop r13
+ 226 00ec CF90      		pop r12
+ 227               	.LVL15:
+ 228 00ee BF90      		pop r11
+ 229 00f0 AF90      		pop r10
+ 230               	.LVL16:
+ 231 00f2 9F90      		pop r9
+ 232 00f4 8F90      		pop r8
+ 233 00f6 7F90      		pop r7
+ 234               	.LVL17:
+ 235 00f8 6F90      		pop r6
+ 236               	.LVL18:
+ 237 00fa 0895      		ret
+ 238               		.cfi_endproc
+ 239               	.LFE195:
+ 241               		.section	.text.chCacheGetObject,"ax",@progbits
+ 242               	.global	chCacheGetObject
+ 244               	chCacheGetObject:
+ 245               	.LFB196:
+ 289:../../../os/oslib/src/chobjcaches.c **** 
+ 290:../../../os/oslib/src/chobjcaches.c **** /**
+ 291:../../../os/oslib/src/chobjcaches.c ****  * @brief   Retrieves an object from the cache.
+ 292:../../../os/oslib/src/chobjcaches.c ****  * @note    If the object is not in cache then the returned object is marked
+ 293:../../../os/oslib/src/chobjcaches.c ****  *          as @p OC_FLAG_NOTSYNC meaning that its data contains garbage and
+ 294:../../../os/oslib/src/chobjcaches.c ****  *          must be initialized.
+ 295:../../../os/oslib/src/chobjcaches.c ****  *
+ 296:../../../os/oslib/src/chobjcaches.c ****  * @param[in] ocp       pointer to the @p objects_cache_t object
+ 297:../../../os/oslib/src/chobjcaches.c ****  * @param[in] group     object group identifier
+ 298:../../../os/oslib/src/chobjcaches.c ****  * @param[in] key       object identifier within the group
+ 299:../../../os/oslib/src/chobjcaches.c ****  * @return              The pointer to the retrieved object.
+ 300:../../../os/oslib/src/chobjcaches.c ****  *
+ 301:../../../os/oslib/src/chobjcaches.c ****  * @api
+ 302:../../../os/oslib/src/chobjcaches.c ****  */
+ 303:../../../os/oslib/src/chobjcaches.c **** oc_object_t *chCacheGetObject(objects_cache_t *ocp,
+ 304:../../../os/oslib/src/chobjcaches.c ****                               uint32_t group,
+ 305:../../../os/oslib/src/chobjcaches.c ****                               uint32_t key) {
+ 246               		.loc 1 305 0
+ 247               		.cfi_startproc
+ 248               	.LVL19:
+ 249 0000 4F92      		push r4
+ 250               	.LCFI14:
+ 251               		.cfi_def_cfa_offset 3
+ 252               		.cfi_offset 4, -2
+ 253 0002 5F92      		push r5
+ 254               	.LCFI15:
+ 255               		.cfi_def_cfa_offset 4
+ 256               		.cfi_offset 5, -3
+ 257 0004 6F92      		push r6
+ 258               	.LCFI16:
+ 259               		.cfi_def_cfa_offset 5
+ 260               		.cfi_offset 6, -4
+ 261 0006 7F92      		push r7
+ 262               	.LCFI17:
+ 263               		.cfi_def_cfa_offset 6
+ 264               		.cfi_offset 7, -5
+ 265 0008 8F92      		push r8
+ 266               	.LCFI18:
+ 267               		.cfi_def_cfa_offset 7
+ 268               		.cfi_offset 8, -6
+ 269 000a 9F92      		push r9
+ 270               	.LCFI19:
+ 271               		.cfi_def_cfa_offset 8
+ 272               		.cfi_offset 9, -7
+ 273 000c AF92      		push r10
+ 274               	.LCFI20:
+ 275               		.cfi_def_cfa_offset 9
+ 276               		.cfi_offset 10, -8
+ 277 000e BF92      		push r11
+ 278               	.LCFI21:
+ 279               		.cfi_def_cfa_offset 10
+ 280               		.cfi_offset 11, -9
+ 281 0010 CF92      		push r12
+ 282               	.LCFI22:
+ 283               		.cfi_def_cfa_offset 11
+ 284               		.cfi_offset 12, -10
+ 285 0012 DF92      		push r13
+ 286               	.LCFI23:
+ 287               		.cfi_def_cfa_offset 12
+ 288               		.cfi_offset 13, -11
+ 289 0014 EF92      		push r14
+ 290               	.LCFI24:
+ 291               		.cfi_def_cfa_offset 13
+ 292               		.cfi_offset 14, -12
+ 293 0016 FF92      		push r15
+ 294               	.LCFI25:
+ 295               		.cfi_def_cfa_offset 14
+ 296               		.cfi_offset 15, -13
+ 297 0018 0F93      		push r16
+ 298               	.LCFI26:
+ 299               		.cfi_def_cfa_offset 15
+ 300               		.cfi_offset 16, -14
+ 301 001a 1F93      		push r17
+ 302               	.LCFI27:
+ 303               		.cfi_def_cfa_offset 16
+ 304               		.cfi_offset 17, -15
+ 305 001c CF93      		push r28
+ 306               	.LCFI28:
+ 307               		.cfi_def_cfa_offset 17
+ 308               		.cfi_offset 28, -16
+ 309 001e DF93      		push r29
+ 310               	.LCFI29:
+ 311               		.cfi_def_cfa_offset 18
+ 312               		.cfi_offset 29, -17
+ 313               	/* prologue: function */
+ 314               	/* frame size = 0 */
+ 315               	/* stack size = 16 */
+ 316               	.L__stack_usage = 16
+ 317 0020 5C01      		movw r10,r24
+ 318 0022 2A01      		movw r4,r20
+ 319 0024 3B01      		movw r6,r22
+ 320 0026 6801      		movw r12,r16
+ 321 0028 7901      		movw r14,r18
+ 322               	.LBB59:
+ 323               	.LBB60:
+ 324               	.LBB61:
+ 325               		.file 2 "../../../os/common/ports/AVR/chcore.h"
+   1:../../../os/common/ports/AVR/chcore.h **** /*
+   2:../../../os/common/ports/AVR/chcore.h ****     ChibiOS - Copyright (C) 2006,2007,2008,2009,2010,2011,2012,2013,2014,
+   3:../../../os/common/ports/AVR/chcore.h ****               2015,2016,2017,2018,2019,2020,2021 Giovanni Di Sirio.
+   4:../../../os/common/ports/AVR/chcore.h **** 
+   5:../../../os/common/ports/AVR/chcore.h ****     This file is part of ChibiOS.
+   6:../../../os/common/ports/AVR/chcore.h **** 
+   7:../../../os/common/ports/AVR/chcore.h ****     ChibiOS is free software; you can redistribute it and/or modify
+   8:../../../os/common/ports/AVR/chcore.h ****     it under the terms of the GNU General Public License as published by
+   9:../../../os/common/ports/AVR/chcore.h ****     the Free Software Foundation version 3 of the License.
+  10:../../../os/common/ports/AVR/chcore.h **** 
+  11:../../../os/common/ports/AVR/chcore.h ****     ChibiOS is distributed in the hope that it will be useful,
+  12:../../../os/common/ports/AVR/chcore.h ****     but WITHOUT ANY WARRANTY; without even the implied warranty of
+  13:../../../os/common/ports/AVR/chcore.h ****     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  14:../../../os/common/ports/AVR/chcore.h ****     GNU General Public License for more details.
+  15:../../../os/common/ports/AVR/chcore.h **** 
+  16:../../../os/common/ports/AVR/chcore.h ****     You should have received a copy of the GNU General Public License
+  17:../../../os/common/ports/AVR/chcore.h ****     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  18:../../../os/common/ports/AVR/chcore.h **** */
+  19:../../../os/common/ports/AVR/chcore.h **** 
+  20:../../../os/common/ports/AVR/chcore.h **** /**
+  21:../../../os/common/ports/AVR/chcore.h ****  * @file    chcore.h
+  22:../../../os/common/ports/AVR/chcore.h ****  * @brief   AVR port macros and structures.
+  23:../../../os/common/ports/AVR/chcore.h ****  *
+  24:../../../os/common/ports/AVR/chcore.h ****  * @addtogroup AVR_CORE
+  25:../../../os/common/ports/AVR/chcore.h ****  * @{
+  26:../../../os/common/ports/AVR/chcore.h ****  */
+  27:../../../os/common/ports/AVR/chcore.h **** 
+  28:../../../os/common/ports/AVR/chcore.h **** #ifndef CHCORE_H
+  29:../../../os/common/ports/AVR/chcore.h **** #define CHCORE_H
+  30:../../../os/common/ports/AVR/chcore.h **** 
+  31:../../../os/common/ports/AVR/chcore.h **** #include <avr/io.h>
+  32:../../../os/common/ports/AVR/chcore.h **** #include <avr/interrupt.h>
+  33:../../../os/common/ports/AVR/chcore.h **** 
+  34:../../../os/common/ports/AVR/chcore.h **** extern bool __avr_in_isr;
+  35:../../../os/common/ports/AVR/chcore.h **** 
+  36:../../../os/common/ports/AVR/chcore.h **** /*===========================================================================*/
+  37:../../../os/common/ports/AVR/chcore.h **** /* Module constants.                                                         */
+  38:../../../os/common/ports/AVR/chcore.h **** /*===========================================================================*/
+  39:../../../os/common/ports/AVR/chcore.h **** 
+  40:../../../os/common/ports/AVR/chcore.h **** /**
+  41:../../../os/common/ports/AVR/chcore.h ****  * @name    Port Capabilities and Constants
+  42:../../../os/common/ports/AVR/chcore.h ****  * @{
+  43:../../../os/common/ports/AVR/chcore.h ****  */
+  44:../../../os/common/ports/AVR/chcore.h **** /**
+  45:../../../os/common/ports/AVR/chcore.h ****  * @brief   This port supports a realtime counter.
+  46:../../../os/common/ports/AVR/chcore.h ****  */
+  47:../../../os/common/ports/AVR/chcore.h **** #define PORT_SUPPORTS_RT                FALSE
+  48:../../../os/common/ports/AVR/chcore.h **** 
+  49:../../../os/common/ports/AVR/chcore.h **** /**
+  50:../../../os/common/ports/AVR/chcore.h ****  * @brief   Natural alignment constant.
+  51:../../../os/common/ports/AVR/chcore.h ****  * @note    It is the minimum alignment for pointer-size variables.
+  52:../../../os/common/ports/AVR/chcore.h ****  */
+  53:../../../os/common/ports/AVR/chcore.h **** #define PORT_NATURAL_ALIGN              1U
+  54:../../../os/common/ports/AVR/chcore.h **** 
+  55:../../../os/common/ports/AVR/chcore.h **** /**
+  56:../../../os/common/ports/AVR/chcore.h ****  * @brief   Stack alignment constant.
+  57:../../../os/common/ports/AVR/chcore.h ****  * @note    It is the alignment required for the stack pointer.
+  58:../../../os/common/ports/AVR/chcore.h ****  */
+  59:../../../os/common/ports/AVR/chcore.h **** #define PORT_STACK_ALIGN                1U
+  60:../../../os/common/ports/AVR/chcore.h **** 
+  61:../../../os/common/ports/AVR/chcore.h **** /**
+  62:../../../os/common/ports/AVR/chcore.h ****  * @brief   Working Areas alignment constant.
+  63:../../../os/common/ports/AVR/chcore.h ****  * @note    It is the alignment to be enforced for thread working areas.
+  64:../../../os/common/ports/AVR/chcore.h ****  */
+  65:../../../os/common/ports/AVR/chcore.h **** #define PORT_WORKING_AREA_ALIGN         1U
+  66:../../../os/common/ports/AVR/chcore.h **** /** @} */
+  67:../../../os/common/ports/AVR/chcore.h **** 
+  68:../../../os/common/ports/AVR/chcore.h **** /**
+  69:../../../os/common/ports/AVR/chcore.h ****  * @name    Architecture and Compiler
+  70:../../../os/common/ports/AVR/chcore.h ****  * @{
+  71:../../../os/common/ports/AVR/chcore.h ****  */
+  72:../../../os/common/ports/AVR/chcore.h **** /**
+  73:../../../os/common/ports/AVR/chcore.h ****  * @brief   Macro defining an AVR architecture.
+  74:../../../os/common/ports/AVR/chcore.h ****  */
+  75:../../../os/common/ports/AVR/chcore.h **** #define PORT_ARCHITECTURE_AVR
+  76:../../../os/common/ports/AVR/chcore.h **** 
+  77:../../../os/common/ports/AVR/chcore.h **** /**
+  78:../../../os/common/ports/AVR/chcore.h ****  * @brief   Macro defining the specific AVR architecture.
+  79:../../../os/common/ports/AVR/chcore.h ****  */
+  80:../../../os/common/ports/AVR/chcore.h **** #define PORT_ARCHITECTURE_AVR_MEGAAVR
+  81:../../../os/common/ports/AVR/chcore.h **** 
+  82:../../../os/common/ports/AVR/chcore.h **** /**
+  83:../../../os/common/ports/AVR/chcore.h ****  * @brief   Name of the implemented architecture.
+  84:../../../os/common/ports/AVR/chcore.h ****  */
+  85:../../../os/common/ports/AVR/chcore.h **** #define PORT_ARCHITECTURE_NAME          "AVR"
+  86:../../../os/common/ports/AVR/chcore.h **** 
+  87:../../../os/common/ports/AVR/chcore.h **** /**
+  88:../../../os/common/ports/AVR/chcore.h ****  * @brief   Name of the architecture variant.
+  89:../../../os/common/ports/AVR/chcore.h ****  */
+  90:../../../os/common/ports/AVR/chcore.h **** #define PORT_CORE_VARIANT_NAME          "MegaAVR"
+  91:../../../os/common/ports/AVR/chcore.h **** 
+  92:../../../os/common/ports/AVR/chcore.h **** /**
+  93:../../../os/common/ports/AVR/chcore.h ****  * @brief   Compiler name and version.
+  94:../../../os/common/ports/AVR/chcore.h ****  */
+  95:../../../os/common/ports/AVR/chcore.h **** #if defined(__GNUC__) || defined(__DOXYGEN__)
+  96:../../../os/common/ports/AVR/chcore.h **** #define PORT_COMPILER_NAME              "GCC " __VERSION__
+  97:../../../os/common/ports/AVR/chcore.h **** 
+  98:../../../os/common/ports/AVR/chcore.h **** #else
+  99:../../../os/common/ports/AVR/chcore.h **** #error "unsupported compiler"
+ 100:../../../os/common/ports/AVR/chcore.h **** #endif
+ 101:../../../os/common/ports/AVR/chcore.h **** 
+ 102:../../../os/common/ports/AVR/chcore.h **** /**
+ 103:../../../os/common/ports/AVR/chcore.h ****  * @brief   Port-specific information string.
+ 104:../../../os/common/ports/AVR/chcore.h ****  */
+ 105:../../../os/common/ports/AVR/chcore.h **** #define PORT_INFO                       "None"
+ 106:../../../os/common/ports/AVR/chcore.h **** /** @} */
+ 107:../../../os/common/ports/AVR/chcore.h **** 
+ 108:../../../os/common/ports/AVR/chcore.h **** /*===========================================================================*/
+ 109:../../../os/common/ports/AVR/chcore.h **** /* Module pre-compile time settings.                                         */
+ 110:../../../os/common/ports/AVR/chcore.h **** /*===========================================================================*/
+ 111:../../../os/common/ports/AVR/chcore.h **** 
+ 112:../../../os/common/ports/AVR/chcore.h **** /**
+ 113:../../../os/common/ports/AVR/chcore.h ****  * @brief   Stack size for the system idle thread.
+ 114:../../../os/common/ports/AVR/chcore.h ****  * @details This size depends on the idle thread implementation, usually
+ 115:../../../os/common/ports/AVR/chcore.h ****  *          the idle thread should take no more space than those reserved
+ 116:../../../os/common/ports/AVR/chcore.h ****  *          by @p PORT_INT_REQUIRED_STACK.
+ 117:../../../os/common/ports/AVR/chcore.h ****  */
+ 118:../../../os/common/ports/AVR/chcore.h **** #if !defined(PORT_IDLE_THREAD_STACK_SIZE) || defined(__DOXYGEN__)
+ 119:../../../os/common/ports/AVR/chcore.h **** #define PORT_IDLE_THREAD_STACK_SIZE     8
+ 120:../../../os/common/ports/AVR/chcore.h **** #endif
+ 121:../../../os/common/ports/AVR/chcore.h **** 
+ 122:../../../os/common/ports/AVR/chcore.h **** /**
+ 123:../../../os/common/ports/AVR/chcore.h ****  * @brief   Per-thread stack overhead for interrupts servicing.
+ 124:../../../os/common/ports/AVR/chcore.h ****  * @details This constant is used in the calculation of the correct working
+ 125:../../../os/common/ports/AVR/chcore.h ****  *          area size.
+ 126:../../../os/common/ports/AVR/chcore.h ****  */
+ 127:../../../os/common/ports/AVR/chcore.h **** #if !defined(PORT_INT_REQUIRED_STACK) || defined(__DOXYGEN__)
+ 128:../../../os/common/ports/AVR/chcore.h **** #define PORT_INT_REQUIRED_STACK         32
+ 129:../../../os/common/ports/AVR/chcore.h **** #endif
+ 130:../../../os/common/ports/AVR/chcore.h **** 
+ 131:../../../os/common/ports/AVR/chcore.h **** /**
+ 132:../../../os/common/ports/AVR/chcore.h ****  * @brief   Enables a "wait for interrupt" instruction in the idle loop.
+ 133:../../../os/common/ports/AVR/chcore.h ****  */
+ 134:../../../os/common/ports/AVR/chcore.h **** #if !defined(PORT_AVR_WFI_SLEEP_IDLE) || defined(__DOXYGEN__)
+ 135:../../../os/common/ports/AVR/chcore.h **** #define PORT_AVR_WFI_SLEEP_IDLE      FALSE
+ 136:../../../os/common/ports/AVR/chcore.h **** #endif
+ 137:../../../os/common/ports/AVR/chcore.h **** 
+ 138:../../../os/common/ports/AVR/chcore.h **** /*===========================================================================*/
+ 139:../../../os/common/ports/AVR/chcore.h **** /* Derived constants and error checks.                                       */
+ 140:../../../os/common/ports/AVR/chcore.h **** /*===========================================================================*/
+ 141:../../../os/common/ports/AVR/chcore.h **** 
+ 142:../../../os/common/ports/AVR/chcore.h **** /*===========================================================================*/
+ 143:../../../os/common/ports/AVR/chcore.h **** /* Module data structures and types.                                         */
+ 144:../../../os/common/ports/AVR/chcore.h **** /*===========================================================================*/
+ 145:../../../os/common/ports/AVR/chcore.h **** 
+ 146:../../../os/common/ports/AVR/chcore.h **** /* The following code is not processed when the file is included from an
+ 147:../../../os/common/ports/AVR/chcore.h ****    asm module.*/
+ 148:../../../os/common/ports/AVR/chcore.h **** #if !defined(_FROM_ASM_)
+ 149:../../../os/common/ports/AVR/chcore.h **** 
+ 150:../../../os/common/ports/AVR/chcore.h **** /**
+ 151:../../../os/common/ports/AVR/chcore.h ****  * @brief   Type of stack and memory alignment enforcement.
+ 152:../../../os/common/ports/AVR/chcore.h ****  * @note    In this architecture the stack alignment is enforced to 8 bits.
+ 153:../../../os/common/ports/AVR/chcore.h ****  */
+ 154:../../../os/common/ports/AVR/chcore.h **** typedef uint8_t stkalign_t;
+ 155:../../../os/common/ports/AVR/chcore.h **** 
+ 156:../../../os/common/ports/AVR/chcore.h **** /**
+ 157:../../../os/common/ports/AVR/chcore.h ****  * @brief   Interrupt saved context.
+ 158:../../../os/common/ports/AVR/chcore.h ****  * @details This structure represents the stack frame saved during a
+ 159:../../../os/common/ports/AVR/chcore.h ****  *          preemption-capable interrupt handler.
+ 160:../../../os/common/ports/AVR/chcore.h ****  * @note    R2 and R13 are not saved because those are assumed to be immutable
+ 161:../../../os/common/ports/AVR/chcore.h ****  *          during the system life cycle.
+ 162:../../../os/common/ports/AVR/chcore.h ****  */
+ 163:../../../os/common/ports/AVR/chcore.h **** struct port_extctx {
+ 164:../../../os/common/ports/AVR/chcore.h ****   uint8_t       _next;
+ 165:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r31;
+ 166:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r30;
+ 167:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r27;
+ 168:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r26;
+ 169:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r25;
+ 170:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r24;
+ 171:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r23;
+ 172:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r22;
+ 173:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r21;
+ 174:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r20;
+ 175:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r19;
+ 176:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r18;
+ 177:../../../os/common/ports/AVR/chcore.h ****   uint8_t       sr;
+ 178:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r1;
+ 179:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r0;
+ 180:../../../os/common/ports/AVR/chcore.h **** #if defined(__AVR_3_BYTE_PC__)
+ 181:../../../os/common/ports/AVR/chcore.h ****   uint8_t       pcx;
+ 182:../../../os/common/ports/AVR/chcore.h **** #endif
+ 183:../../../os/common/ports/AVR/chcore.h ****   uint16_t      pc;
+ 184:../../../os/common/ports/AVR/chcore.h **** };
+ 185:../../../os/common/ports/AVR/chcore.h **** 
+ 186:../../../os/common/ports/AVR/chcore.h **** /**
+ 187:../../../os/common/ports/AVR/chcore.h ****  * @brief   System saved context.
+ 188:../../../os/common/ports/AVR/chcore.h ****  * @details This structure represents the inner stack frame during a context
+ 189:../../../os/common/ports/AVR/chcore.h ****  *          switching.
+ 190:../../../os/common/ports/AVR/chcore.h ****  * @note    R2 and R13 are not saved because those are assumed to be immutable
+ 191:../../../os/common/ports/AVR/chcore.h ****  *          during the system life cycle.
+ 192:../../../os/common/ports/AVR/chcore.h ****  * @note    LR is stored in the caller context so it is not present in this
+ 193:../../../os/common/ports/AVR/chcore.h ****  *          structure.
+ 194:../../../os/common/ports/AVR/chcore.h ****  */
+ 195:../../../os/common/ports/AVR/chcore.h **** struct port_intctx {
+ 196:../../../os/common/ports/AVR/chcore.h ****   uint8_t       _next;
+ 197:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r29;
+ 198:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r28;
+ 199:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r17;
+ 200:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r16;
+ 201:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r15;
+ 202:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r14;
+ 203:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r13;
+ 204:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r12;
+ 205:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r11;
+ 206:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r10;
+ 207:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r9;
+ 208:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r8;
+ 209:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r7;
+ 210:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r6;
+ 211:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r5;
+ 212:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r4;
+ 213:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r3;
+ 214:../../../os/common/ports/AVR/chcore.h ****   uint8_t       r2;
+ 215:../../../os/common/ports/AVR/chcore.h **** #if defined(__AVR_3_BYTE_PC__)
+ 216:../../../os/common/ports/AVR/chcore.h ****   uint8_t       pcx;
+ 217:../../../os/common/ports/AVR/chcore.h **** #endif
+ 218:../../../os/common/ports/AVR/chcore.h ****   uint8_t       pcl;
+ 219:../../../os/common/ports/AVR/chcore.h ****   uint8_t       pch;
+ 220:../../../os/common/ports/AVR/chcore.h **** };
+ 221:../../../os/common/ports/AVR/chcore.h **** 
+ 222:../../../os/common/ports/AVR/chcore.h **** /**
+ 223:../../../os/common/ports/AVR/chcore.h ****  * @brief   Platform dependent part of the @p thread_t structure.
+ 224:../../../os/common/ports/AVR/chcore.h ****  * @details This structure usually contains just the saved stack pointer
+ 225:../../../os/common/ports/AVR/chcore.h ****  *          defined as a pointer to a @p port_intctx structure.
+ 226:../../../os/common/ports/AVR/chcore.h ****  */
+ 227:../../../os/common/ports/AVR/chcore.h **** struct port_context {
+ 228:../../../os/common/ports/AVR/chcore.h ****   struct port_intctx *sp;
+ 229:../../../os/common/ports/AVR/chcore.h **** };
+ 230:../../../os/common/ports/AVR/chcore.h **** 
+ 231:../../../os/common/ports/AVR/chcore.h **** #endif /* !defined(_FROM_ASM_) */
+ 232:../../../os/common/ports/AVR/chcore.h **** 
+ 233:../../../os/common/ports/AVR/chcore.h **** /*===========================================================================*/
+ 234:../../../os/common/ports/AVR/chcore.h **** /* Module macros.                                                            */
+ 235:../../../os/common/ports/AVR/chcore.h **** /*===========================================================================*/
+ 236:../../../os/common/ports/AVR/chcore.h **** 
+ 237:../../../os/common/ports/AVR/chcore.h **** /**
+ 238:../../../os/common/ports/AVR/chcore.h ****  * @brief   Platform dependent part of the @p chThdCreateI() API.
+ 239:../../../os/common/ports/AVR/chcore.h ****  * @details This code usually setup the context switching frame represented
+ 240:../../../os/common/ports/AVR/chcore.h ****  *          by an @p port_intctx structure.
+ 241:../../../os/common/ports/AVR/chcore.h ****  */
+ 242:../../../os/common/ports/AVR/chcore.h **** #if defined(__AVR_3_BYTE_PC__) || defined(__DOXYGEN__)
+ 243:../../../os/common/ports/AVR/chcore.h **** #define PORT_SETUP_CONTEXT(tp, wbase, wtop, pf, arg) {                      \
+ 244:../../../os/common/ports/AVR/chcore.h ****   tp->ctx.sp = (struct port_intctx *)((uint8_t *)(wtop) -                   \
+ 245:../../../os/common/ports/AVR/chcore.h ****                                       sizeof(struct port_intctx));          \
+ 246:../../../os/common/ports/AVR/chcore.h ****   tp->ctx.sp->r2  = (uint8_t)(0xff & (uint16_t)pf);                         \
+ 247:../../../os/common/ports/AVR/chcore.h ****   tp->ctx.sp->r3  = (uint8_t)((uint16_t)(pf) >> 8);                         \
+ 248:../../../os/common/ports/AVR/chcore.h ****   tp->ctx.sp->r4  = (uint8_t)(0xff & (uint16_t)arg);                        \
+ 249:../../../os/common/ports/AVR/chcore.h ****   tp->ctx.sp->r5  = (uint8_t)((uint16_t)(arg) >> 8);                        \
+ 250:../../../os/common/ports/AVR/chcore.h ****   tp->ctx.sp->pcx = (uint8_t)0;                                             \
+ 251:../../../os/common/ports/AVR/chcore.h ****   tp->ctx.sp->pcl = (uint16_t)_port_thread_start >> 8;                      \
+ 252:../../../os/common/ports/AVR/chcore.h ****   tp->ctx.sp->pch = (uint8_t)(0xff & (uint16_t)_port_thread_start);         \
+ 253:../../../os/common/ports/AVR/chcore.h **** }
+ 254:../../../os/common/ports/AVR/chcore.h **** #else /* !__AVR_3_BYTE_PC__ */
+ 255:../../../os/common/ports/AVR/chcore.h **** #define PORT_SETUP_CONTEXT(tp, wbase, wtop, pf, arg) {                      \
+ 256:../../../os/common/ports/AVR/chcore.h ****   tp->ctx.sp = (struct port_intctx *)((uint8_t *)(wtop) -                   \
+ 257:../../../os/common/ports/AVR/chcore.h ****                                       sizeof(struct port_intctx));          \
+ 258:../../../os/common/ports/AVR/chcore.h ****   tp->ctx.sp->r2  = (uint8_t)(0xff & (uint16_t)pf);                         \
+ 259:../../../os/common/ports/AVR/chcore.h ****   tp->ctx.sp->r3  = (uint8_t)((uint16_t)(pf) >> 8);                         \
+ 260:../../../os/common/ports/AVR/chcore.h ****   tp->ctx.sp->r4  = (uint8_t)(0xff & (uint16_t)arg);                        \
+ 261:../../../os/common/ports/AVR/chcore.h ****   tp->ctx.sp->r5  = (uint8_t)((uint16_t)(arg) >> 8);                        \
+ 262:../../../os/common/ports/AVR/chcore.h ****   tp->ctx.sp->pcl = (uint16_t)_port_thread_start >> 8;                      \
+ 263:../../../os/common/ports/AVR/chcore.h ****   tp->ctx.sp->pch = (uint8_t)(0xff & (uint16_t)_port_thread_start);         \
+ 264:../../../os/common/ports/AVR/chcore.h **** }
+ 265:../../../os/common/ports/AVR/chcore.h **** #endif /* !__AVR_3_BYTE_PC__ */
+ 266:../../../os/common/ports/AVR/chcore.h **** 
+ 267:../../../os/common/ports/AVR/chcore.h **** /**
+ 268:../../../os/common/ports/AVR/chcore.h ****  * @brief   Computes the thread working area global size.
+ 269:../../../os/common/ports/AVR/chcore.h ****  * @note    There is no need to perform alignments in this macro.
+ 270:../../../os/common/ports/AVR/chcore.h ****  */
+ 271:../../../os/common/ports/AVR/chcore.h **** #define PORT_WA_SIZE(n) ((sizeof(struct port_intctx) - 1) +                \
+ 272:../../../os/common/ports/AVR/chcore.h ****                          (sizeof(struct port_extctx) - 1) +                \
+ 273:../../../os/common/ports/AVR/chcore.h ****                          ((size_t)(n)) + ((size_t)(PORT_INT_REQUIRED_STACK)))
+ 274:../../../os/common/ports/AVR/chcore.h **** 
+ 275:../../../os/common/ports/AVR/chcore.h **** /**
+ 276:../../../os/common/ports/AVR/chcore.h ****  * @brief   Static working area allocation.
+ 277:../../../os/common/ports/AVR/chcore.h ****  * @details This macro is used to allocate a static thread working area
+ 278:../../../os/common/ports/AVR/chcore.h ****  *          aligned as both position and size.
+ 279:../../../os/common/ports/AVR/chcore.h ****  *
+ 280:../../../os/common/ports/AVR/chcore.h ****  * @param[in] s         the name to be assigned to the stack array
+ 281:../../../os/common/ports/AVR/chcore.h ****  * @param[in] n         the stack size to be assigned to the thread
+ 282:../../../os/common/ports/AVR/chcore.h ****  */
+ 283:../../../os/common/ports/AVR/chcore.h **** #define PORT_WORKING_AREA(s, n)                                             \
+ 284:../../../os/common/ports/AVR/chcore.h ****   stkalign_t s[THD_WORKING_AREA_SIZE(n) / sizeof (stkalign_t)]
+ 285:../../../os/common/ports/AVR/chcore.h **** 
+ 286:../../../os/common/ports/AVR/chcore.h **** /**
+ 287:../../../os/common/ports/AVR/chcore.h ****  * @brief   Priority level verification macro.
+ 288:../../../os/common/ports/AVR/chcore.h ****  */
+ 289:../../../os/common/ports/AVR/chcore.h **** #define PORT_IRQ_IS_VALID_PRIORITY(n) false
+ 290:../../../os/common/ports/AVR/chcore.h **** 
+ 291:../../../os/common/ports/AVR/chcore.h **** /**
+ 292:../../../os/common/ports/AVR/chcore.h ****  * @brief   Priority level verification macro.
+ 293:../../../os/common/ports/AVR/chcore.h ****  */
+ 294:../../../os/common/ports/AVR/chcore.h **** #define PORT_IRQ_IS_VALID_KERNEL_PRIORITY(n) false
+ 295:../../../os/common/ports/AVR/chcore.h **** 
+ 296:../../../os/common/ports/AVR/chcore.h **** /**
+ 297:../../../os/common/ports/AVR/chcore.h ****  * @brief   IRQ prologue code.
+ 298:../../../os/common/ports/AVR/chcore.h ****  * @details This macro must be inserted at the start of all IRQ handlers
+ 299:../../../os/common/ports/AVR/chcore.h ****  *          enabled to invoke system APIs.
+ 300:../../../os/common/ports/AVR/chcore.h ****  * @note    This code tricks the compiler to save all the specified registers
+ 301:../../../os/common/ports/AVR/chcore.h ****  *          by "touching" them.
+ 302:../../../os/common/ports/AVR/chcore.h ****  */
+ 303:../../../os/common/ports/AVR/chcore.h **** #define PORT_IRQ_PROLOGUE() {                                               \
+ 304:../../../os/common/ports/AVR/chcore.h ****   asm ("" : : : "r18", "r19", "r20", "r21", "r22", "r23", "r24",            \
+ 305:../../../os/common/ports/AVR/chcore.h ****                 "r25", "r26", "r27", "r30", "r31");                         \
+ 306:../../../os/common/ports/AVR/chcore.h ****   __avr_in_isr = true;                                                      \
+ 307:../../../os/common/ports/AVR/chcore.h **** }
+ 308:../../../os/common/ports/AVR/chcore.h **** 
+ 309:../../../os/common/ports/AVR/chcore.h **** /**
+ 310:../../../os/common/ports/AVR/chcore.h ****  * @brief   IRQ epilogue code.
+ 311:../../../os/common/ports/AVR/chcore.h ****  * @details This macro must be inserted at the end of all IRQ handlers
+ 312:../../../os/common/ports/AVR/chcore.h ****  *          enabled to invoke system APIs.
+ 313:../../../os/common/ports/AVR/chcore.h ****  */
+ 314:../../../os/common/ports/AVR/chcore.h **** #define PORT_IRQ_EPILOGUE() {                                               \
+ 315:../../../os/common/ports/AVR/chcore.h ****   __avr_in_isr = false;                                                     \
+ 316:../../../os/common/ports/AVR/chcore.h ****   __dbg_check_lock();                                                       \
+ 317:../../../os/common/ports/AVR/chcore.h ****   if (chSchIsPreemptionRequired())                                          \
+ 318:../../../os/common/ports/AVR/chcore.h ****     chSchDoPreemption();                                                    \
+ 319:../../../os/common/ports/AVR/chcore.h ****   __dbg_check_unlock();                                                     \
+ 320:../../../os/common/ports/AVR/chcore.h **** }
+ 321:../../../os/common/ports/AVR/chcore.h **** 
+ 322:../../../os/common/ports/AVR/chcore.h **** /**
+ 323:../../../os/common/ports/AVR/chcore.h ****  * @brief   IRQ handler function declaration.
+ 324:../../../os/common/ports/AVR/chcore.h ****  * @note    @p id can be a function name or a vector number depending on the
+ 325:../../../os/common/ports/AVR/chcore.h ****  *          port implementation.
+ 326:../../../os/common/ports/AVR/chcore.h ****  */
+ 327:../../../os/common/ports/AVR/chcore.h **** #define PORT_IRQ_HANDLER(id) ISR(id)
+ 328:../../../os/common/ports/AVR/chcore.h **** 
+ 329:../../../os/common/ports/AVR/chcore.h **** /**
+ 330:../../../os/common/ports/AVR/chcore.h ****  * @brief   Fast IRQ handler function declaration.
+ 331:../../../os/common/ports/AVR/chcore.h ****  * @note    @p id can be a function name or a vector number depending on the
+ 332:../../../os/common/ports/AVR/chcore.h ****  *          port implementation.
+ 333:../../../os/common/ports/AVR/chcore.h ****  */
+ 334:../../../os/common/ports/AVR/chcore.h **** #define PORT_FAST_IRQ_HANDLER(id) ISR(id)
+ 335:../../../os/common/ports/AVR/chcore.h **** 
+ 336:../../../os/common/ports/AVR/chcore.h **** /**
+ 337:../../../os/common/ports/AVR/chcore.h ****  * @brief   Performs a context switch between two threads.
+ 338:../../../os/common/ports/AVR/chcore.h ****  * @details This is the most critical code in any port, this function
+ 339:../../../os/common/ports/AVR/chcore.h ****  *          is responsible for the context switch between 2 threads.
+ 340:../../../os/common/ports/AVR/chcore.h ****  * @note    The implementation of this code affects <b>directly</b> the context
+ 341:../../../os/common/ports/AVR/chcore.h ****  *          switch performance so optimize here as much as you can.
+ 342:../../../os/common/ports/AVR/chcore.h ****  *
+ 343:../../../os/common/ports/AVR/chcore.h ****  * @param[in] ntp       the thread to be switched in
+ 344:../../../os/common/ports/AVR/chcore.h ****  * @param[in] otp       the thread to be switched out
+ 345:../../../os/common/ports/AVR/chcore.h ****  */
+ 346:../../../os/common/ports/AVR/chcore.h **** #define port_switch(ntp, otp) {                                             \
+ 347:../../../os/common/ports/AVR/chcore.h ****   _port_switch(ntp, otp);                                                   \
+ 348:../../../os/common/ports/AVR/chcore.h ****   asm volatile ("" : : : "memory");                                         \
+ 349:../../../os/common/ports/AVR/chcore.h **** }
+ 350:../../../os/common/ports/AVR/chcore.h **** 
+ 351:../../../os/common/ports/AVR/chcore.h **** 
+ 352:../../../os/common/ports/AVR/chcore.h **** /**
+ 353:../../../os/common/ports/AVR/chcore.h ****  * @brief   Port-related initialization code.
+ 354:../../../os/common/ports/AVR/chcore.h ****  * @note    This function is empty in this port.
+ 355:../../../os/common/ports/AVR/chcore.h ****  */
+ 356:../../../os/common/ports/AVR/chcore.h **** #define port_init(oip) {                                                    \
+ 357:../../../os/common/ports/AVR/chcore.h ****   __avr_in_isr = true;                                                      \
+ 358:../../../os/common/ports/AVR/chcore.h **** }
+ 359:../../../os/common/ports/AVR/chcore.h **** 
+ 360:../../../os/common/ports/AVR/chcore.h **** /*===========================================================================*/
+ 361:../../../os/common/ports/AVR/chcore.h **** /* External declarations.                                                    */
+ 362:../../../os/common/ports/AVR/chcore.h **** /*===========================================================================*/
+ 363:../../../os/common/ports/AVR/chcore.h **** 
+ 364:../../../os/common/ports/AVR/chcore.h **** /* The following code is not processed when the file is included from an
+ 365:../../../os/common/ports/AVR/chcore.h ****    asm module.*/
+ 366:../../../os/common/ports/AVR/chcore.h **** #if !defined(_FROM_ASM_)
+ 367:../../../os/common/ports/AVR/chcore.h **** 
+ 368:../../../os/common/ports/AVR/chcore.h **** #ifdef __cplusplus
+ 369:../../../os/common/ports/AVR/chcore.h **** extern "C" {
+ 370:../../../os/common/ports/AVR/chcore.h **** #endif
+ 371:../../../os/common/ports/AVR/chcore.h ****   void _port_switch(thread_t *ntp, thread_t *otp);
+ 372:../../../os/common/ports/AVR/chcore.h ****   void _port_thread_start(void);
+ 373:../../../os/common/ports/AVR/chcore.h **** #ifdef __cplusplus
+ 374:../../../os/common/ports/AVR/chcore.h **** }
+ 375:../../../os/common/ports/AVR/chcore.h **** #endif
+ 376:../../../os/common/ports/AVR/chcore.h **** 
+ 377:../../../os/common/ports/AVR/chcore.h **** #endif /* !defined(_FROM_ASM_) */
+ 378:../../../os/common/ports/AVR/chcore.h **** 
+ 379:../../../os/common/ports/AVR/chcore.h **** /*===========================================================================*/
+ 380:../../../os/common/ports/AVR/chcore.h **** /* Module inline functions.                                                  */
+ 381:../../../os/common/ports/AVR/chcore.h **** /*===========================================================================*/
+ 382:../../../os/common/ports/AVR/chcore.h **** 
+ 383:../../../os/common/ports/AVR/chcore.h **** /* The following code is not processed when the file is included from an
+ 384:../../../os/common/ports/AVR/chcore.h ****    asm module.*/
+ 385:../../../os/common/ports/AVR/chcore.h **** #if !defined(_FROM_ASM_)
+ 386:../../../os/common/ports/AVR/chcore.h **** 
+ 387:../../../os/common/ports/AVR/chcore.h **** /**
+ 388:../../../os/common/ports/AVR/chcore.h ****  * @brief   Returns a word encoding the current interrupts status.
+ 389:../../../os/common/ports/AVR/chcore.h ****  *
+ 390:../../../os/common/ports/AVR/chcore.h ****  * @return              The interrupts status.
+ 391:../../../os/common/ports/AVR/chcore.h ****  */
+ 392:../../../os/common/ports/AVR/chcore.h **** static inline syssts_t port_get_irq_status(void) {
+ 393:../../../os/common/ports/AVR/chcore.h **** 
+ 394:../../../os/common/ports/AVR/chcore.h ****   return SREG;
+ 395:../../../os/common/ports/AVR/chcore.h **** }
+ 396:../../../os/common/ports/AVR/chcore.h **** 
+ 397:../../../os/common/ports/AVR/chcore.h **** /**
+ 398:../../../os/common/ports/AVR/chcore.h ****  * @brief   Checks the interrupt status.
+ 399:../../../os/common/ports/AVR/chcore.h ****  *
+ 400:../../../os/common/ports/AVR/chcore.h ****  * @param[in] sts       the interrupt status word
+ 401:../../../os/common/ports/AVR/chcore.h ****  *
+ 402:../../../os/common/ports/AVR/chcore.h ****  * @return              The interrupt status.
+ 403:../../../os/common/ports/AVR/chcore.h ****  * @retval false        the word specified a disabled interrupts status.
+ 404:../../../os/common/ports/AVR/chcore.h ****  * @retval true         the word specified an enabled interrupts status.
+ 405:../../../os/common/ports/AVR/chcore.h ****  */
+ 406:../../../os/common/ports/AVR/chcore.h **** static inline bool port_irq_enabled(syssts_t sts) {
+ 407:../../../os/common/ports/AVR/chcore.h **** 
+ 408:../../../os/common/ports/AVR/chcore.h ****   return (bool)((sts & 0x80) != 0);
+ 409:../../../os/common/ports/AVR/chcore.h **** }
+ 410:../../../os/common/ports/AVR/chcore.h **** 
+ 411:../../../os/common/ports/AVR/chcore.h **** /**
+ 412:../../../os/common/ports/AVR/chcore.h ****  * @brief   Determines the current execution context.
+ 413:../../../os/common/ports/AVR/chcore.h ****  *
+ 414:../../../os/common/ports/AVR/chcore.h ****  * @return              The execution context.
+ 415:../../../os/common/ports/AVR/chcore.h ****  * @retval false        not running in ISR mode.
+ 416:../../../os/common/ports/AVR/chcore.h ****  * @retval true         running in ISR mode.
+ 417:../../../os/common/ports/AVR/chcore.h ****  */
+ 418:../../../os/common/ports/AVR/chcore.h **** static inline bool port_is_isr_context(void) {
+ 419:../../../os/common/ports/AVR/chcore.h **** 
+ 420:../../../os/common/ports/AVR/chcore.h ****   return __avr_in_isr;
+ 421:../../../os/common/ports/AVR/chcore.h **** }
+ 422:../../../os/common/ports/AVR/chcore.h **** 
+ 423:../../../os/common/ports/AVR/chcore.h **** /**
+ 424:../../../os/common/ports/AVR/chcore.h ****  * @brief   Kernel-lock action.
+ 425:../../../os/common/ports/AVR/chcore.h ****  * @details Usually this function just disables interrupts but may perform more
+ 426:../../../os/common/ports/AVR/chcore.h ****  *          actions.
+ 427:../../../os/common/ports/AVR/chcore.h ****  */
+ 428:../../../os/common/ports/AVR/chcore.h **** static inline void port_lock(void) {
+ 429:../../../os/common/ports/AVR/chcore.h **** 
+ 430:../../../os/common/ports/AVR/chcore.h ****   asm volatile ("cli" : : : "memory");
+ 326               		.loc 2 430 0
+ 327               	/* #APP */
+ 328               	 ;  430 "../../../os/common/ports/AVR/chcore.h" 1
+ 329 002a F894      		cli
+ 330               	 ;  0 "" 2
+ 331               	.LVL20:
+ 332               	/* #NOAPP */
+ 333               	.LBE61:
+ 334               	.LBE60:
+ 335               	.LBE59:
+ 336               	.LBB62:
+ 337               	.LBB63:
+ 141:../../../os/oslib/src/chobjcaches.c ****   objp = hhp->hash_next;
+ 338               		.loc 1 141 0
+ 339 002c 8A01      		movw r16,r20
+ 340               	.LVL21:
+ 341 002e 0C0D      		add r16,r12
+ 342 0030 1D1D      		adc r17,r13
+ 343 0032 DC01      		movw r26,r24
+ 344 0034 EC91      		ld r30,X
+ 345 0036 F0E0      		ldi r31,0
+ 346 0038 3197      		sbiw r30,1
+ 347 003a E023      		and r30,r16
+ 348 003c F123      		and r31,r17
+ 349 003e EE0F      		lsl r30
+ 350 0040 FF1F      		rol r31
+ 351 0042 EE0F      		lsl r30
+ 352 0044 FF1F      		rol r31
+ 353 0046 1196      		adiw r26,1
+ 354 0048 8D91      		ld r24,X+
+ 355 004a 9C91      		ld r25,X
+ 356 004c 1297      		sbiw r26,1+1
+ 357               	.LVL22:
+ 358 004e E80F      		add r30,r24
+ 359 0050 F91F      		adc r31,r25
+ 360               	.LVL23:
+ 142:../../../os/oslib/src/chobjcaches.c **** 
+ 361               		.loc 1 142 0
+ 362 0052 C081      		ld r28,Z
+ 363 0054 D181      		ldd r29,Z+1
+ 364               	.LVL24:
+ 145:../../../os/oslib/src/chobjcaches.c ****     if ((objp->obj_key == key) && (objp->obj_group == group)) {
+ 365               		.loc 1 145 0
+ 366 0056 EC17      		cp r30,r28
+ 367 0058 FD07      		cpc r31,r29
+ 368 005a 01F4      		brne .L11
+ 369 005c 00C0      		rjmp .L8
+ 370               	.L9:
+ 151:../../../os/oslib/src/chobjcaches.c ****   }
+ 371               		.loc 1 151 0
+ 372 005e 0990      		ld __tmp_reg__,Y+
+ 373 0060 D881      		ld r29,Y
+ 374 0062 C02D      		mov r28,__tmp_reg__
+ 375               	.LVL25:
+ 145:../../../os/oslib/src/chobjcaches.c ****     if ((objp->obj_key == key) && (objp->obj_group == group)) {
+ 376               		.loc 1 145 0
+ 377 0064 EC17      		cp r30,r28
+ 378 0066 FD07      		cpc r31,r29
+ 379 0068 01F4      		brne .+2
+ 380 006a 00C0      		rjmp .L8
+ 381               	.L11:
+ 146:../../../os/oslib/src/chobjcaches.c **** 
+ 382               		.loc 1 146 0
+ 383 006c 8C85      		ldd r24,Y+12
+ 384 006e 9D85      		ldd r25,Y+13
+ 385 0070 AE85      		ldd r26,Y+14
+ 386 0072 BF85      		ldd r27,Y+15
+ 387 0074 C816      		cp r12,r24
+ 388 0076 D906      		cpc r13,r25
+ 389 0078 EA06      		cpc r14,r26
+ 390 007a FB06      		cpc r15,r27
+ 391 007c 01F4      		brne .L9
+ 392 007e 8885      		ldd r24,Y+8
+ 393 0080 9985      		ldd r25,Y+9
+ 394 0082 AA85      		ldd r26,Y+10
+ 395 0084 BB85      		ldd r27,Y+11
+ 396 0086 4816      		cp r4,r24
+ 397 0088 5906      		cpc r5,r25
+ 398 008a 6A06      		cpc r6,r26
+ 399 008c 7B06      		cpc r7,r27
+ 400 008e 01F4      		brne .L9
+ 401               	.LVL26:
+ 402               	.LBE63:
+ 403               	.LBE62:
+ 306:../../../os/oslib/src/chobjcaches.c ****   oc_object_t *objp;
+ 307:../../../os/oslib/src/chobjcaches.c **** 
+ 308:../../../os/oslib/src/chobjcaches.c ****   /* Critical section enter, the hash check operation is fast.*/
+ 309:../../../os/oslib/src/chobjcaches.c ****   chSysLock();
+ 310:../../../os/oslib/src/chobjcaches.c **** 
+ 311:../../../os/oslib/src/chobjcaches.c ****   /* Checking the cache for a hit.*/
+ 312:../../../os/oslib/src/chobjcaches.c ****   objp = hash_get_s(ocp, group, key);
+ 313:../../../os/oslib/src/chobjcaches.c ****   if (objp != NULL) {
+ 404               		.loc 1 313 0
+ 405 0090 2097      		sbiw r28,0
+ 406 0092 01F0      		breq .L8
+ 407               	.LVL27:
+ 314:../../../os/oslib/src/chobjcaches.c **** 
+ 315:../../../os/oslib/src/chobjcaches.c ****     chDbgAssert((objp->obj_flags & OC_FLAG_INHASH) == OC_FLAG_INHASH,
+ 316:../../../os/oslib/src/chobjcaches.c ****                 "not in hash");
+ 317:../../../os/oslib/src/chobjcaches.c **** 
+ 318:../../../os/oslib/src/chobjcaches.c ****     /* Cache hit, checking if the buffer is owned by some
+ 319:../../../os/oslib/src/chobjcaches.c ****        other thread.*/
+ 320:../../../os/oslib/src/chobjcaches.c ****     if (chSemGetCounterI(&objp->obj_sem) > (cnt_t)0) {
+ 408               		.loc 1 320 0
+ 409 0094 8C89      		ldd r24,Y+20
+ 410 0096 1816      		cp __zero_reg__,r24
+ 411 0098 04F0      		brlt .+2
+ 412 009a 00C0      		rjmp .L12
+ 321:../../../os/oslib/src/chobjcaches.c ****       /* Not owned case, it is in the LRU list.*/
+ 322:../../../os/oslib/src/chobjcaches.c **** 
+ 323:../../../os/oslib/src/chobjcaches.c ****       chDbgAssert((objp->obj_flags & OC_FLAG_INLRU) == OC_FLAG_INLRU,
+ 324:../../../os/oslib/src/chobjcaches.c ****                   "not in LRU");
+ 325:../../../os/oslib/src/chobjcaches.c **** 
+ 326:../../../os/oslib/src/chobjcaches.c ****       /* Removing the object from LRU, now it is "owned".*/
+ 327:../../../os/oslib/src/chobjcaches.c ****       LRU_REMOVE(objp);
+ 413               		.loc 1 327 0
+ 414 009c EE81      		ldd r30,Y+6
+ 415 009e FF81      		ldd r31,Y+7
+ 416 00a0 8C81      		ldd r24,Y+4
+ 417 00a2 9D81      		ldd r25,Y+5
+ 418 00a4 9583      		std Z+5,r25
+ 419 00a6 8483      		std Z+4,r24
+ 420 00a8 AC81      		ldd r26,Y+4
+ 421 00aa BD81      		ldd r27,Y+5
+ 422 00ac 1796      		adiw r26,6+1
+ 423 00ae FC93      		st X,r31
+ 424 00b0 EE93      		st -X,r30
+ 425 00b2 1697      		sbiw r26,6
+ 328:../../../os/oslib/src/chobjcaches.c ****       objp->obj_flags &= ~OC_FLAG_INLRU;
+ 426               		.loc 1 328 0
+ 427 00b4 8D89      		ldd r24,Y+21
+ 428 00b6 9E89      		ldd r25,Y+22
+ 429 00b8 AF89      		ldd r26,Y+23
+ 430 00ba B88D      		ldd r27,Y+24
+ 431 00bc 8E7F      		andi r24,254
+ 432 00be AA27      		clr r26
+ 433 00c0 BB27      		clr r27
+ 434 00c2 8D8B      		std Y+21,r24
+ 435 00c4 9E8B      		std Y+22,r25
+ 436 00c6 AF8B      		std Y+23,r26
+ 437 00c8 B88F      		std Y+24,r27
+ 438               	.LVL28:
+ 439               	.LBB64:
+ 440               	.LBB65:
+ 441               		.file 3 "../../../os/rt/include/chsem.h"
+   1:../../../os/rt/include/chsem.h **** /*
+   2:../../../os/rt/include/chsem.h ****     ChibiOS - Copyright (C) 2006,2007,2008,2009,2010,2011,2012,2013,2014,
+   3:../../../os/rt/include/chsem.h ****               2015,2016,2017,2018,2019,2020,2021 Giovanni Di Sirio.
+   4:../../../os/rt/include/chsem.h **** 
+   5:../../../os/rt/include/chsem.h ****     This file is part of ChibiOS.
+   6:../../../os/rt/include/chsem.h **** 
+   7:../../../os/rt/include/chsem.h ****     ChibiOS is free software; you can redistribute it and/or modify
+   8:../../../os/rt/include/chsem.h ****     it under the terms of the GNU General Public License as published by
+   9:../../../os/rt/include/chsem.h ****     the Free Software Foundation version 3 of the License.
+  10:../../../os/rt/include/chsem.h **** 
+  11:../../../os/rt/include/chsem.h ****     ChibiOS is distributed in the hope that it will be useful,
+  12:../../../os/rt/include/chsem.h ****     but WITHOUT ANY WARRANTY; without even the implied warranty of
+  13:../../../os/rt/include/chsem.h ****     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  14:../../../os/rt/include/chsem.h ****     GNU General Public License for more details.
+  15:../../../os/rt/include/chsem.h **** 
+  16:../../../os/rt/include/chsem.h ****     You should have received a copy of the GNU General Public License
+  17:../../../os/rt/include/chsem.h ****     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  18:../../../os/rt/include/chsem.h **** */
+  19:../../../os/rt/include/chsem.h **** 
+  20:../../../os/rt/include/chsem.h **** /**
+  21:../../../os/rt/include/chsem.h ****  * @file    rt/include/chsem.h
+  22:../../../os/rt/include/chsem.h ****  * @brief   Semaphores macros and structures.
+  23:../../../os/rt/include/chsem.h ****  *
+  24:../../../os/rt/include/chsem.h ****  * @addtogroup semaphores
+  25:../../../os/rt/include/chsem.h ****  * @{
+  26:../../../os/rt/include/chsem.h ****  */
+  27:../../../os/rt/include/chsem.h **** 
+  28:../../../os/rt/include/chsem.h **** #ifndef CHSEM_H
+  29:../../../os/rt/include/chsem.h **** #define CHSEM_H
+  30:../../../os/rt/include/chsem.h **** 
+  31:../../../os/rt/include/chsem.h **** #if (CH_CFG_USE_SEMAPHORES == TRUE) || defined(__DOXYGEN__)
+  32:../../../os/rt/include/chsem.h **** 
+  33:../../../os/rt/include/chsem.h **** /*===========================================================================*/
+  34:../../../os/rt/include/chsem.h **** /* Module constants.                                                         */
+  35:../../../os/rt/include/chsem.h **** /*===========================================================================*/
+  36:../../../os/rt/include/chsem.h **** 
+  37:../../../os/rt/include/chsem.h **** /*===========================================================================*/
+  38:../../../os/rt/include/chsem.h **** /* Module pre-compile time settings.                                         */
+  39:../../../os/rt/include/chsem.h **** /*===========================================================================*/
+  40:../../../os/rt/include/chsem.h **** 
+  41:../../../os/rt/include/chsem.h **** /*===========================================================================*/
+  42:../../../os/rt/include/chsem.h **** /* Derived constants and error checks.                                       */
+  43:../../../os/rt/include/chsem.h **** /*===========================================================================*/
+  44:../../../os/rt/include/chsem.h **** 
+  45:../../../os/rt/include/chsem.h **** /*===========================================================================*/
+  46:../../../os/rt/include/chsem.h **** /* Module data structures and types.                                         */
+  47:../../../os/rt/include/chsem.h **** /*===========================================================================*/
+  48:../../../os/rt/include/chsem.h **** 
+  49:../../../os/rt/include/chsem.h **** /**
+  50:../../../os/rt/include/chsem.h ****  * @brief   Type of a Semaphore object.
+  51:../../../os/rt/include/chsem.h ****  */
+  52:../../../os/rt/include/chsem.h **** typedef struct ch_semaphore {
+  53:../../../os/rt/include/chsem.h ****   ch_queue_t            queue;      /**< @brief Queue of the threads sleeping
+  54:../../../os/rt/include/chsem.h ****                                                 on this semaphore.          */
+  55:../../../os/rt/include/chsem.h ****   cnt_t                 cnt;        /**< @brief The semaphore counter.      */
+  56:../../../os/rt/include/chsem.h **** } semaphore_t;
+  57:../../../os/rt/include/chsem.h **** 
+  58:../../../os/rt/include/chsem.h **** /*===========================================================================*/
+  59:../../../os/rt/include/chsem.h **** /* Module macros.                                                            */
+  60:../../../os/rt/include/chsem.h **** /*===========================================================================*/
+  61:../../../os/rt/include/chsem.h **** 
+  62:../../../os/rt/include/chsem.h **** /**
+  63:../../../os/rt/include/chsem.h ****  * @brief   Data part of a static semaphore initializer.
+  64:../../../os/rt/include/chsem.h ****  * @details This macro should be used when statically initializing a semaphore
+  65:../../../os/rt/include/chsem.h ****  *          that is part of a bigger structure.
+  66:../../../os/rt/include/chsem.h ****  *
+  67:../../../os/rt/include/chsem.h ****  * @param[in] name      the name of the semaphore variable
+  68:../../../os/rt/include/chsem.h ****  * @param[in] n         the counter initial value, this value must be
+  69:../../../os/rt/include/chsem.h ****  *                      non-negative
+  70:../../../os/rt/include/chsem.h ****  */
+  71:../../../os/rt/include/chsem.h **** #define __SEMAPHORE_DATA(name, n) {__CH_QUEUE_DATA(name.queue), n}
+  72:../../../os/rt/include/chsem.h **** 
+  73:../../../os/rt/include/chsem.h **** /**
+  74:../../../os/rt/include/chsem.h ****  * @brief   Static semaphore initializer.
+  75:../../../os/rt/include/chsem.h ****  * @details Statically initialized semaphores require no explicit
+  76:../../../os/rt/include/chsem.h ****  *          initialization using @p chSemInit().
+  77:../../../os/rt/include/chsem.h ****  *
+  78:../../../os/rt/include/chsem.h ****  * @param[in] name      the name of the semaphore variable
+  79:../../../os/rt/include/chsem.h ****  * @param[in] n         the counter initial value, this value must be
+  80:../../../os/rt/include/chsem.h ****  *                      non-negative
+  81:../../../os/rt/include/chsem.h ****  */
+  82:../../../os/rt/include/chsem.h **** #define SEMAPHORE_DECL(name, n) semaphore_t name = __SEMAPHORE_DATA(name, n)
+  83:../../../os/rt/include/chsem.h **** 
+  84:../../../os/rt/include/chsem.h **** /*===========================================================================*/
+  85:../../../os/rt/include/chsem.h **** /* External declarations.                                                    */
+  86:../../../os/rt/include/chsem.h **** /*===========================================================================*/
+  87:../../../os/rt/include/chsem.h **** 
+  88:../../../os/rt/include/chsem.h **** #ifdef __cplusplus
+  89:../../../os/rt/include/chsem.h **** extern "C" {
+  90:../../../os/rt/include/chsem.h **** #endif
+  91:../../../os/rt/include/chsem.h ****   void chSemObjectInit(semaphore_t *sp, cnt_t n);
+  92:../../../os/rt/include/chsem.h ****   void chSemObjectDispose(semaphore_t *sp);
+  93:../../../os/rt/include/chsem.h ****   void chSemResetWithMessage(semaphore_t *sp, cnt_t n, msg_t msg);
+  94:../../../os/rt/include/chsem.h ****   void chSemResetWithMessageI(semaphore_t *sp, cnt_t n, msg_t msg);
+  95:../../../os/rt/include/chsem.h ****   msg_t chSemWait(semaphore_t *sp);
+  96:../../../os/rt/include/chsem.h ****   msg_t chSemWaitS(semaphore_t *sp);
+  97:../../../os/rt/include/chsem.h ****   msg_t chSemWaitTimeout(semaphore_t *sp, sysinterval_t timeout);
+  98:../../../os/rt/include/chsem.h ****   msg_t chSemWaitTimeoutS(semaphore_t *sp, sysinterval_t timeout);
+  99:../../../os/rt/include/chsem.h ****   void chSemSignal(semaphore_t *sp);
+ 100:../../../os/rt/include/chsem.h ****   void chSemSignalI(semaphore_t *sp);
+ 101:../../../os/rt/include/chsem.h ****   void chSemAddCounterI(semaphore_t *sp, cnt_t n);
+ 102:../../../os/rt/include/chsem.h ****   msg_t chSemSignalWait(semaphore_t *sps, semaphore_t *spw);
+ 103:../../../os/rt/include/chsem.h **** #ifdef __cplusplus
+ 104:../../../os/rt/include/chsem.h **** }
+ 105:../../../os/rt/include/chsem.h **** #endif
+ 106:../../../os/rt/include/chsem.h **** 
+ 107:../../../os/rt/include/chsem.h **** /*===========================================================================*/
+ 108:../../../os/rt/include/chsem.h **** /* Module inline functions.                                                  */
+ 109:../../../os/rt/include/chsem.h **** /*===========================================================================*/
+ 110:../../../os/rt/include/chsem.h **** 
+ 111:../../../os/rt/include/chsem.h **** /**
+ 112:../../../os/rt/include/chsem.h ****  * @brief   Performs a reset operation on the semaphore.
+ 113:../../../os/rt/include/chsem.h ****  * @post    After invoking this function all the threads waiting on the
+ 114:../../../os/rt/include/chsem.h ****  *          semaphore, if any, are released and the semaphore counter is set
+ 115:../../../os/rt/include/chsem.h ****  *          to the specified, non negative, value.
+ 116:../../../os/rt/include/chsem.h ****  * @note    This function implicitly sends @p MSG_RESET as message.
+ 117:../../../os/rt/include/chsem.h ****  *
+ 118:../../../os/rt/include/chsem.h ****  * @param[in] sp        pointer to a @p semaphore_t object
+ 119:../../../os/rt/include/chsem.h ****  * @param[in] n         the new value of the semaphore counter. The value must
+ 120:../../../os/rt/include/chsem.h ****  *                      be non-negative.
+ 121:../../../os/rt/include/chsem.h ****  *
+ 122:../../../os/rt/include/chsem.h ****  * @api
+ 123:../../../os/rt/include/chsem.h ****  */
+ 124:../../../os/rt/include/chsem.h **** static inline void chSemReset(semaphore_t *sp, cnt_t n) {
+ 125:../../../os/rt/include/chsem.h **** 
+ 126:../../../os/rt/include/chsem.h ****   chSemResetWithMessage(sp, n, MSG_RESET);
+ 127:../../../os/rt/include/chsem.h **** }
+ 128:../../../os/rt/include/chsem.h **** 
+ 129:../../../os/rt/include/chsem.h **** /**
+ 130:../../../os/rt/include/chsem.h ****  * @brief   Performs a reset operation on the semaphore.
+ 131:../../../os/rt/include/chsem.h ****  * @post    After invoking this function all the threads waiting on the
+ 132:../../../os/rt/include/chsem.h ****  *          semaphore, if any, are released and the semaphore counter is set
+ 133:../../../os/rt/include/chsem.h ****  *          to the specified, non negative, value.
+ 134:../../../os/rt/include/chsem.h ****  * @post    This function does not reschedule so a call to a rescheduling
+ 135:../../../os/rt/include/chsem.h ****  *          function must be performed before unlocking the kernel. Note that
+ 136:../../../os/rt/include/chsem.h ****  *          interrupt handlers always reschedule on exit so an explicit
+ 137:../../../os/rt/include/chsem.h ****  *          reschedule must not be performed in ISRs.
+ 138:../../../os/rt/include/chsem.h ****  * @note    This function implicitly sends @p MSG_RESET as message.
+ 139:../../../os/rt/include/chsem.h ****  *
+ 140:../../../os/rt/include/chsem.h ****  * @param[in] sp        pointer to a @p semaphore_t object
+ 141:../../../os/rt/include/chsem.h ****  * @param[in] n         the new value of the semaphore counter. The value must
+ 142:../../../os/rt/include/chsem.h ****  *                      be non-negative.
+ 143:../../../os/rt/include/chsem.h ****  *
+ 144:../../../os/rt/include/chsem.h ****  * @iclass
+ 145:../../../os/rt/include/chsem.h ****  */
+ 146:../../../os/rt/include/chsem.h **** static inline void chSemResetI(semaphore_t *sp, cnt_t n) {
+ 147:../../../os/rt/include/chsem.h **** 
+ 148:../../../os/rt/include/chsem.h ****   chSemResetWithMessageI(sp, n, MSG_RESET);
+ 149:../../../os/rt/include/chsem.h **** }
+ 150:../../../os/rt/include/chsem.h **** 
+ 151:../../../os/rt/include/chsem.h **** /**
+ 152:../../../os/rt/include/chsem.h ****  * @brief   Decreases the semaphore counter.
+ 153:../../../os/rt/include/chsem.h ****  * @details This macro can be used when the counter is known to be positive.
+ 154:../../../os/rt/include/chsem.h ****  *
+ 155:../../../os/rt/include/chsem.h ****  * @param[in] sp        pointer to a @p semaphore_t object
+ 156:../../../os/rt/include/chsem.h ****  *
+ 157:../../../os/rt/include/chsem.h ****  * @iclass
+ 158:../../../os/rt/include/chsem.h ****  */
+ 159:../../../os/rt/include/chsem.h **** static inline void chSemFastWaitI(semaphore_t *sp) {
+ 160:../../../os/rt/include/chsem.h **** 
+ 161:../../../os/rt/include/chsem.h ****   chDbgCheckClassI();
+ 162:../../../os/rt/include/chsem.h **** 
+ 163:../../../os/rt/include/chsem.h ****   sp->cnt--;
+ 442               		.loc 3 163 0
+ 443 00ca 8C89      		ldd r24,Y+20
+ 444 00cc 8150      		subi r24,lo8(-(-1))
+ 445 00ce 8C8B      		std Y+20,r24
+ 446               	.LVL29:
+ 447               	.L13:
+ 448               	.LBE65:
+ 449               	.LBE64:
+ 450               	.LBB66:
+ 451               	.LBB67:
+ 452               	.LBB68:
+ 453               	.LBB69:
+ 431:../../../os/common/ports/AVR/chcore.h **** }
+ 432:../../../os/common/ports/AVR/chcore.h **** 
+ 433:../../../os/common/ports/AVR/chcore.h **** /**
+ 434:../../../os/common/ports/AVR/chcore.h ****  * @brief   Kernel-unlock action.
+ 435:../../../os/common/ports/AVR/chcore.h ****  * @details Usually this function just enables interrupts but may perform more
+ 436:../../../os/common/ports/AVR/chcore.h ****  *          actions.
+ 437:../../../os/common/ports/AVR/chcore.h ****  */
+ 438:../../../os/common/ports/AVR/chcore.h **** static inline void port_unlock(void) {
+ 439:../../../os/common/ports/AVR/chcore.h **** 
+ 440:../../../os/common/ports/AVR/chcore.h ****   asm volatile ("sei" : : : "memory");
+ 454               		.loc 2 440 0
+ 455               	/* #APP */
+ 456               	 ;  440 "../../../os/common/ports/AVR/chcore.h" 1
+ 457 00d0 7894      		sei
+ 458               	 ;  0 "" 2
+ 459               	/* #NOAPP */
+ 460               	.LBE69:
+ 461               	.LBE68:
+ 462               	.LBE67:
+ 463               	.LBE66:
+ 329:../../../os/oslib/src/chobjcaches.c **** 
+ 330:../../../os/oslib/src/chobjcaches.c ****       /* Getting the object semaphore, we know there is no wait so
+ 331:../../../os/oslib/src/chobjcaches.c ****          using the "fast" variant.*/
+ 332:../../../os/oslib/src/chobjcaches.c ****       chSemFastWaitI(&objp->obj_sem);
+ 333:../../../os/oslib/src/chobjcaches.c ****     }
+ 334:../../../os/oslib/src/chobjcaches.c ****     else {
+ 335:../../../os/oslib/src/chobjcaches.c ****       /* Owned case, some other thread is playing with this object, we
+ 336:../../../os/oslib/src/chobjcaches.c ****          need to wait.*/
+ 337:../../../os/oslib/src/chobjcaches.c **** 
+ 338:../../../os/oslib/src/chobjcaches.c ****       chDbgAssert((objp->obj_flags & OC_FLAG_INLRU) == 0U, "in LRU");
+ 339:../../../os/oslib/src/chobjcaches.c **** 
+ 340:../../../os/oslib/src/chobjcaches.c ****       /* Waiting on the buffer semaphore.*/
+ 341:../../../os/oslib/src/chobjcaches.c ****       (void) chSemWaitS(&objp->obj_sem);
+ 342:../../../os/oslib/src/chobjcaches.c ****     }
+ 343:../../../os/oslib/src/chobjcaches.c ****   }
+ 344:../../../os/oslib/src/chobjcaches.c ****   else {
+ 345:../../../os/oslib/src/chobjcaches.c ****     /* Cache miss, getting an object buffer from the LRU list.*/
+ 346:../../../os/oslib/src/chobjcaches.c ****     objp = lru_get_last_s(ocp);
+ 347:../../../os/oslib/src/chobjcaches.c **** 
+ 348:../../../os/oslib/src/chobjcaches.c ****     /* Naming this object and publishing it in the hash table.*/
+ 349:../../../os/oslib/src/chobjcaches.c ****     objp->obj_group = group;
+ 350:../../../os/oslib/src/chobjcaches.c ****     objp->obj_key   = key;
+ 351:../../../os/oslib/src/chobjcaches.c ****     objp->obj_flags = OC_FLAG_INHASH | OC_FLAG_NOTSYNC;
+ 352:../../../os/oslib/src/chobjcaches.c ****     HASH_INSERT(ocp, objp, group, key);
+ 353:../../../os/oslib/src/chobjcaches.c ****   }
+ 354:../../../os/oslib/src/chobjcaches.c **** 
+ 355:../../../os/oslib/src/chobjcaches.c ****   /* Out of critical section and returning the object.*/
+ 356:../../../os/oslib/src/chobjcaches.c ****   chSysUnlock();
+ 357:../../../os/oslib/src/chobjcaches.c **** 
+ 358:../../../os/oslib/src/chobjcaches.c ****   return objp;
+ 359:../../../os/oslib/src/chobjcaches.c **** }
+ 464               		.loc 1 359 0
+ 465 00d2 CE01      		movw r24,r28
+ 466               	/* epilogue start */
+ 467 00d4 DF91      		pop r29
+ 468 00d6 CF91      		pop r28
+ 469               	.LVL30:
+ 470 00d8 1F91      		pop r17
+ 471 00da 0F91      		pop r16
+ 472 00dc FF90      		pop r15
+ 473 00de EF90      		pop r14
+ 474 00e0 DF90      		pop r13
+ 475 00e2 CF90      		pop r12
+ 476               	.LVL31:
+ 477 00e4 BF90      		pop r11
+ 478 00e6 AF90      		pop r10
+ 479               	.LVL32:
+ 480 00e8 9F90      		pop r9
+ 481 00ea 8F90      		pop r8
+ 482 00ec 7F90      		pop r7
+ 483 00ee 6F90      		pop r6
+ 484 00f0 5F90      		pop r5
+ 485 00f2 4F90      		pop r4
+ 486               	.LVL33:
+ 487 00f4 0895      		ret
+ 488               	.LVL34:
+ 489               	.L8:
+ 490 00f6 4501      		movw r8,r10
+ 491 00f8 B5E1      		ldi r27,21
+ 492 00fa 8B0E      		add r8,r27
+ 493 00fc 911C      		adc r9,__zero_reg__
+ 494 00fe 00C0      		rjmp .L16
+ 495               	.LVL35:
+ 496               	.L14:
+ 497               	.LBB70:
+ 498               	.LBB71:
+ 499               	.LBB72:
+ 500               	.LBB73:
+ 501               	.LBB74:
+ 502               	.LBB75:
+ 503               		.loc 2 440 0
+ 504               	/* #APP */
+ 505               	 ;  440 "../../../os/common/ports/AVR/chcore.h" 1
+ 506 0100 7894      		sei
+ 507               	 ;  0 "" 2
+ 508               	/* #NOAPP */
+ 509               	.LBE75:
+ 510               	.LBE74:
+ 511               	.LBE73:
+ 512               	.LBE72:
+ 209:../../../os/oslib/src/chobjcaches.c ****     (void) ocp->writef(ocp, objp, true);
+ 513               		.loc 1 209 0
+ 514 0102 82E2      		ldi r24,lo8(34)
+ 515 0104 90E0      		ldi r25,0
+ 516 0106 A0E0      		ldi r26,0
+ 517 0108 B0E0      		ldi r27,0
+ 518 010a 8D8B      		std Y+21,r24
+ 519 010c 9E8B      		std Y+22,r25
+ 520 010e AF8B      		std Y+23,r26
+ 521 0110 B88F      		std Y+24,r27
+ 210:../../../os/oslib/src/chobjcaches.c **** 
+ 522               		.loc 1 210 0
+ 523 0112 D501      		movw r26,r10
+ 524 0114 5C96      		adiw r26,28
+ 525 0116 ED91      		ld r30,X+
+ 526 0118 FC91      		ld r31,X
+ 527 011a 5D97      		sbiw r26,28+1
+ 528 011c 41E0      		ldi r20,lo8(1)
+ 529 011e BE01      		movw r22,r28
+ 530 0120 C501      		movw r24,r10
+ 531 0122 0995      		icall
+ 532               	.LVL36:
+ 533               	.LBB76:
+ 534               	.LBB77:
+ 535               	.LBB78:
+ 430:../../../os/common/ports/AVR/chcore.h **** }
+ 536               		.loc 2 430 0
+ 537               	/* #APP */
+ 538               	 ;  430 "../../../os/common/ports/AVR/chcore.h" 1
+ 539 0124 F894      		cli
+ 540               	 ;  0 "" 2
+ 541               	.LVL37:
+ 542               	/* #NOAPP */
+ 543               	.L16:
+ 544               	.LBE78:
+ 545               	.LBE77:
+ 546               	.LBE76:
+ 170:../../../os/oslib/src/chobjcaches.c **** 
+ 547               		.loc 1 170 0
+ 548 0126 C401      		movw r24,r8
+ 549 0128 0E94 0000 		call chSemWaitS
+ 550               	.LVL38:
+ 174:../../../os/oslib/src/chobjcaches.c **** 
+ 551               		.loc 1 174 0
+ 552 012c F501      		movw r30,r10
+ 553 012e C685      		ldd r28,Z+14
+ 554 0130 D785      		ldd r29,Z+15
+ 555               	.LVL39:
+ 181:../../../os/oslib/src/chobjcaches.c ****     objp->obj_flags &= ~OC_FLAG_INLRU;
+ 556               		.loc 1 181 0
+ 557 0132 EE81      		ldd r30,Y+6
+ 558 0134 FF81      		ldd r31,Y+7
+ 559 0136 8C81      		ldd r24,Y+4
+ 560 0138 9D81      		ldd r25,Y+5
+ 561 013a 9583      		std Z+5,r25
+ 562 013c 8483      		std Z+4,r24
+ 563 013e AC81      		ldd r26,Y+4
+ 564 0140 BD81      		ldd r27,Y+5
+ 565 0142 1796      		adiw r26,6+1
+ 566 0144 FC93      		st X,r31
+ 567 0146 EE93      		st -X,r30
+ 568 0148 1697      		sbiw r26,6
+ 182:../../../os/oslib/src/chobjcaches.c **** 
+ 569               		.loc 1 182 0
+ 570 014a 8D89      		ldd r24,Y+21
+ 571 014c 9E89      		ldd r25,Y+22
+ 572 014e AF89      		ldd r26,Y+23
+ 573 0150 B88D      		ldd r27,Y+24
+ 574 0152 AC01      		movw r20,r24
+ 575 0154 BD01      		movw r22,r26
+ 576 0156 4E7F      		andi r20,254
+ 577 0158 6627      		clr r22
+ 578 015a 7727      		clr r23
+ 579 015c 4D8B      		std Y+21,r20
+ 580 015e 5E8B      		std Y+22,r21
+ 581 0160 6F8B      		std Y+23,r22
+ 582 0162 788F      		std Y+24,r23
+ 583               	.LVL40:
+ 584               	.LBB79:
+ 585               	.LBB80:
+ 586               		.loc 3 163 0
+ 587 0164 2C89      		ldd r18,Y+20
+ 588 0166 2150      		subi r18,lo8(-(-1))
+ 589 0168 2C8B      		std Y+20,r18
+ 590               	.LBE80:
+ 591               	.LBE79:
+ 190:../../../os/oslib/src/chobjcaches.c **** 
+ 592               		.loc 1 190 0
+ 593 016a 84FD      		sbrc r24,4
+ 594 016c 00C0      		rjmp .L14
+ 193:../../../os/oslib/src/chobjcaches.c ****         HASH_REMOVE(objp);
+ 595               		.loc 1 193 0
+ 596 016e 81FF      		sbrs r24,1
+ 597 0170 00C0      		rjmp .L15
+ 194:../../../os/oslib/src/chobjcaches.c ****       }
+ 598               		.loc 1 194 0
+ 599 0172 EA81      		ldd r30,Y+2
+ 600 0174 FB81      		ldd r31,Y+3
+ 601 0176 8881      		ld r24,Y
+ 602 0178 9981      		ldd r25,Y+1
+ 603 017a 9183      		std Z+1,r25
+ 604 017c 8083      		st Z,r24
+ 605 017e A881      		ld r26,Y
+ 606 0180 B981      		ldd r27,Y+1
+ 607 0182 1396      		adiw r26,2+1
+ 608 0184 FC93      		st X,r31
+ 609 0186 EE93      		st -X,r30
+ 610 0188 1297      		sbiw r26,2
+ 611               	.L15:
+ 612               	.LVL41:
+ 613               	.LBE71:
+ 614               	.LBE70:
+ 349:../../../os/oslib/src/chobjcaches.c ****     objp->obj_key   = key;
+ 615               		.loc 1 349 0
+ 616 018a 4886      		std Y+8,r4
+ 617 018c 5986      		std Y+9,r5
+ 618 018e 6A86      		std Y+10,r6
+ 619 0190 7B86      		std Y+11,r7
+ 350:../../../os/oslib/src/chobjcaches.c ****     objp->obj_flags = OC_FLAG_INHASH | OC_FLAG_NOTSYNC;
+ 620               		.loc 1 350 0
+ 621 0192 CC86      		std Y+12,r12
+ 622 0194 DD86      		std Y+13,r13
+ 623 0196 EE86      		std Y+14,r14
+ 624 0198 FF86      		std Y+15,r15
+ 351:../../../os/oslib/src/chobjcaches.c ****     HASH_INSERT(ocp, objp, group, key);
+ 625               		.loc 1 351 0
+ 626 019a 8AE0      		ldi r24,lo8(10)
+ 627 019c 90E0      		ldi r25,0
+ 628 019e A0E0      		ldi r26,0
+ 629 01a0 B0E0      		ldi r27,0
+ 630 01a2 8D8B      		std Y+21,r24
+ 631 01a4 9E8B      		std Y+22,r25
+ 632 01a6 AF8B      		std Y+23,r26
+ 633 01a8 B88F      		std Y+24,r27
+ 634               	.LBB81:
+ 352:../../../os/oslib/src/chobjcaches.c ****   }
+ 635               		.loc 1 352 0
+ 636 01aa D501      		movw r26,r10
+ 637 01ac EC91      		ld r30,X
+ 638 01ae F0E0      		ldi r31,0
+ 639 01b0 3197      		sbiw r30,1
+ 640 01b2 0E23      		and r16,r30
+ 641 01b4 1F23      		and r17,r31
+ 642 01b6 000F      		lsl r16
+ 643 01b8 111F      		rol r17
+ 644 01ba 000F      		lsl r16
+ 645 01bc 111F      		rol r17
+ 646 01be 1196      		adiw r26,1
+ 647 01c0 ED91      		ld r30,X+
+ 648 01c2 FC91      		ld r31,X
+ 649 01c4 1297      		sbiw r26,1+1
+ 650 01c6 E00F      		add r30,r16
+ 651 01c8 F11F      		adc r31,r17
+ 652               	.LVL42:
+ 653 01ca A081      		ld r26,Z
+ 654 01cc B181      		ldd r27,Z+1
+ 655 01ce B983      		std Y+1,r27
+ 656 01d0 A883      		st Y,r26
+ 657 01d2 FB83      		std Y+3,r31
+ 658 01d4 EA83      		std Y+2,r30
+ 659 01d6 1396      		adiw r26,2+1
+ 660 01d8 DC93      		st X,r29
+ 661 01da CE93      		st -X,r28
+ 662 01dc 1297      		sbiw r26,2
+ 663 01de D183      		std Z+1,r29
+ 664 01e0 C083      		st Z,r28
+ 665 01e2 00C0      		rjmp .L13
+ 666               	.LVL43:
+ 667               	.L12:
+ 668               	.LBE81:
+ 341:../../../os/oslib/src/chobjcaches.c ****     }
+ 669               		.loc 1 341 0
+ 670 01e4 CE01      		movw r24,r28
+ 671 01e6 4096      		adiw r24,16
+ 672 01e8 0E94 0000 		call chSemWaitS
+ 673               	.LVL44:
+ 674 01ec 00C0      		rjmp .L13
+ 675               		.cfi_endproc
+ 676               	.LFE196:
+ 678               		.section	.text.chCacheReleaseObjectI,"ax",@progbits
+ 679               	.global	chCacheReleaseObjectI
+ 681               	chCacheReleaseObjectI:
+ 682               	.LFB197:
+ 360:../../../os/oslib/src/chobjcaches.c **** 
+ 361:../../../os/oslib/src/chobjcaches.c **** /**
+ 362:../../../os/oslib/src/chobjcaches.c ****  * @brief   Releases an object into the cache.
+ 363:../../../os/oslib/src/chobjcaches.c ****  * @note    This function gives a meaning to the following flags:
+ 364:../../../os/oslib/src/chobjcaches.c ****  *          - @p OC_FLAG_INLRU must be cleared.
+ 365:../../../os/oslib/src/chobjcaches.c ****  *          - @p OC_FLAG_INHASH must be set.
+ 366:../../../os/oslib/src/chobjcaches.c ****  *          - @p OC_FLAG_SHARED must be cleared.
+ 367:../../../os/oslib/src/chobjcaches.c ****  *          - @p OC_FLAG_NOTSYNC invalidates the object and queues it on
+ 368:../../../os/oslib/src/chobjcaches.c ****  *            the LRU tail.
+ 369:../../../os/oslib/src/chobjcaches.c ****  *          - @p OC_FLAG_LAZYWRITE is ignored and kept, a write will occur
+ 370:../../../os/oslib/src/chobjcaches.c ****  *            when the object is removed from the LRU list (lazy write).
+ 371:../../../os/oslib/src/chobjcaches.c ****  *
+ 372:../../../os/oslib/src/chobjcaches.c ****  * @param[in] ocp       pointer to the @p objects_cache_t object
+ 373:../../../os/oslib/src/chobjcaches.c ****  * @param[in] objp      pointer to the @p oc_object_t object
+ 374:../../../os/oslib/src/chobjcaches.c ****  *
+ 375:../../../os/oslib/src/chobjcaches.c ****  * @iclass
+ 376:../../../os/oslib/src/chobjcaches.c ****  */
+ 377:../../../os/oslib/src/chobjcaches.c **** void chCacheReleaseObjectI(objects_cache_t *ocp,
+ 378:../../../os/oslib/src/chobjcaches.c ****                            oc_object_t *objp) {
+ 683               		.loc 1 378 0
+ 684               		.cfi_startproc
+ 685               	.LVL45:
+ 686 0000 CF93      		push r28
+ 687               	.LCFI30:
+ 688               		.cfi_def_cfa_offset 3
+ 689               		.cfi_offset 28, -2
+ 690 0002 DF93      		push r29
+ 691               	.LCFI31:
+ 692               		.cfi_def_cfa_offset 4
+ 693               		.cfi_offset 29, -3
+ 694               	/* prologue: function */
+ 695               	/* frame size = 0 */
+ 696               	/* stack size = 2 */
+ 697               	.L__stack_usage = 2
+ 698 0004 FB01      		movw r30,r22
+ 699               	.LVL46:
+ 379:../../../os/oslib/src/chobjcaches.c **** 
+ 380:../../../os/oslib/src/chobjcaches.c ****   /* Checking initial conditions of the object to be released.*/
+ 381:../../../os/oslib/src/chobjcaches.c ****   chDbgAssert((objp->obj_flags & (OC_FLAG_INLRU |
+ 382:../../../os/oslib/src/chobjcaches.c ****                                   OC_FLAG_INHASH |
+ 383:../../../os/oslib/src/chobjcaches.c ****                                   OC_FLAG_SHARED)) == OC_FLAG_INHASH,
+ 384:../../../os/oslib/src/chobjcaches.c ****               "invalid object state");
+ 385:../../../os/oslib/src/chobjcaches.c ****   chDbgAssert(chSemGetCounterI(&objp->obj_sem) <= (cnt_t)0,
+ 386:../../../os/oslib/src/chobjcaches.c ****               "semaphore counter greater than 0");
+ 387:../../../os/oslib/src/chobjcaches.c **** 
+ 388:../../../os/oslib/src/chobjcaches.c ****   /* If some thread is waiting for this specific buffer then it is
+ 389:../../../os/oslib/src/chobjcaches.c ****      handed directly without going through the LRU.*/
+ 390:../../../os/oslib/src/chobjcaches.c ****   if (chSemGetCounterI(&objp->obj_sem) < (cnt_t)0) {
+ 700               		.loc 1 390 0
+ 701 0006 2489      		ldd r18,Z+20
+ 702 0008 27FD      		sbrc r18,7
+ 703 000a 00C0      		rjmp .L30
+ 391:../../../os/oslib/src/chobjcaches.c ****     /* Clearing all flags except those that are still meaningful, note,
+ 392:../../../os/oslib/src/chobjcaches.c ****        OC_FLAG_NOTSYNC and OC_FLAG_LAZYWRITE are passed, the other thread
+ 393:../../../os/oslib/src/chobjcaches.c ****        will handle them.*/
+ 394:../../../os/oslib/src/chobjcaches.c ****     objp->obj_flags &= OC_FLAG_INHASH | OC_FLAG_NOTSYNC | OC_FLAG_LAZYWRITE;
+ 395:../../../os/oslib/src/chobjcaches.c ****     chSemSignalI(&objp->obj_sem);
+ 396:../../../os/oslib/src/chobjcaches.c ****     return;
+ 397:../../../os/oslib/src/chobjcaches.c ****   }
+ 398:../../../os/oslib/src/chobjcaches.c **** 
+ 399:../../../os/oslib/src/chobjcaches.c ****   /* If the object specifies OC_FLAG_NOTSYNC then it must be invalidated
+ 400:../../../os/oslib/src/chobjcaches.c ****      and removed from the hash table.*/
+ 401:../../../os/oslib/src/chobjcaches.c ****   if ((objp->obj_flags & OC_FLAG_NOTSYNC) != 0U) {
+ 704               		.loc 1 401 0
+ 705 000c 4589      		ldd r20,Z+21
+ 706 000e 5689      		ldd r21,Z+22
+ 707 0010 6789      		ldd r22,Z+23
+ 708 0012 708D      		ldd r23,Z+24
+ 709 0014 43FD      		sbrc r20,3
+ 710 0016 00C0      		rjmp .L31
+ 402:../../../os/oslib/src/chobjcaches.c ****     HASH_REMOVE(objp);
+ 403:../../../os/oslib/src/chobjcaches.c ****     LRU_INSERT_TAIL(ocp, objp);
+ 404:../../../os/oslib/src/chobjcaches.c ****     objp->obj_group = 0U;
+ 405:../../../os/oslib/src/chobjcaches.c ****     objp->obj_key   = 0U;
+ 406:../../../os/oslib/src/chobjcaches.c ****     objp->obj_flags = OC_FLAG_INLRU;
+ 407:../../../os/oslib/src/chobjcaches.c ****   }
+ 408:../../../os/oslib/src/chobjcaches.c ****   else {
+ 409:../../../os/oslib/src/chobjcaches.c ****     /* LRU insertion point depends on the OC_FLAG_FORGET flag.*/
+ 410:../../../os/oslib/src/chobjcaches.c ****     if ((objp->obj_flags & OC_FLAG_FORGET) == 0U) {
+ 411:../../../os/oslib/src/chobjcaches.c ****       /* Placing it on head.*/
+ 412:../../../os/oslib/src/chobjcaches.c ****       LRU_INSERT_HEAD(ocp, objp);
+ 711               		.loc 1 412 0
+ 712 0018 EC01      		movw r28,r24
+ 410:../../../os/oslib/src/chobjcaches.c ****       /* Placing it on head.*/
+ 713               		.loc 1 410 0
+ 714 001a 45FD      		sbrc r20,5
+ 715 001c 00C0      		rjmp .L28
+ 716               		.loc 1 412 0
+ 717 001e AC85      		ldd r26,Y+12
+ 718 0020 BD85      		ldd r27,Y+13
+ 719 0022 B583      		std Z+5,r27
+ 720 0024 A483      		std Z+4,r26
+ 721 0026 9C01      		movw r18,r24
+ 722 0028 285F      		subi r18,-8
+ 723 002a 3F4F      		sbci r19,-1
+ 724 002c 3783      		std Z+7,r19
+ 725 002e 2683      		std Z+6,r18
+ 726 0030 1796      		adiw r26,6+1
+ 727 0032 FC93      		st X,r31
+ 728 0034 EE93      		st -X,r30
+ 729 0036 1697      		sbiw r26,6
+ 730 0038 FD87      		std Y+13,r31
+ 731 003a EC87      		std Y+12,r30
+ 732               	.L29:
+ 413:../../../os/oslib/src/chobjcaches.c ****     }
+ 414:../../../os/oslib/src/chobjcaches.c ****     else {
+ 415:../../../os/oslib/src/chobjcaches.c ****       /* Low priority data, placing it on tail.*/
+ 416:../../../os/oslib/src/chobjcaches.c ****       LRU_INSERT_TAIL(ocp, objp);
+ 417:../../../os/oslib/src/chobjcaches.c ****     }
+ 418:../../../os/oslib/src/chobjcaches.c ****     objp->obj_flags &= OC_FLAG_INHASH | OC_FLAG_LAZYWRITE;
+ 419:../../../os/oslib/src/chobjcaches.c ****     objp->obj_flags |= OC_FLAG_INLRU;
+ 733               		.loc 1 419 0
+ 734 003c 4271      		andi r20,18
+ 735 003e 5527      		clr r21
+ 736 0040 6627      		clr r22
+ 737 0042 7727      		clr r23
+ 738 0044 4160      		ori r20,1
+ 739 0046 458B      		std Z+21,r20
+ 740 0048 568B      		std Z+22,r21
+ 741 004a 678B      		std Z+23,r22
+ 742 004c 708F      		std Z+24,r23
+ 743               	.L27:
+ 744 004e EF01      		movw r28,r30
+ 420:../../../os/oslib/src/chobjcaches.c ****   }
+ 421:../../../os/oslib/src/chobjcaches.c **** 
+ 422:../../../os/oslib/src/chobjcaches.c ****   /* Increasing the LRU counter semaphore.*/
+ 423:../../../os/oslib/src/chobjcaches.c ****   chSemSignalI(&ocp->lru_sem);
+ 745               		.loc 1 423 0
+ 746 0050 4596      		adiw r24,21
+ 747               	.LVL47:
+ 748 0052 0E94 0000 		call chSemSignalI
+ 749               	.LVL48:
+ 750               	.LBB82:
+ 751               	.LBB83:
+ 164:../../../os/rt/include/chsem.h **** }
+ 165:../../../os/rt/include/chsem.h **** 
+ 166:../../../os/rt/include/chsem.h **** /**
+ 167:../../../os/rt/include/chsem.h ****  * @brief   Increases the semaphore counter.
+ 168:../../../os/rt/include/chsem.h ****  * @details This macro can be used when the counter is known to be not
+ 169:../../../os/rt/include/chsem.h ****  *          negative.
+ 170:../../../os/rt/include/chsem.h ****  *
+ 171:../../../os/rt/include/chsem.h ****  * @param[in] sp        pointer to a @p semaphore_t object
+ 172:../../../os/rt/include/chsem.h ****  *
+ 173:../../../os/rt/include/chsem.h ****  * @iclass
+ 174:../../../os/rt/include/chsem.h ****  */
+ 175:../../../os/rt/include/chsem.h **** static inline void chSemFastSignalI(semaphore_t *sp) {
+ 176:../../../os/rt/include/chsem.h **** 
+ 177:../../../os/rt/include/chsem.h ****   chDbgCheckClassI();
+ 178:../../../os/rt/include/chsem.h **** 
+ 179:../../../os/rt/include/chsem.h ****   sp->cnt++;
+ 752               		.loc 3 179 0
+ 753 0056 8C89      		ldd r24,Y+20
+ 754 0058 8F5F      		subi r24,lo8(-(1))
+ 755 005a 8C8B      		std Y+20,r24
+ 756               	/* epilogue start */
+ 757               	.LBE83:
+ 758               	.LBE82:
+ 424:../../../os/oslib/src/chobjcaches.c **** 
+ 425:../../../os/oslib/src/chobjcaches.c ****   /* Releasing the object, we know there are no threads waiting so
+ 426:../../../os/oslib/src/chobjcaches.c ****      using the "fast" signal variant.*/
+ 427:../../../os/oslib/src/chobjcaches.c ****   chSemFastSignalI(&objp->obj_sem);
+ 428:../../../os/oslib/src/chobjcaches.c **** }
+ 759               		.loc 1 428 0
+ 760 005c DF91      		pop r29
+ 761 005e CF91      		pop r28
+ 762               	.LVL49:
+ 763 0060 0895      		ret
+ 764               	.LVL50:
+ 765               	.L31:
+ 402:../../../os/oslib/src/chobjcaches.c ****     LRU_INSERT_TAIL(ocp, objp);
+ 766               		.loc 1 402 0
+ 767 0062 A281      		ldd r26,Z+2
+ 768 0064 B381      		ldd r27,Z+3
+ 769 0066 2081      		ld r18,Z
+ 770 0068 3181      		ldd r19,Z+1
+ 771 006a 1196      		adiw r26,1
+ 772 006c 3C93      		st X,r19
+ 773 006e 2E93      		st -X,r18
+ 774 0070 C081      		ld r28,Z
+ 775 0072 D181      		ldd r29,Z+1
+ 776 0074 BB83      		std Y+3,r27
+ 777 0076 AA83      		std Y+2,r26
+ 403:../../../os/oslib/src/chobjcaches.c ****     objp->obj_group = 0U;
+ 778               		.loc 1 403 0
+ 779 0078 EC01      		movw r28,r24
+ 780 007a AE85      		ldd r26,Y+14
+ 781 007c BF85      		ldd r27,Y+15
+ 782 007e B783      		std Z+7,r27
+ 783 0080 A683      		std Z+6,r26
+ 784 0082 9C01      		movw r18,r24
+ 785 0084 285F      		subi r18,-8
+ 786 0086 3F4F      		sbci r19,-1
+ 787 0088 3583      		std Z+5,r19
+ 788 008a 2483      		std Z+4,r18
+ 789 008c 1596      		adiw r26,4+1
+ 790 008e FC93      		st X,r31
+ 791 0090 EE93      		st -X,r30
+ 792 0092 1497      		sbiw r26,4
+ 793 0094 FF87      		std Y+15,r31
+ 794 0096 EE87      		std Y+14,r30
+ 404:../../../os/oslib/src/chobjcaches.c ****     objp->obj_key   = 0U;
+ 795               		.loc 1 404 0
+ 796 0098 1086      		std Z+8,__zero_reg__
+ 797 009a 1186      		std Z+9,__zero_reg__
+ 798 009c 1286      		std Z+10,__zero_reg__
+ 799 009e 1386      		std Z+11,__zero_reg__
+ 405:../../../os/oslib/src/chobjcaches.c ****     objp->obj_flags = OC_FLAG_INLRU;
+ 800               		.loc 1 405 0
+ 801 00a0 1486      		std Z+12,__zero_reg__
+ 802 00a2 1586      		std Z+13,__zero_reg__
+ 803 00a4 1686      		std Z+14,__zero_reg__
+ 804 00a6 1786      		std Z+15,__zero_reg__
+ 406:../../../os/oslib/src/chobjcaches.c ****   }
+ 805               		.loc 1 406 0
+ 806 00a8 41E0      		ldi r20,lo8(1)
+ 807 00aa 50E0      		ldi r21,0
+ 808 00ac 60E0      		ldi r22,0
+ 809 00ae 70E0      		ldi r23,0
+ 810 00b0 458B      		std Z+21,r20
+ 811 00b2 568B      		std Z+22,r21
+ 812 00b4 678B      		std Z+23,r22
+ 813 00b6 708F      		std Z+24,r23
+ 814 00b8 00C0      		rjmp .L27
+ 815               	.L28:
+ 416:../../../os/oslib/src/chobjcaches.c ****     }
+ 816               		.loc 1 416 0
+ 817 00ba AE85      		ldd r26,Y+14
+ 818 00bc BF85      		ldd r27,Y+15
+ 819 00be B783      		std Z+7,r27
+ 820 00c0 A683      		std Z+6,r26
+ 821 00c2 9C01      		movw r18,r24
+ 822 00c4 285F      		subi r18,-8
+ 823 00c6 3F4F      		sbci r19,-1
+ 824 00c8 3583      		std Z+5,r19
+ 825 00ca 2483      		std Z+4,r18
+ 826 00cc 1596      		adiw r26,4+1
+ 827 00ce FC93      		st X,r31
+ 828 00d0 EE93      		st -X,r30
+ 829 00d2 1497      		sbiw r26,4
+ 830 00d4 FF87      		std Y+15,r31
+ 831 00d6 EE87      		std Y+14,r30
+ 832 00d8 00C0      		rjmp .L29
+ 833               	.L30:
+ 394:../../../os/oslib/src/chobjcaches.c ****     chSemSignalI(&objp->obj_sem);
+ 834               		.loc 1 394 0
+ 835 00da 8589      		ldd r24,Z+21
+ 836 00dc 9689      		ldd r25,Z+22
+ 837 00de A789      		ldd r26,Z+23
+ 838 00e0 B08D      		ldd r27,Z+24
+ 839               	.LVL51:
+ 840 00e2 8A71      		andi r24,26
+ 841 00e4 9927      		clr r25
+ 842 00e6 AA27      		clr r26
+ 843 00e8 BB27      		clr r27
+ 844 00ea 858B      		std Z+21,r24
+ 845 00ec 968B      		std Z+22,r25
+ 846 00ee A78B      		std Z+23,r26
+ 847 00f0 B08F      		std Z+24,r27
+ 395:../../../os/oslib/src/chobjcaches.c ****     return;
+ 848               		.loc 1 395 0
+ 849 00f2 CB01      		movw r24,r22
+ 850 00f4 4096      		adiw r24,16
+ 851               	/* epilogue start */
+ 852               		.loc 1 428 0
+ 853 00f6 DF91      		pop r29
+ 854 00f8 CF91      		pop r28
+ 395:../../../os/oslib/src/chobjcaches.c ****     return;
+ 855               		.loc 1 395 0
+ 856 00fa 0C94 0000 		jmp chSemSignalI
+ 857               	.LVL52:
+ 858               		.cfi_endproc
+ 859               	.LFE197:
+ 861               		.section	.text.chCacheReadObject,"ax",@progbits
+ 862               	.global	chCacheReadObject
+ 864               	chCacheReadObject:
+ 865               	.LFB198:
+ 429:../../../os/oslib/src/chobjcaches.c **** 
+ 430:../../../os/oslib/src/chobjcaches.c **** /**
+ 431:../../../os/oslib/src/chobjcaches.c ****  * @brief   Reads object data from the storage.
+ 432:../../../os/oslib/src/chobjcaches.c ****  * @note    In case of asynchronous operation an error condition is not
+ 433:../../../os/oslib/src/chobjcaches.c ****  *          reported by this function.
+ 434:../../../os/oslib/src/chobjcaches.c ****  *
+ 435:../../../os/oslib/src/chobjcaches.c ****  * @param[in] ocp       pointer to the @p objects_cache_t object
+ 436:../../../os/oslib/src/chobjcaches.c ****  * @param[in] objp      pointer to the @p oc_object_t object
+ 437:../../../os/oslib/src/chobjcaches.c ****  * @param[in] async     requests an asynchronous operation if supported, the
+ 438:../../../os/oslib/src/chobjcaches.c ****  *                      function is then responsible for releasing the
+ 439:../../../os/oslib/src/chobjcaches.c ****  *                      object
+ 440:../../../os/oslib/src/chobjcaches.c ****  * @return              The operation status. In case of asynchronous
+ 441:../../../os/oslib/src/chobjcaches.c ****  *                      operation @p false is always returned.
+ 442:../../../os/oslib/src/chobjcaches.c ****  * @retval false        if the operation succeeded.
+ 443:../../../os/oslib/src/chobjcaches.c ****  * @retval true         if the synchronous read operation failed.
+ 444:../../../os/oslib/src/chobjcaches.c ****  *
+ 445:../../../os/oslib/src/chobjcaches.c ****  * @api
+ 446:../../../os/oslib/src/chobjcaches.c ****  */
+ 447:../../../os/oslib/src/chobjcaches.c **** bool chCacheReadObject(objects_cache_t *ocp,
+ 448:../../../os/oslib/src/chobjcaches.c ****                        oc_object_t *objp,
+ 449:../../../os/oslib/src/chobjcaches.c ****                        bool async) {
+ 866               		.loc 1 449 0
+ 867               		.cfi_startproc
+ 868               	.LVL53:
+ 869 0000 0F93      		push r16
+ 870               	.LCFI32:
+ 871               		.cfi_def_cfa_offset 3
+ 872               		.cfi_offset 16, -2
+ 873 0002 1F93      		push r17
+ 874               	.LCFI33:
+ 875               		.cfi_def_cfa_offset 4
+ 876               		.cfi_offset 17, -3
+ 877               	/* prologue: function */
+ 878               	/* frame size = 0 */
+ 879               	/* stack size = 2 */
+ 880               	.L__stack_usage = 2
+ 450:../../../os/oslib/src/chobjcaches.c **** 
+ 451:../../../os/oslib/src/chobjcaches.c ****   /* Marking it as OC_FLAG_NOTSYNC because the read operation is going
+ 452:../../../os/oslib/src/chobjcaches.c ****      to corrupt it in case of failure. It is responsibility of the read
+ 453:../../../os/oslib/src/chobjcaches.c ****      implementation to clear it if the operation succeeds.*/
+ 454:../../../os/oslib/src/chobjcaches.c ****   objp->obj_flags |= OC_FLAG_NOTSYNC;
+ 881               		.loc 1 454 0
+ 882 0004 DB01      		movw r26,r22
+ 883 0006 5596      		adiw r26,21
+ 884 0008 0D91      		ld r16,X+
+ 885 000a 1D91      		ld r17,X+
+ 886 000c 2D91      		ld r18,X+
+ 887 000e 3C91      		ld r19,X
+ 888 0010 5897      		sbiw r26,21+3
+ 889 0012 0860      		ori r16,8
+ 890 0014 FB01      		movw r30,r22
+ 891 0016 058B      		std Z+21,r16
+ 892 0018 168B      		std Z+22,r17
+ 893 001a 278B      		std Z+23,r18
+ 894 001c 308F      		std Z+24,r19
+ 455:../../../os/oslib/src/chobjcaches.c **** 
+ 456:../../../os/oslib/src/chobjcaches.c ****   return ocp->readf(ocp, objp, async);
+ 895               		.loc 1 456 0
+ 896 001e DC01      		movw r26,r24
+ 897 0020 5A96      		adiw r26,26
+ 898 0022 ED91      		ld r30,X+
+ 899 0024 FC91      		ld r31,X
+ 900 0026 5B97      		sbiw r26,26+1
+ 901               	/* epilogue start */
+ 457:../../../os/oslib/src/chobjcaches.c **** }
+ 902               		.loc 1 457 0
+ 903 0028 1F91      		pop r17
+ 904 002a 0F91      		pop r16
+ 456:../../../os/oslib/src/chobjcaches.c **** }
+ 905               		.loc 1 456 0
+ 906 002c 0994      		ijmp
+ 907               	.LVL54:
+ 908               		.cfi_endproc
+ 909               	.LFE198:
+ 911               		.section	.text.chCacheWriteObject,"ax",@progbits
+ 912               	.global	chCacheWriteObject
+ 914               	chCacheWriteObject:
+ 915               	.LFB199:
+ 458:../../../os/oslib/src/chobjcaches.c **** 
+ 459:../../../os/oslib/src/chobjcaches.c **** /**
+ 460:../../../os/oslib/src/chobjcaches.c ****  * @brief   Writes the object data back to storage.
+ 461:../../../os/oslib/src/chobjcaches.c ****  * @note    In case of asynchronous operation an error condition is not
+ 462:../../../os/oslib/src/chobjcaches.c ****  *          reported by this function.
+ 463:../../../os/oslib/src/chobjcaches.c ****  *
+ 464:../../../os/oslib/src/chobjcaches.c ****  * @param[in] ocp       pointer to the @p objects_cache_t object
+ 465:../../../os/oslib/src/chobjcaches.c ****  * @param[in] objp      pointer to the @p oc_object_t object
+ 466:../../../os/oslib/src/chobjcaches.c ****  * @param[in] async     requests an asynchronous operation if supported, the
+ 467:../../../os/oslib/src/chobjcaches.c ****  *                      called function is then responsible for releasing the
+ 468:../../../os/oslib/src/chobjcaches.c ****  *                      object
+ 469:../../../os/oslib/src/chobjcaches.c ****  * @return              The operation status. In case of asynchronous
+ 470:../../../os/oslib/src/chobjcaches.c ****  *                      operation @p false is always returned.
+ 471:../../../os/oslib/src/chobjcaches.c ****  * @retval false        if the operation succeeded.
+ 472:../../../os/oslib/src/chobjcaches.c ****  * @retval true         if the synchronous write operation failed.
+ 473:../../../os/oslib/src/chobjcaches.c ****  *
+ 474:../../../os/oslib/src/chobjcaches.c ****  * @api
+ 475:../../../os/oslib/src/chobjcaches.c ****  */
+ 476:../../../os/oslib/src/chobjcaches.c **** bool chCacheWriteObject(objects_cache_t *ocp,
+ 477:../../../os/oslib/src/chobjcaches.c ****                         oc_object_t *objp,
+ 478:../../../os/oslib/src/chobjcaches.c ****                         bool async) {
+ 916               		.loc 1 478 0
+ 917               		.cfi_startproc
+ 918               	.LVL55:
+ 919 0000 0F93      		push r16
+ 920               	.LCFI34:
+ 921               		.cfi_def_cfa_offset 3
+ 922               		.cfi_offset 16, -2
+ 923 0002 1F93      		push r17
+ 924               	.LCFI35:
+ 925               		.cfi_def_cfa_offset 4
+ 926               		.cfi_offset 17, -3
+ 927               	/* prologue: function */
+ 928               	/* frame size = 0 */
+ 929               	/* stack size = 2 */
+ 930               	.L__stack_usage = 2
+ 479:../../../os/oslib/src/chobjcaches.c **** 
+ 480:../../../os/oslib/src/chobjcaches.c ****   /* Resetting the OC_FLAG_LAZYWRITE flag in order to prevent multiple
+ 481:../../../os/oslib/src/chobjcaches.c ****      writes.*/
+ 482:../../../os/oslib/src/chobjcaches.c ****   objp->obj_flags &= ~OC_FLAG_LAZYWRITE;
+ 931               		.loc 1 482 0
+ 932 0004 DB01      		movw r26,r22
+ 933 0006 5596      		adiw r26,21
+ 934 0008 0D91      		ld r16,X+
+ 935 000a 1D91      		ld r17,X+
+ 936 000c 2D91      		ld r18,X+
+ 937 000e 3C91      		ld r19,X
+ 938 0010 5897      		sbiw r26,21+3
+ 939 0012 0F7E      		andi r16,239
+ 940 0014 2227      		clr r18
+ 941 0016 3327      		clr r19
+ 942 0018 FB01      		movw r30,r22
+ 943 001a 058B      		std Z+21,r16
+ 944 001c 168B      		std Z+22,r17
+ 945 001e 278B      		std Z+23,r18
+ 946 0020 308F      		std Z+24,r19
+ 483:../../../os/oslib/src/chobjcaches.c **** 
+ 484:../../../os/oslib/src/chobjcaches.c ****   return ocp->writef(ocp, objp, async);
+ 947               		.loc 1 484 0
+ 948 0022 DC01      		movw r26,r24
+ 949 0024 5C96      		adiw r26,28
+ 950 0026 ED91      		ld r30,X+
+ 951 0028 FC91      		ld r31,X
+ 952 002a 5D97      		sbiw r26,28+1
+ 953               	/* epilogue start */
+ 485:../../../os/oslib/src/chobjcaches.c **** }
+ 954               		.loc 1 485 0
+ 955 002c 1F91      		pop r17
+ 956 002e 0F91      		pop r16
+ 484:../../../os/oslib/src/chobjcaches.c **** }
+ 957               		.loc 1 484 0
+ 958 0030 0994      		ijmp
+ 959               	.LVL56:
+ 960               		.cfi_endproc
+ 961               	.LFE199:
+ 963               		.text
+ 964               	.Letext0:
+ 965               		.file 4 "/usr/lib/gcc/avr/5.4.0/include/stddef.h"
+ 966               		.file 5 "/usr/lib/avr/include/stdint.h"
+ 967               		.file 6 "../../../os/common/ports/AVR/compilers/GCC/chtypes.h"
+ 968               		.file 7 "../../../os/rt/include/chearly.h"
+ 969               		.file 8 "../../../os/rt/include/chobjects.h"
+ 970               		.file 9 "../../../os/rt/include/chrfcu.h"
+ 971               		.file 10 "../../../os/rt/include/chdebug.h"
+ 972               		.file 11 "../../../os/rt/include/chtime.h"
+ 973               		.file 12 "../../../os/rt/include/chlists.h"
+ 974               		.file 13 "../../../os/rt/include/chmtx.h"
+ 975               		.file 14 "../../../os/oslib/include/chobjcaches.h"
+ 976               		.file 15 "../../../os/rt/include/chsys.h"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 chobjcaches.c
+     /tmp/cc8b6Fxu.s:2      *ABS*:000000000000003e __SP_H__
+     /tmp/cc8b6Fxu.s:3      *ABS*:000000000000003d __SP_L__
+     /tmp/cc8b6Fxu.s:4      *ABS*:000000000000003f __SREG__
+     /tmp/cc8b6Fxu.s:5      *ABS*:0000000000000000 __tmp_reg__
+     /tmp/cc8b6Fxu.s:6      *ABS*:0000000000000001 __zero_reg__
+     /tmp/cc8b6Fxu.s:13     .text.chCacheObjectInit:0000000000000000 chCacheObjectInit
+     /tmp/cc8b6Fxu.s:244    .text.chCacheGetObject:0000000000000000 chCacheGetObject
+     /tmp/cc8b6Fxu.s:681    .text.chCacheReleaseObjectI:0000000000000000 chCacheReleaseObjectI
+     /tmp/cc8b6Fxu.s:864    .text.chCacheReadObject:0000000000000000 chCacheReadObject
+     /tmp/cc8b6Fxu.s:914    .text.chCacheWriteObject:0000000000000000 chCacheWriteObject
+
+UNDEFINED SYMBOLS
+chSemObjectInit
+chSemWaitS
+chSemSignalI
